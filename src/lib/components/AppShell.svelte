@@ -4,11 +4,13 @@
   import { afterNavigate } from "$app/navigation";
   import { strings } from "$lib/strings";
   import { modKey } from "$lib/platform";
+  import SettingsDialog from "$lib/components/SettingsDialog.svelte";
 
   let { children }: { children: Snippet } = $props();
 
   // Narrow windows only: the sidebar becomes a drawer behind the menu toggle.
   let menuOpen = $state(false);
+  let settingsOpen = $state(false);
   let toggle: HTMLButtonElement | undefined = $state();
 
   function closeMenu() {
@@ -21,7 +23,8 @@
   });
 
   function onKeydown(event: KeyboardEvent) {
-    if (menuOpen && event.key === "Escape") closeMenu();
+    // While settings is open, Escape belongs to the dialog; the drawer stays open behind it.
+    if (menuOpen && !settingsOpen && event.key === "Escape") closeMenu();
   }
 
   const nav = strings.shell.nav;
@@ -95,7 +98,27 @@
       <button class="btn" disabled>{strings.shell.openOnDisplay2}</button>
       <span class="soon">{strings.comingSoon}</span>
     </div>
+
+    <div class="footer">
+      <button
+        class="btn settings"
+        aria-label={strings.shell.openSettings}
+        title={strings.shell.openSettings}
+        aria-haspopup="dialog"
+        onclick={() => (settingsOpen = true)}
+      >
+        <!-- Gear icon from Lucide (ISC licence) -->
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+          />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    </div>
   </nav>
+
+  <SettingsDialog bind:open={settingsOpen} />
 
   <main class="content">
     {@render children()}
@@ -189,6 +212,29 @@
 
   .status {
     font-size: var(--text-sm);
+  }
+
+  .footer {
+    display: flex;
+    margin-top: calc(-1 * var(--space-3));
+  }
+
+  .settings {
+    padding: 0;
+    width: var(--control-height);
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-text-muted);
+  }
+
+  .settings:hover {
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
+  }
+
+  .settings svg {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 
   .content {

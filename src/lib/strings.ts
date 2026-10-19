@@ -20,6 +20,13 @@ export const strings = {
     playerScreen: "Player screen",
     playerScreenStatus: "Not available yet",
     openOnDisplay2: "Open on display 2",
+    openSettings: "Settings",
+  },
+
+  settings: {
+    title: "Settings",
+    close: "Close settings",
+    empty: "No settings yet.",
   },
 
   home: {

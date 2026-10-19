@@ -17,6 +17,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - Campaign switcher.
   - Navigation: Home (F1), Search (Ctrl K), Run encounter (F2), Encounter builder (F3), Characters (F4), LegendKeeper (F5).
   - Player-screen status box at the bottom, with a "Blank screen" button.
+  - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. It has no settings yet.
 - **Global search** is always one keystroke away (Ctrl K), from every screen.
 - Search results, stat blocks and LegendKeeper pages can be opened in **tabs** (see the Search screen).
 - The layout must stay usable on a small laptop. When the window gets narrow, the sidebar hides behind a menu toggle in a top bar and opens as a drawer over the content. Escape, clicking outside, or navigating closes it.

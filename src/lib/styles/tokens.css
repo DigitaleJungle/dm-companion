@@ -60,6 +60,7 @@
   --content-max-width: 1280px;
   --icon-size: 20px;
   --drawer-width: min(280px, 85vw);
+  --dialog-width: 560px;
   --z-drawer: 100;
   --duration-drawer: 200ms;
   --color-backdrop: rgb(10 12 16 / 0.45);

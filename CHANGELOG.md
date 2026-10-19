@@ -3,6 +3,10 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.1.2] - 2026-10-19
+### Added
+- A Settings panel, opened from the gear button at the bottom left of the sidebar. It has no settings yet.
+
 ## [0.1.1] - 2026-10-19
 ### Changed
 - On narrow windows, the sidebar now hides behind a menu button and slides in as a drawer. Escape, clicking outside, or moving to another screen closes it.
