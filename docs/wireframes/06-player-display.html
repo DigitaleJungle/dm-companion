@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player display · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Serif:wght@600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#a6a59f}
+.pc{border:2px solid #4a4944;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;background:#1f1f1d}
+.pc .n{font-size:22px;font-weight:600}
+.st{font-family:'IBM Plex Mono',monospace;font-size:15px;color:#d8d6cf}
+</style>
+</head>
+<body>
+<div style="width: 1440px; height: 810px; box-sizing: border-box; padding: 40px 48px; background: #141413; color: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl">Round 3</span>
+      <div style="font-family: 'IBM Plex Serif', serif; font-size: 64px; line-height: 1">Goblin Boss’s turn</div>
+    </div>
+    <div style="text-align: right; display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl">Up next</span>
+      <div style="font-size: 32px; font-weight: 600; color: #7fa2ff">Sefa Oakhollow</div>
+    </div>
+  </div>
+  <div style="flex: 1; display: flex; gap: 32px; min-height: 0">
+    <div style="flex: 1.3; display: flex; flex-direction: column; gap: 10px">
+      <span class="lbl">Initiative</span>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px"><span class="st" style="width: 30px">21</span><span class="n" style="flex: 1">Mira Ashvale</span><span class="st">31 / 38 HP</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px"><span class="st" style="width: 30px">18</span><span class="n" style="flex: 1">Goblin</span><span class="st">Bloodied · Prone</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px"><span class="st" style="width: 30px">16</span><span class="n" style="flex: 1">Brannoc</span><span class="st">44 / 49 HP</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px; border-color: #7fa2ff; border-width: 3px"><span class="st" style="width: 30px">14</span><span class="n" style="flex: 1">Goblin Boss</span><span class="st">Unhurt</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px"><span class="st" style="width: 30px">12</span><span class="n" style="flex: 1">Sefa Oakhollow</span><span class="st">27 / 33 HP · Concentrating</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px"><span class="st" style="width: 30px">9</span><span class="n" style="flex: 1">Goblin</span><span class="st">Unhurt · Restrained</span></div>
+      <div class="pc" style="flex-direction: row; align-items: center; gap: 16px; border-style: dashed"><span class="st" style="width: 30px">5</span><span class="n" style="flex: 1">Tavi</span><span class="st">Down · death saves 2✓ 1✗</span></div>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px">
+      <span class="lbl">Shared by the DM</span>
+      <div style="flex: 1; border: 2px dashed #4a4944; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #a6a59f; font-size: 18px; text-align: center; padding: 20px">Handout / map image<br>pushed from a LegendKeeper page or search result</div>
+      <div style="font-family: 'IBM Plex Serif', serif; font-size: 28px">Thornwood Bridge</div>
+    </div>
+  </div>
+  <div class="lbl" style="font-size: 12px">Monsters show status words, never exact HP · GM secrets are never shown here</div>
+</div>
+</body>
+</html>

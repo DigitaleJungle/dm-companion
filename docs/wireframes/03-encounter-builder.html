@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encounter builder · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5fd9}a:hover{color:#1d47a8}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5f5e59}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:0 14px;min-height:44px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;color:#1d1d1b;cursor:pointer}
+.dark{background:#1d1d1b;color:#fff}
+.sq{font:inherit;width:36px;min-height:36px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;cursor:pointer}
+.panel{background:#fff;border:1.5px solid #1d1d1b;border-radius:8px;box-sizing:border-box}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:6px;text-decoration:none;color:#1d1d1b;font-weight:500;font-size:14px}
+.nav a:hover{background:#eceae4;color:#1d1d1b}
+.nav a.on{background:#1d1d1b;color:#fff}
+.mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eceae4;font-size:14px}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5f5e59}
+.sr{position:absolute;left:-9999px}
+input,select,textarea{font:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 900px; display: flex; flex-wrap: wrap; background: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; color: #1d1d1b">
+  <nav aria-label="Main" style="flex: 1 1 200px; max-width: 232px; background: #fff; border-right: 1.5px solid #1d1d1b; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box">
+    <div style="font-weight: 700; font-size: 16px; padding: 0 12px">DM Companion</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl" style="padding: 0 12px">Campaign</span>
+      <button class="btn" style="text-align: left">Shadows over Thornwood ▾</button>
+    </div>
+    <div class="nav" style="display: flex; flex-direction: column; gap: 4px">
+      <a href="00-landing.html">Home <span class="lbl">F1</span></a>
+      <a href="01-search.html">Search <span class="lbl">Ctrl K</span></a>
+      <a href="02-run-encounter.html">Run encounter <span class="lbl">F2</span></a>
+      <a href="03-encounter-builder.html" class="on">Encounter builder <span class="lbl" style="color: #c9c7bf">F3</span></a>
+      <a href="04-characters.html">Characters <span class="lbl">F4</span></a>
+      <a href="05-legendkeeper-reader.html">LegendKeeper <span class="lbl">F5</span></a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; padding: 0 12px">
+      <span class="lbl">Saved encounters</span>
+      <a href="#" style="font-size: 13px; padding: 6px 0">Thornwood Bridge ambush ●</a>
+      <a href="#" style="font-size: 13px; padding: 6px 0">Mill cellar ghouls</a>
+      <a href="#" style="font-size: 13px; padding: 6px 0">Ashen Hand patrol</a>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px 24px; border-bottom: 1.5px solid #1d1d1b; background: #fff">
+      <div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px">
+        <label class="lbl" for="enc-name">Encounter name</label>
+        <input id="enc-name" value="Thornwood Bridge ambush" style="font-size: 20px; font-weight: 700; border: none; border-bottom: 1.5px dashed #c9c7bf; padding: 2px 0; background: transparent">
+      </div>
+      <button class="btn">Save draft</button>
+      <a href="02-run-encounter.html" class="btn dark" style="display: inline-flex; align-items: center; text-decoration: none; color: #fff">Start encounter ▸</a>
+    </header>
+    <div style="padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+      <section class="panel" aria-label="Monster browser" style="flex: 1 1 340px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <span class="lbl">Add monsters</span>
+        <label for="ms" class="sr">Search monsters</label>
+        <input id="ms" value="goblin" style="min-height: 44px; padding: 0 12px; border: 2px solid #1d1d1b; border-radius: 6px">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <select aria-label="Challenge rating" style="min-height: 36px"><option>CR: any</option></select>
+          <select aria-label="Creature type" style="min-height: 36px"><option>Type: any</option></select>
+          <select aria-label="Environment" style="min-height: 36px"><option>Environment: forest</option></select>
+        </div>
+        <div style="display: flex; flex-direction: column">
+          <div class="mrow"><strong style="flex: 1">Goblin</strong><span class="mono">CR 1/4 · 50 XP</span><button class="sq" aria-label="Add Goblin">+</button></div>
+          <div class="mrow"><strong style="flex: 1">Goblin Boss</strong><span class="mono">CR 1 · 200 XP</span><button class="sq" aria-label="Add Goblin Boss">+</button></div>
+          <div class="mrow"><strong style="flex: 1">Hobgoblin</strong><span class="mono">CR 1/2 · 100 XP</span><button class="sq" aria-label="Add Hobgoblin">+</button></div>
+          <div class="mrow"><strong style="flex: 1">Bugbear</strong><span class="mono">CR 1 · 200 XP</span><button class="sq" aria-label="Add Bugbear">+</button></div>
+          <div class="mrow"><strong style="flex: 1">Worg</strong><span class="mono">CR 1/2 · 100 XP</span><button class="sq" aria-label="Add Worg">+</button></div>
+          <div class="mrow"><strong style="flex: 1">Wolf</strong><span class="mono">CR 1/4 · 50 XP</span><button class="sq" aria-label="Add Wolf">+</button></div>
+        </div>
+        <span style="font-size: 12px; color: #5f5e59">Hover a name to preview its stat block. Homebrew monsters appear here too.</span>
+      </section>
+      <section class="panel" aria-label="Encounter roster" style="flex: 1.2 1 360px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <span class="lbl">In this encounter</span>
+        <div class="mrow"><strong style="flex: 1">Goblin Boss</strong><span class="mono">200 XP</span><button class="sq" aria-label="Fewer">−</button><span style="width: 20px; text-align: center">1</span><button class="sq" aria-label="More">+</button></div>
+        <div class="mrow"><strong style="flex: 1">Goblin</strong><span class="mono">4 × 50 XP</span><button class="sq" aria-label="Fewer">−</button><span style="width: 20px; text-align: center">4</span><button class="sq" aria-label="More">+</button></div>
+        <div class="mrow"><strong style="flex: 1">Worg</strong><span class="mono">2 × 100 XP</span><button class="sq" aria-label="Fewer">−</button><span style="width: 20px; text-align: center">2</span><button class="sq" aria-label="More">+</button></div>
+        <fieldset style="border: 1.5px dashed #c9c7bf; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+          <legend class="lbl">When the encounter starts</legend>
+          <label><input type="radio" name="hp" checked> Use average HP</label>
+          <label><input type="radio" name="hp"> Roll HP for each monster</label>
+          <label><input type="checkbox" checked> Group identical monsters on one initiative</label>
+          <label><input type="checkbox"> Show monster names to players</label>
+        </fieldset>
+        <label class="lbl" for="terrain">Setup notes</label>
+        <textarea id="terrain" rows="3" style="font-size: 14px; padding: 8px; border: 1.5px solid #c9c7bf; border-radius: 6px">Rickety rope bridge, 30 ft drop to the river. Worgs hidden on the far bank.</textarea>
+        <div style="display: flex; gap: 8px; align-items: center; font-size: 14px; flex-wrap: wrap"><span class="lbl">Linked page</span><a href="05-legendkeeper-reader.html">Thornwood Bridge (LegendKeeper)</a><button class="btn" style="min-height: 36px">Change</button></div>
+      </section>
+      <aside style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <section class="panel" aria-label="Party" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+          <span class="lbl">Party · 4 × level 5</span>
+          <label><input type="checkbox" checked> Mira Ashvale</label>
+          <label><input type="checkbox" checked> Brannoc</label>
+          <label><input type="checkbox" checked> Sefa Oakhollow</label>
+          <label><input type="checkbox" checked> Tavi</label>
+        </section>
+        <section class="panel" aria-label="Difficulty" style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <span class="lbl">Difficulty</span>
+          <div style="font-size: 30px; font-weight: 700">Easy</div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px">
+            <div style="height: 14px; background: #1d1d1b"></div><div style="height: 14px; background: #dedcd5"></div><div style="height: 14px; background: #dedcd5"></div><div style="height: 14px; background: #dedcd5"></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px" class="mono"><span>Easy</span><span>Medium</span><span>Hard</span><span>Deadly</span></div>
+          <div class="mono" style="line-height: 1.7">Base XP 600 · 7 monsters ×2.5<br><strong style="color: #1d1d1b">Adjusted 1,500</strong> · Medium from 2,000</div>
+          <span style="font-size: 12px; color: #5f5e59">Thresholds follow the ruleset chosen in campaign settings.</span>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</body>
+</html>

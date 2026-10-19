@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Global search · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5fd9}a:hover{color:#1d47a8}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5f5e59}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:0 14px;min-height:44px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;color:#1d1d1b;cursor:pointer}
+.dark{background:#1d1d1b;color:#fff}
+.chip{font:inherit;font-size:13px;padding:0 12px;min-height:36px;border:1.5px solid #c9c7bf;background:#fff;border-radius:18px;color:#1d1d1b;cursor:pointer}
+.chip.on{border-color:#1d1d1b;background:#1d1d1b;color:#fff}
+.panel{background:#fff;border:1.5px solid #1d1d1b;border-radius:8px;box-sizing:border-box}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:6px;text-decoration:none;color:#1d1d1b;font-weight:500;font-size:14px}
+.nav a:hover{background:#eceae4;color:#1d1d1b}
+.nav a.on{background:#1d1d1b;color:#fff}
+.res{display:flex;flex-direction:column;gap:4px;text-align:left;width:100%;font:inherit;padding:12px 14px;border:1.5px solid #dedcd5;border-radius:6px;background:#fff;color:#1d1d1b;cursor:pointer}
+.res.on{border-color:#1d1d1b;box-shadow:inset 4px 0 0 #2b5fd9}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 6px;border:1px solid #1d1d1b;border-radius:4px}
+.sr{position:absolute;left:-9999px}
+input,select{font:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 900px; display: flex; flex-wrap: wrap; background: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; color: #1d1d1b">
+  <nav aria-label="Main" style="flex: 1 1 200px; max-width: 232px; background: #fff; border-right: 1.5px solid #1d1d1b; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box">
+    <div style="font-weight: 700; font-size: 16px; padding: 0 12px">DM Companion</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl" style="padding: 0 12px">Campaign</span>
+      <button class="btn" style="text-align: left">Shadows over Thornwood ▾</button>
+    </div>
+    <div class="nav" style="display: flex; flex-direction: column; gap: 4px">
+      <a href="00-landing.html">Home <span class="lbl">F1</span></a>
+      <a href="01-search.html" class="on">Search <span class="lbl" style="color: #c9c7bf">Ctrl K</span></a>
+      <a href="02-run-encounter.html">Run encounter <span class="lbl">F2</span></a>
+      <a href="03-encounter-builder.html">Encounter builder <span class="lbl">F3</span></a>
+      <a href="04-characters.html">Characters <span class="lbl">F4</span></a>
+      <a href="05-legendkeeper-reader.html">LegendKeeper <span class="lbl">F5</span></a>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1.5px dashed #c9c7bf; border-radius: 6px">
+      <span class="lbl">Player screen</span>
+      <span style="font-size: 13px">Display 2 · connected</span>
+      <button class="btn">Blank screen</button>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px 24px; border-bottom: 1.5px solid #1d1d1b; background: #fff">
+      <label for="q" class="sr">Search everything</label>
+      <input id="q" value="fireball" style="flex: 1 1 320px; min-height: 44px; padding: 0 14px; border: 2px solid #1d1d1b; border-radius: 6px; font-size: 15px">
+      <button class="btn">Dice</button>
+      <button class="btn">Session 14 notes</button>
+    </header>
+    <div role="tablist" aria-label="Open tabs" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 24px 0; border-bottom: 1.5px solid #c9c7bf">
+      <button role="tab" aria-selected="true" class="btn" style="border-bottom: none; border-radius: 6px 6px 0 0">Search: fireball</button>
+      <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-bottom: none; border-radius: 6px 6px 0 0">Goblin Boss</button>
+      <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-bottom: none; border-radius: 6px 6px 0 0">Thornwood Bridge</button>
+      <button class="btn" aria-label="New tab" style="border-color: #c9c7bf; border-bottom: none; border-radius: 6px 6px 0 0">+</button>
+    </div>
+    <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline">
+        <h1 style="margin: 0; font-size: 22px">Results for “fireball”</h1>
+        <span class="lbl">23 results · rules, monsters, spells, items, lore</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <button class="chip on">All 23</button>
+        <button class="chip">Spells 3</button>
+        <button class="chip">Rules 6</button>
+        <button class="chip">Monsters 4</button>
+        <button class="chip">Items 2</button>
+        <button class="chip">Lore (LegendKeeper) 8</button>
+        <span style="flex: 1"></span>
+        <label class="lbl" for="src">Source</label>
+        <select id="src" style="min-height: 36px">
+          <option>All books</option>
+        </select>
+        <label class="lbl" for="sort">Sort</label>
+        <select id="sort" style="min-height: 36px">
+          <option>Relevance</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+          <span class="lbl">Spells</span>
+          <button class="res on"><strong>Fireball</strong><span style="font-size: 13px; color: #5f5e59">Level 3 · Evocation · 150 ft · DEX save</span></button>
+          <button class="res"><strong>Delayed Blast Fireball</strong><span style="font-size: 13px; color: #5f5e59">Level 7 · Evocation</span></button>
+          <span class="lbl" style="margin-top: 8px">Rules</span>
+          <button class="res"><strong>Area of effect: Sphere</strong><span style="font-size: 13px; color: #5f5e59">Combat · how radius is measured from the point of origin</span></button>
+          <button class="res"><strong>Saving throws</strong><span style="font-size: 13px; color: #5f5e59">Using ability scores</span></button>
+          <span class="lbl" style="margin-top: 8px">Monsters</span>
+          <button class="res"><strong>Fire Elemental</strong><span style="font-size: 13px; color: #5f5e59">CR 5 · Elemental · immune to fire</span></button>
+          <span class="lbl" style="margin-top: 8px">Lore · LegendKeeper</span>
+          <button class="res"><strong>Kessler’s Mill</strong><span style="font-size: 13px; color: #5f5e59">Locations › Thornwood · “…burned down after a fireball went astray…”</span></button>
+          <a href="#" style="font-size: 13px">Show all 8 lore results</a>
+        </div>
+        <article class="panel" style="flex: 1.4 1 420px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+            <h2 style="margin: 0; font-size: 26px">Fireball</h2>
+            <span class="tag">SPELL</span><span class="tag">LEVEL 3</span><span class="tag">EVOCATION</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <button class="btn">Pin to session</button>
+            <button class="btn">Open in new tab</button>
+            <button class="btn">Show on player screen</button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #c9c7bf; border: 1px solid #c9c7bf">
+            <div style="background: #fff; padding: 10px"><div class="lbl">Casting time</div>1 action</div>
+            <div style="background: #fff; padding: 10px"><div class="lbl">Range</div>150 ft</div>
+            <div style="background: #fff; padding: 10px"><div class="lbl">Components</div>V, S, M</div>
+            <div style="background: #fff; padding: 10px"><div class="lbl">Duration</div>Instantaneous</div>
+            <div style="background: #fff; padding: 10px"><div class="lbl">Save</div>Dexterity</div>
+            <div style="background: #fff; padding: 10px"><div class="lbl">Damage</div>8d6 fire</div>
+          </div>
+          <p style="margin: 0; line-height: 1.6">[Full spell description from your rules source goes here — rendered with inline links to referenced rules such as <a href="#">Area of effect: Sphere</a> and <a href="#">Saving throws</a>.]</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+            <button class="btn dark">Roll 8d6</button>
+            <label class="lbl" for="slot">Slot level</label>
+            <select id="slot" style="min-height: 44px"><option>3</option><option>4</option><option>5</option></select>
+          </div>
+          <div style="border-top: 1.5px dashed #c9c7bf; padding-top: 14px; display: flex; flex-direction: column; gap: 6px">
+            <span class="lbl">Mentioned in your world</span>
+            <a href="05-legendkeeper-reader.html">Kessler’s Mill</a>
+            <a href="05-legendkeeper-reader.html">Brother Aldous (NPC)</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

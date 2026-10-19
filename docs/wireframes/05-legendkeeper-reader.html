@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LegendKeeper reader · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Serif:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5fd9}a:hover{color:#1d47a8}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5f5e59}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:0 14px;min-height:44px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;color:#1d1d1b;cursor:pointer}
+.dark{background:#1d1d1b;color:#fff}
+.panel{background:#fff;border:1.5px solid #1d1d1b;border-radius:8px;box-sizing:border-box}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:6px;text-decoration:none;color:#1d1d1b;font-weight:500;font-size:14px}
+.nav a:hover{background:#eceae4;color:#1d1d1b}
+.nav a.on{background:#1d1d1b;color:#fff}
+.tree{list-style:none;margin:0;padding:0 0 0 14px;display:flex;flex-direction:column}
+.tree button{font:inherit;font-size:14px;text-align:left;width:100%;min-height:36px;padding:0 8px;border:none;background:none;border-radius:4px;color:#1d1d1b;cursor:pointer}
+.tree button.on{background:#1d1d1b;color:#fff}
+.ph{background:repeating-linear-gradient(45deg,#eceae4 0 6px,#f7f6f2 6px 12px);border:1.5px solid #c9c7bf;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#5f5e59}
+.sr{position:absolute;left:-9999px}
+input{font:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 900px; display: flex; flex-wrap: wrap; background: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; color: #1d1d1b">
+  <nav aria-label="Main" style="flex: 1 1 200px; max-width: 232px; background: #fff; border-right: 1.5px solid #1d1d1b; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box">
+    <div style="font-weight: 700; font-size: 16px; padding: 0 12px">DM Companion</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl" style="padding: 0 12px">Campaign</span>
+      <button class="btn" style="text-align: left">Shadows over Thornwood ▾</button>
+    </div>
+    <div class="nav" style="display: flex; flex-direction: column; gap: 4px">
+      <a href="00-landing.html">Home <span class="lbl">F1</span></a>
+      <a href="01-search.html">Search <span class="lbl">Ctrl K</span></a>
+      <a href="02-run-encounter.html">Run encounter <span class="lbl">F2</span></a>
+      <a href="03-encounter-builder.html">Encounter builder <span class="lbl">F3</span></a>
+      <a href="04-characters.html">Characters <span class="lbl">F4</span></a>
+      <a href="05-legendkeeper-reader.html" class="on">LegendKeeper <span class="lbl" style="color: #c9c7bf">F5</span></a>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 24px; border-bottom: 1.5px solid #1d1d1b; background: #fff">
+      <span style="font-weight: 600">LegendKeeper</span>
+      <span class="lbl">World: Thornwood · connected · synced 2 min ago</span>
+      <span style="flex: 1"></span>
+      <button class="btn">Refresh</button>
+      <button class="btn">Connection settings</button>
+    </header>
+    <div style="display: flex; flex-wrap: wrap; flex: 1">
+      <section aria-label="Page tree" style="flex: 1 1 240px; max-width: 290px; border-right: 1.5px solid #c9c7bf; padding: 16px 12px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; background: #fbfaf7">
+        <label for="lkf" class="sr">Filter pages</label>
+        <input id="lkf" placeholder="Filter pages" style="min-height: 44px; padding: 0 12px; border: 1.5px solid #1d1d1b; border-radius: 6px">
+        <span class="lbl">Pinned</span>
+        <ul class="tree" style="padding-left: 0">
+          <li><button>Session 14 prep</button></li>
+        </ul>
+        <span class="lbl">All pages</span>
+        <ul class="tree" style="padding-left: 0">
+          <li><button>▸ Atlas</button></li>
+          <li><button>▾ Locations</button>
+            <ul class="tree">
+              <li><button>▾ Thornwood</button>
+                <ul class="tree">
+                  <li><button class="on" aria-current="page">Thornwood Bridge</button></li>
+                  <li><button>Kessler’s Mill</button></li>
+                  <li><button>Hollowmere</button></li>
+                </ul>
+              </li>
+              <li><button>▸ The Ashen Coast</button></li>
+            </ul>
+          </li>
+          <li><button>▸ Characters</button></li>
+          <li><button>▸ Factions</button></li>
+          <li><button>▸ Session recaps</button></li>
+        </ul>
+      </section>
+      <article aria-label="Page in read mode" style="flex: 999 1 480px; min-width: 0; padding: 20px 32px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <span class="lbl">Locations › Thornwood ›</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 8px; border: 1px solid #1d1d1b; border-radius: 10px">READ ONLY</span>
+          <span style="flex: 1"></span>
+          <button class="btn">Pin</button>
+          <button class="btn">Show image on player screen</button>
+          <button class="btn dark">Open in LegendKeeper ↗</button>
+        </div>
+        <h1 style="margin: 0; font-family: 'IBM Plex Serif', serif; font-size: 34px">Thornwood Bridge</h1>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+          <div style="flex: 2 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px; font-family: 'IBM Plex Serif', serif; font-size: 16px; line-height: 1.65">
+            <div class="ph" style="height: 200px">Page image / map</div>
+            <p style="margin: 0">[Page body from LegendKeeper, rendered read-only: headings, text, images, embedded maps. Mentions of other pages become links that open here, e.g. <a href="#">Kessler’s Mill</a> or <a href="#">The Ashen Hand</a>.]</p>
+            <div style="border: 1.5px dashed #1d1d1b; border-radius: 6px; padding: 12px 14px; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px">
+              <div class="lbl" style="margin-bottom: 4px">GM secret</div>
+              [Secret blocks stay visible to you, but are never sent to the player screen.]
+            </div>
+          </div>
+          <aside class="panel" style="flex: 1 1 220px; min-width: 0; padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+            <span class="lbl">Page properties</span>
+            <div><div class="lbl">Region</div>Thornwood</div>
+            <div><div class="lbl">Controlled by</div><a href="#">The Ashen Hand</a></div>
+            <div style="border-top: 1.5px dashed #c9c7bf; padding-top: 10px"><div class="lbl">Linked in DM Companion</div><a href="03-encounter-builder.html">Encounter: Thornwood Bridge ambush</a></div>
+            <div style="border-top: 1.5px dashed #c9c7bf; padding-top: 10px"><div class="lbl">Mentioned on</div><a href="#">Kessler’s Mill</a><br><a href="#">Session 13 recap</a></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+  </main>
+</div>
+</body>
+</html>

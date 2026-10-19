@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Characters · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5fd9}a:hover{color:#1d47a8}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5f5e59}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:0 14px;min-height:44px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;color:#1d1d1b;cursor:pointer}
+.dark{background:#1d1d1b;color:#fff}
+.panel{background:#fff;border:1.5px solid #1d1d1b;border-radius:8px;box-sizing:border-box}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:6px;text-decoration:none;color:#1d1d1b;font-weight:500;font-size:14px}
+.nav a:hover{background:#eceae4;color:#1d1d1b}
+.nav a.on{background:#1d1d1b;color:#fff}
+.card{display:flex;gap:12px;align-items:center;text-align:left;width:100%;font:inherit;padding:10px 12px;border:1.5px solid #dedcd5;border-radius:6px;background:#fff;color:#1d1d1b;cursor:pointer}
+.card.on{border-color:#1d1d1b;box-shadow:inset 4px 0 0 #2b5fd9}
+.ph{background:repeating-linear-gradient(45deg,#eceae4 0 6px,#f7f6f2 6px 12px);border:1.5px solid #c9c7bf;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.ab{border:1.5px solid #1d1d1b;border-radius:8px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.ab strong{font-size:22px}
+.stat{border:1.5px solid #c9c7bf;border-radius:6px;padding:8px 10px}
+.stat div:last-child{font-size:18px;font-weight:600}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field select{min-height:40px;padding:0 10px;border:1.5px solid #c9c7bf;border-radius:6px;font:inherit;font-size:14px}
+.sk{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eceae4;font-size:13px}
+.sr{position:absolute;left:-9999px}
+input,select{font:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 900px; display: flex; flex-wrap: wrap; background: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; color: #1d1d1b">
+  <nav aria-label="Main" style="flex: 1 1 200px; max-width: 232px; background: #fff; border-right: 1.5px solid #1d1d1b; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box">
+    <div style="font-weight: 700; font-size: 16px; padding: 0 12px">DM Companion</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl" style="padding: 0 12px">Campaign</span>
+      <button class="btn" style="text-align: left">Shadows over Thornwood ▾</button>
+    </div>
+    <div class="nav" style="display: flex; flex-direction: column; gap: 4px">
+      <a href="00-landing.html">Home <span class="lbl">F1</span></a>
+      <a href="01-search.html">Search <span class="lbl">Ctrl K</span></a>
+      <a href="02-run-encounter.html">Run encounter <span class="lbl">F2</span></a>
+      <a href="03-encounter-builder.html">Encounter builder <span class="lbl">F3</span></a>
+      <a href="04-characters.html" class="on">Characters <span class="lbl" style="color: #c9c7bf">F4</span></a>
+      <a href="05-legendkeeper-reader.html">LegendKeeper <span class="lbl">F5</span></a>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-wrap: wrap">
+    <section aria-label="Character list" style="flex: 1 1 260px; max-width: 320px; border-right: 1.5px solid #c9c7bf; padding: 20px 16px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box">
+      <button class="btn dark">+ New character</button>
+      <button class="btn">Import…</button>
+      <label for="cs" class="sr">Filter characters</label>
+      <input id="cs" placeholder="Filter characters" style="min-height: 44px; padding: 0 12px; border: 1.5px solid #1d1d1b; border-radius: 6px">
+      <span class="lbl" style="margin-top: 6px">Party · active</span>
+      <button class="card on"><span class="ph" style="width: 40px; height: 40px; font-size: 10px">IMG</span><span style="display: flex; flex-direction: column"><strong>Mira Ashvale</strong><span style="font-size: 12px; color: #5f5e59">Rogue 5 · played by Lotte</span></span></button>
+      <button class="card"><span class="ph" style="width: 40px; height: 40px; font-size: 10px">IMG</span><span style="display: flex; flex-direction: column"><strong>Brannoc</strong><span style="font-size: 12px; color: #5f5e59">Fighter 5 · played by Jens</span></span></button>
+      <button class="card"><span class="ph" style="width: 40px; height: 40px; font-size: 10px">IMG</span><span style="display: flex; flex-direction: column"><strong>Sefa Oakhollow</strong><span style="font-size: 12px; color: #5f5e59">Druid 5 · played by Noor</span></span></button>
+      <button class="card"><span class="ph" style="width: 40px; height: 40px; font-size: 10px">IMG</span><span style="display: flex; flex-direction: column"><strong>Tavi</strong><span style="font-size: 12px; color: #5f5e59">Wizard 5 · played by Wout</span></span></button>
+      <span class="lbl" style="margin-top: 6px">Retired / NPC allies</span>
+      <button class="card"><span class="ph" style="width: 40px; height: 40px; font-size: 10px">IMG</span><span style="display: flex; flex-direction: column"><strong>Captain Vessa Rook</strong><span style="font-size: 12px; color: #5f5e59">NPC ally · Fighter 4</span></span></button>
+    </section>
+    <section aria-label="Character sheet" style="flex: 999 1 520px; min-width: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <div class="ph" style="width: 112px; height: 112px; font-size: 11px; color: #5f5e59">Portrait</div>
+        <div style="flex: 1 1 360px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+          <div class="field" style="grid-column: span 2"><label class="lbl" for="cn">Name</label><input id="cn" value="Mira Ashvale" style="font-size: 18px; font-weight: 700"></div>
+          <div class="field"><label class="lbl" for="cl">Class &amp; level</label><input id="cl" value="Rogue 5"></div>
+          <div class="field"><label class="lbl" for="sp">Species</label><input id="sp" value="Half-elf"></div>
+          <div class="field"><label class="lbl" for="bg">Background</label><input id="bg" value="Criminal"></div>
+          <div class="field"><label class="lbl" for="pl">Player</label><input id="pl" value="Lotte"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <button class="btn dark">Save</button>
+          <button class="btn">Add to encounter</button>
+          <button class="btn">Export PDF</button>
+        </div>
+      </div>
+      <div role="tablist" aria-label="Sheet sections" style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1.5px solid #1d1d1b">
+        <button role="tab" aria-selected="true" class="btn dark" style="border-radius: 6px 6px 0 0">Overview</button>
+        <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-radius: 6px 6px 0 0">Features</button>
+        <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-radius: 6px 6px 0 0">Spells</button>
+        <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-radius: 6px 6px 0 0">Inventory</button>
+        <button role="tab" aria-selected="false" class="btn" style="border-color: #c9c7bf; border-radius: 6px 6px 0 0">Backstory &amp; notes</button>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px">
+            <div class="ab"><span class="lbl">STR</span><strong>+0</strong><span style="font-size: 12px">10</span></div>
+            <div class="ab"><span class="lbl">DEX</span><strong>+4</strong><span style="font-size: 12px">18</span></div>
+            <div class="ab"><span class="lbl">CON</span><strong>+2</strong><span style="font-size: 12px">14</span></div>
+            <div class="ab"><span class="lbl">INT</span><strong>+1</strong><span style="font-size: 12px">12</span></div>
+            <div class="ab"><span class="lbl">WIS</span><strong>+1</strong><span style="font-size: 12px">13</span></div>
+            <div class="ab"><span class="lbl">CHA</span><strong>+0</strong><span style="font-size: 12px">11</span></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+            <div class="stat"><div class="lbl">Armor class</div><div>15</div></div>
+            <div class="stat"><div class="lbl">Hit points</div><div>31 / 38</div></div>
+            <div class="stat"><div class="lbl">Speed</div><div>30 ft</div></div>
+            <div class="stat"><div class="lbl">Initiative</div><div>+4</div></div>
+            <div class="stat"><div class="lbl">Proficiency</div><div>+3</div></div>
+            <div class="stat"><div class="lbl">Passive Perception</div><div>14</div></div>
+          </div>
+          <div class="panel" style="padding: 14px; display: flex; flex-direction: column; gap: 8px">
+            <span class="lbl">Attacks</span>
+            <div class="sk"><strong>Rapier</strong><span style="font-family: 'IBM Plex Mono', monospace">+7 · 1d8+4 piercing</span></div>
+            <div class="sk"><strong>Shortbow</strong><span style="font-family: 'IBM Plex Mono', monospace">+7 · 1d6+4 piercing</span></div>
+            <div class="sk"><strong>Sneak Attack</strong><span style="font-family: 'IBM Plex Mono', monospace">+3d6 once per turn</span></div>
+          </div>
+        </div>
+        <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div class="panel" style="padding: 14px">
+            <span class="lbl">Saving throws</span>
+            <div class="sk"><span>● Dexterity</span><span>+7</span></div>
+            <div class="sk"><span>● Intelligence</span><span>+4</span></div>
+            <div class="sk"><span>○ Wisdom</span><span>+1</span></div>
+          </div>
+          <div class="panel" style="padding: 14px">
+            <span class="lbl">Skills (proficient)</span>
+            <div class="sk"><span>◆ Stealth</span><span>+10</span></div>
+            <div class="sk"><span>◆ Sleight of Hand</span><span>+10</span></div>
+            <div class="sk"><span>● Perception</span><span>+4</span></div>
+            <div class="sk"><span>● Deception</span><span>+3</span></div>
+            <a href="#" style="font-size: 13px; display: inline-block; margin-top: 6px">Show all 18 skills</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

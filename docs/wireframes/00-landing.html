@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing screen · DM Companion wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Serif:wght@600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2b5fd9}a:hover{color:#1d47a8}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5f5e59}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:0 14px;min-height:44px;border:1.5px solid #1d1d1b;background:#fff;border-radius:6px;color:#1d1d1b;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.dark{background:#1d1d1b;color:#fff}
+a.dark:hover{color:#fff}
+.chip{font:inherit;font-size:13px;padding:0 12px;min-height:36px;border:1.5px solid #c9c7bf;background:#fff;border-radius:18px;color:#1d1d1b;cursor:pointer}
+.panel{background:#fff;border:1.5px solid #1d1d1b;border-radius:8px;box-sizing:border-box;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.nav a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:6px;text-decoration:none;color:#1d1d1b;font-weight:500;font-size:14px}
+.nav a:hover{background:#eceae4;color:#1d1d1b}
+.nav a.on{background:#1d1d1b;color:#fff}
+.li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eceae4;font-size:14px}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5f5e59}
+.ph{background:repeating-linear-gradient(45deg,#eceae4 0 6px,#f7f6f2 6px 12px);border:1.5px solid #c9c7bf;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5f5e59}
+.sr{position:absolute;left:-9999px}
+input,textarea{font:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 900px; display: flex; flex-wrap: wrap; background: #f4f3ef; font-family: 'IBM Plex Sans', sans-serif; color: #1d1d1b">
+  <nav aria-label="Main" style="flex: 1 1 200px; max-width: 232px; background: #fff; border-right: 1.5px solid #1d1d1b; padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box">
+    <div style="font-weight: 700; font-size: 16px; padding: 0 12px">DM Companion</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="lbl" style="padding: 0 12px">Campaign</span>
+      <button class="btn" style="justify-content: flex-start">Shadows over Thornwood ▾</button>
+    </div>
+    <div class="nav" style="display: flex; flex-direction: column; gap: 4px">
+      <a href="00-landing.html" class="on">Home <span class="lbl" style="color: #c9c7bf">F1</span></a>
+      <a href="01-search.html">Search <span class="lbl">Ctrl K</span></a>
+      <a href="02-run-encounter.html">Run encounter <span class="lbl">F2</span></a>
+      <a href="03-encounter-builder.html">Encounter builder <span class="lbl">F3</span></a>
+      <a href="04-characters.html">Characters <span class="lbl">F4</span></a>
+      <a href="05-legendkeeper-reader.html">LegendKeeper <span class="lbl">F5</span></a>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1.5px dashed #c9c7bf; border-radius: 6px">
+      <span class="lbl">Player screen</span>
+      <span style="font-size: 13px">Display 2 · not started</span>
+      <button class="btn">Open on display 2</button>
+    </div>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box">
+    <section aria-label="Campaign" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end">
+      <div style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 6px">
+        <span class="lbl">Next up · Session 14 · [date &amp; time]</span>
+        <h1 style="margin: 0; font-family: 'IBM Plex Serif', serif; font-size: 38px">Shadows over Thornwood</h1>
+        <span style="color: #5f5e59; font-size: 14px">Last session: the party reached Thornwood Bridge. <a href="05-legendkeeper-reader.html">Read recap</a></span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button class="btn">Prep mode</button>
+        <a href="02-run-encounter.html" class="btn dark" style="min-height: 52px; font-size: 15px; padding: 0 22px">Start session ▸</a>
+      </div>
+    </section>
+    <section aria-label="Search" style="display: flex; flex-direction: column; gap: 10px">
+      <label for="hq" class="sr">Search rules, monsters, spells and lore</label>
+      <input id="hq" placeholder="Search rules, monsters, spells, lore…  (Ctrl K)" style="min-height: 56px; padding: 0 18px; border: 2px solid #1d1d1b; border-radius: 8px; font-size: 17px; background: #fff">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <span class="lbl">Recent</span>
+        <button class="chip">fireball</button><button class="chip">grappled</button><button class="chip">goblin boss</button><button class="chip">Kessler’s Mill</button>
+      </div>
+    </section>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start">
+      <section class="panel" aria-label="Prepared encounters">
+        <div style="display: flex; justify-content: space-between; align-items: center"><span class="lbl">Prepared encounters</span><a href="03-encounter-builder.html" style="font-size: 13px">+ New</a></div>
+        <div class="li"><span style="flex: 1"><strong>Thornwood Bridge ambush</strong><br><span class="mono">7 monsters · Easy</span></span><a href="02-run-encounter.html" class="btn" style="min-height: 36px">Run</a></div>
+        <div class="li"><span style="flex: 1"><strong>Mill cellar ghouls</strong><br><span class="mono">3 monsters · Hard</span></span><a href="02-run-encounter.html" class="btn" style="min-height: 36px">Run</a></div>
+        <div class="li" style="border: none"><span style="flex: 1"><strong>Ashen Hand patrol</strong><br><span class="mono">5 monsters · Medium</span></span><a href="02-run-encounter.html" class="btn" style="min-height: 36px">Run</a></div>
+      </section>
+      <section class="panel" aria-label="Party">
+        <div style="display: flex; justify-content: space-between; align-items: center"><span class="lbl">Party · level 5</span><a href="04-characters.html" style="font-size: 13px">All characters</a></div>
+        <div class="li"><span class="ph" style="width: 32px; height: 32px">IMG</span><strong style="flex: 1">Mira Ashvale</strong><span class="mono">AC 15 · PP 14</span></div>
+        <div class="li"><span class="ph" style="width: 32px; height: 32px">IMG</span><strong style="flex: 1">Brannoc</strong><span class="mono">AC 18 · PP 11</span></div>
+        <div class="li"><span class="ph" style="width: 32px; height: 32px">IMG</span><strong style="flex: 1">Sefa Oakhollow</strong><span class="mono">AC 14 · PP 16</span></div>
+        <div class="li" style="border: none"><span class="ph" style="width: 32px; height: 32px">IMG</span><strong style="flex: 1">Tavi</strong><span class="mono">AC 12 · PP 12</span></div>
+      </section>
+      <section class="panel" aria-label="LegendKeeper">
+        <div style="display: flex; justify-content: space-between; align-items: center"><span class="lbl">LegendKeeper · pinned</span><span class="mono">synced 2 min ago</span></div>
+        <div class="li"><a href="05-legendkeeper-reader.html" style="flex: 1">Session 14 prep</a><span class="mono">Sessions</span></div>
+        <div class="li"><a href="05-legendkeeper-reader.html" style="flex: 1">Thornwood Bridge</a><span class="mono">Locations</span></div>
+        <div class="li"><a href="05-legendkeeper-reader.html" style="flex: 1">The Ashen Hand</a><span class="mono">Factions</span></div>
+        <span class="lbl" style="margin-top: 4px">Recently viewed</span>
+        <div class="li" style="border: none"><a href="05-legendkeeper-reader.html" style="flex: 1">Kessler’s Mill</a><span class="mono">Locations</span></div>
+      </section>
+      <section class="panel" aria-label="Session notes">
+        <span class="lbl">Session 14 notes</span>
+        <label for="hn" class="sr">Session notes</label>
+        <textarea id="hn" rows="5" style="font-size: 14px; padding: 10px; border: 1.5px solid #c9c7bf; border-radius: 6px">Open with the ambush on the bridge. Brother Aldous knows who burned the mill.</textarea>
+      </section>
+      <section class="panel" aria-label="Continue where you left off">
+        <span class="lbl">Continue where you left off</span>
+        <div class="li"><a href="01-search.html" style="flex: 1">Search: fireball</a><span class="mono">tab</span></div>
+        <div class="li"><a href="04-characters.html" style="flex: 1">Mira Ashvale (editing)</a><span class="mono">character</span></div>
+        <div class="li" style="border: none"><a href="03-encounter-builder.html" style="flex: 1">Thornwood Bridge ambush</a><span class="mono">encounter</span></div>
+      </section>
+      <section class="panel" aria-label="Quick tools">
+        <span class="lbl">Quick tools</span>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <button class="btn">Roll dice</button>
+          <button class="btn">Conditions</button>
+          <button class="btn">Random NPC name</button>
+          <button class="btn">Blank player screen</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

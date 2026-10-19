@@ -1,0 +1,5 @@
+#!/bin/sh
+# Every commit must carry a version bump and pass all checks.
+set -e
+node scripts/version.mjs check
+npm run verify
