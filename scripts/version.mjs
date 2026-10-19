@@ -1,5 +1,5 @@
 // Keeps the app version identical in every file that carries it.
-//   node scripts/version.mjs bump <patch|minor|major>   writes and prints the new version
+//   node scripts/version.mjs bump <patch|minor|major>   writes and prints the new version, adds an empty CHANGELOG section
 //   node scripts/version.mjs check                     used by the pre-commit hook
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -24,6 +24,25 @@ export function compareVersions(a, b) {
   return 0;
 }
 
+const CHANGELOG = "CHANGELOG.md";
+
+export function addChangelogSection(text, version, date) {
+  const heading = `## [${version}] - ${date}\n`;
+  const at = text.search(/^## \[/m);
+  return at === -1 ? `${text.trimEnd()}\n\n${heading}` : `${text.slice(0, at)}${heading}\n${text.slice(at)}`;
+}
+
+export function changelogHasEntries(text, version) {
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((l) => l.startsWith(`## [${version}]`));
+  if (start === -1) return false;
+  for (const line of lines.slice(start + 1)) {
+    if (line.startsWith("## ")) return false;
+    if (/^\s*- \S/.test(line)) return true;
+  }
+  return false;
+}
+
 // Each file: how to read its version and how to write a new one. Cargo.lock only exists after the first cargo run.
 const FILES = [
   {
@@ -40,6 +59,11 @@ const FILES = [
     path: "src-tauri/Cargo.toml",
     read: (s) => /^\[package\][\s\S]*?^version\s*=\s*"([^"]+)"/m.exec(s)?.[1],
     write: (s, v) => s.replace(/^(\[package\][\s\S]*?^version\s*=\s*")[^"]+(")/m, `$1${v}$2`),
+  },
+  {
+    path: "README.md",
+    read: (s) => /^\*\*Current version:\*\* (\d+\.\d+\.\d+)/m.exec(s)?.[1],
+    write: (s, v) => s.replace(/^(\*\*Current version:\*\* )\d+\.\d+\.\d+/m, `$1${v}`),
   },
   {
     path: "src-tauri/Cargo.lock",
@@ -81,6 +105,9 @@ function check() {
   if (previous && compareVersions(current, previous) <= 0) {
     fail(`version ${current} is not higher than the last commit's ${previous}. Run: node scripts/version.mjs bump <patch|minor|major>`);
   }
+  if (!changelogHasEntries(readFileSync(CHANGELOG, "utf8"), current)) {
+    fail(`add at least one entry under "## [${current}]" in ${CHANGELOG}`);
+  }
   console.log(`version: ${current} ok`);
 }
 
@@ -88,6 +115,8 @@ function bump(level) {
   const files = readAll();
   const next = bumpVersion(files[0].version, level);
   for (const f of files) writeFileSync(f.path, f.write(readFileSync(f.path, "utf8"), next));
+  const today = new Date().toISOString().slice(0, 10); // ISO date is the changelog convention, not UI text
+  writeFileSync(CHANGELOG, addChangelogSection(readFileSync(CHANGELOG, "utf8"), next, today));
   console.log(next);
 }
 

@@ -27,7 +27,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Backend tests: `cargo test` (run in `src-tauri/`). One test or module: `cargo test dice::` or `cargo test <test_name>`.
 - Rust lint: `cargo clippy -- -D warnings` (run in `src-tauri/`)
 - All checks (what the pre-commit hook runs): `npm run verify`
-- Version: `node scripts/version.mjs bump <patch|minor|major>` / `check`
+- Version: `node scripts/version.mjs bump <patch|minor|major>` (also adds the CHANGELOG section) / `check`
 
 ## Structure
 - `docs/wireframes/` — spec and wireframes (read-only reference)
@@ -86,6 +86,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 ## Commits and releases
 - Commit only through the `commit` skill (`.claude/skills/commit/`). It bumps the version, commits, tags `vX.Y.Z` and pushes.
 - Every commit bumps the version. **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features. Ask if unclear.
-- The pre-commit hook (`.githooks/pre-commit`, turned on by `npm install`) rejects a commit without a version bump or with a failing `npm run verify`. Never use `--no-verify`.
+- Every commit adds its entries to `CHANGELOG.md` and keeps `README.md` current: the version line, the status and features, and any usage text.
+- The pre-commit hook (`.githooks/pre-commit`, turned on by `npm install`) rejects a commit that has no version bump, has no CHANGELOG entry for the new version, or fails `npm run verify`. Never use `--no-verify`.
 - Publish only through the `publish` skill (`.claude/skills/publish/`). It builds locally and creates a GitHub release with the Windows installers. macOS isn't built yet.
 - Repo: github.com/DigitaleJungle/dm-companion (public). `dnd_5e_charactersheet_formfillable.pdf` is git-ignored on purpose.
