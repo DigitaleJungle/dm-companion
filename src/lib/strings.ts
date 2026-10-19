@@ -5,6 +5,8 @@ export const strings = {
 
   shell: {
     mainNav: "Main",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
     campaign: "Campaign",
     noCampaign: "No campaign",
     nav: {

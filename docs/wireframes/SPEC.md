@@ -19,7 +19,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - Player-screen status box at the bottom, with a "Blank screen" button.
 - **Global search** is always one keystroke away (Ctrl K), from every screen.
 - Search results, stat blocks and LegendKeeper pages can be opened in **tabs** (see the Search screen).
-- The layout must stay usable on a small laptop. The sidebar stacks above the content when the window gets narrow.
+- The layout must stay usable on a small laptop. When the window gets narrow, the sidebar hides behind a menu toggle in a top bar and opens as a drawer over the content. Escape, clicking outside, or navigating closes it.
 
 ## Screens
 

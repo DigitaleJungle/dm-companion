@@ -58,6 +58,12 @@
   --control-height-xl: 64px;
   --sidebar-width: 240px;
   --content-max-width: 1280px;
+  --icon-size: 20px;
+  --drawer-width: min(280px, 85vw);
+  --z-drawer: 100;
+  --duration-drawer: 200ms;
+  --color-backdrop: rgb(10 12 16 / 0.45);
+  --shadow-drawer: 0 8px 32px rgb(10 12 16 / 0.25);
 }
 
 @media (prefers-color-scheme: dark) {
