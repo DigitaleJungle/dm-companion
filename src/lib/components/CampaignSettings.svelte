@@ -100,7 +100,6 @@
 
 <div class="campaign-settings">
   <h3 class="title">{t.title}</h3>
-  <p class="description">{t.description}</p>
 
   {#if campaigns.loadError}
     <p class="error" role="alert">{campaigns.loadError}</p>
@@ -108,7 +107,7 @@
     <p class="muted" role="status">{strings.start.loading}</p>
   {:else}
     <section aria-labelledby="active-title">
-      <h4 id="active-title" class="label">{t.active}</h4>
+      <h4 id="active-title" class="subheading">{t.active}</h4>
       {#if campaigns.list.campaigns.length === 0}
         <p class="muted">{t.noActive}</p>
       {:else}
@@ -167,7 +166,7 @@
     </section>
 
     <section aria-labelledby="archived-title">
-      <h4 id="archived-title" class="label" tabindex="-1">{t.archived}</h4>
+      <h4 id="archived-title" class="subheading" tabindex="-1">{t.archived}</h4>
       {#if campaigns.list.archived.length === 0}
         <p class="muted">{t.noArchived}</p>
       {:else}
@@ -221,11 +220,6 @@
     font-weight: var(--weight-semibold);
   }
 
-  .description {
-    margin-top: calc(-1 * var(--space-2));
-  }
-
-  .description,
   .muted {
     color: var(--color-text-muted);
     font-size: var(--text-sm);
@@ -334,6 +328,11 @@
     background: var(--color-danger-soft);
     color: var(--color-danger);
     font-size: var(--text-sm);
+  }
+
+  .subheading {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
   }
 
   h4:focus-visible {

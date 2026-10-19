@@ -65,14 +65,15 @@
   --icon-size: 20px;
   --drawer-width: min(280px, 85vw);
   --dialog-width: 560px;
-  --settings-width: 720px;
-  --settings-min-height: 320px;
-  --settings-side-width: 180px;
+  --settings-width: 960px;
+  --settings-height: 720px;
+  --settings-side-width: 200px;
   --select-width: 280px;
   --start-width: 640px;
   --z-drawer: 100;
   --z-menu: 50;
   --menu-min-width: 160px;
+  --tooltip-width: 320px;
   --add-tile-height: 96px;
   --duration-drawer: 200ms;
   --color-backdrop: rgb(10 12 16 / 0.45);

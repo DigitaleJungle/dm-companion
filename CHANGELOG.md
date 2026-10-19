@@ -3,6 +3,16 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.2.0] - 2026-10-19
+### Added
+- Settings → Rules data: import 5etools-format rules data from a .tar.gz file on your computer. It's processed into a local library (books, chapters, spells, creatures, items, classes and more, plus a search index), and a failed import keeps your previous data.
+- Optional images, imported from a second .tar.gz and removable.
+- A version check against a GitHub repository you choose. It tells you when a newer release is available; you import the new file to update.
+- Books and sources table with a filter and checkboxes, to remove what you don't use in one step. Removed sources stay out of future imports until you allow them again.
+### Changed
+- The Settings dialog is wider, keeps the same size on every tab, and only its content scrolls.
+- Settings uses sentence-case headings, with fewer descriptions; the rest are in (i) tooltips.
+
 ## [0.1.4] - 2026-10-19
 ### Added
 - A start screen when the app opens: no sidebar, a prominent search bar, your campaigns (most recently opened first) and a field to create a new one, plus the Settings gear and the app version.

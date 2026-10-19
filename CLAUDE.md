@@ -11,7 +11,8 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Read the spec and the matching wireframe before building or changing a screen.
 - The wireframes define layout, content and behaviour. They are not the visual design: never copy their hex colors or fonts. Use `tokens.css`.
 - If code and spec disagree, or the spec is silent, ask. Don't invent features. If a decision changes behaviour, update `SPEC.md` in the same change.
-- Still open (see the spec): how to access LegendKeeper (API, export or web view), and which rules data source to use. Ask before building anything that depends on either.
+- Still open (see the spec): how to access LegendKeeper (API, export or web view). Ask before building anything that depends on it.
+- Rules data is 5etools-format data the user imports from local `.tar.gz` files (`src-tauri/src/rules/`). The app never bundles or downloads book content, and the public repo never names a source for it.
 
 ## Stack
 - Tauri 2 (Rust backend) + SvelteKit (Svelte 5, static adapter, SPA) + TypeScript, built with Vite

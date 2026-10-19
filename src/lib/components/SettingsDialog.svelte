@@ -3,6 +3,7 @@
   import { theme, chooseTheme } from "$lib/stores/theme.svelte";
   import type { Theme } from "$lib/api/settings";
   import CampaignSettings from "$lib/components/CampaignSettings.svelte";
+  import RulesSettings from "$lib/components/RulesSettings.svelte";
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
   let dialog: HTMLDialogElement | undefined = $state();
@@ -11,6 +12,7 @@
   const sections = [
     { id: "theme", label: t.theme.title },
     { id: "campaigns", label: t.campaigns.title },
+    { id: "rules", label: t.rules.title },
   ] as const;
   type SectionId = (typeof sections)[number]["id"];
   let active = $state<SectionId>("theme");
@@ -78,26 +80,27 @@
     {#if active === "theme"}
       <div id="settings-panel-theme" class="panel" role="tabpanel" aria-labelledby="settings-tab-theme">
         <h3 class="title">{t.theme.title}</h3>
-        <p class="description">{t.theme.description}</p>
         <div class="field">
           <label for="theme-select">{t.theme.label}</label>
           <select
             id="theme-select"
             value={theme.choice}
-            aria-describedby="theme-hint"
             onchange={(e) => chooseTheme(e.currentTarget.value as Theme)}
           >
             {#each themes as option (option.value)}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>
-          <p id="theme-hint" class="hint">{t.theme.systemHint}</p>
         </div>
         {#if theme.error}<p class="error" role="alert">{theme.error}</p>{/if}
       </div>
     {:else if active === "campaigns"}
       <div id="settings-panel-campaigns" class="panel" role="tabpanel" aria-labelledby="settings-tab-campaigns">
         <CampaignSettings />
+      </div>
+    {:else if active === "rules"}
+      <div id="settings-panel-rules" class="panel" role="tabpanel" aria-labelledby="settings-tab-rules">
+        <RulesSettings />
       </div>
     {/if}
   </div>
@@ -112,6 +115,14 @@
     background: var(--color-surface);
     color: var(--color-text);
     box-shadow: var(--shadow-drawer);
+    overflow: hidden;
+  }
+
+  /* Fixed size, so switching sections doesn't make the dialog jump; only the section content scrolls. */
+  dialog[open] {
+    display: flex;
+    flex-direction: column;
+    height: min(var(--settings-height), calc(100vh - 2 * var(--space-4)));
   }
 
   dialog::backdrop {
@@ -145,8 +156,9 @@
   }
 
   .body {
+    flex: 1;
+    min-height: 0;
     display: flex;
-    min-height: var(--settings-min-height);
   }
 
   .side {
@@ -181,25 +193,17 @@
 
   .panel {
     flex: 1;
+    min-width: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-6);
+    padding: var(--space-6) var(--space-7);
   }
 
   .title {
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
-  }
-
-  .description {
-    margin-top: calc(-1 * var(--space-3));
-  }
-
-  .description,
-  .hint {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
   }
 
   .field {

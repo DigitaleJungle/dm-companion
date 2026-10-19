@@ -1,6 +1,6 @@
 {
   "name": "dm-companion",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "",
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.3"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
