@@ -3,9 +3,11 @@
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
   import { strings } from "$lib/strings";
-  import SettingsDialog from "$lib/components/SettingsDialog.svelte";
+  import SearchBar from "$lib/components/SearchBar.svelte";
+  import SettingsButton from "$lib/components/SettingsButton.svelte";
+  import type { Campaign } from "$lib/api/campaigns";
 
-  let { children }: { children: Snippet } = $props();
+  let { campaign, children }: { campaign: Campaign; children: Snippet } = $props();
 
   // Narrow windows only: the sidebar becomes a drawer behind the menu toggle.
   let menuOpen = $state(false);
@@ -28,13 +30,13 @@
 
   const nav = strings.shell.nav;
   // href is null until the screen is built; those items render disabled with "Coming soon".
-  const items: { label: string; href: string | null }[] = [
-    { label: nav.home, href: "/" },
+  const items: { label: string; href: string | null }[] = $derived([
+    { label: nav.home, href: `/campaign/${campaign.id}` },
     { label: nav.runEncounter, href: null },
     { label: nav.encounterBuilder, href: null },
     { label: nav.characters, href: null },
     { label: nav.legendKeeper, href: null },
-  ];
+  ]);
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -48,9 +50,12 @@
     <div class="app-name">{strings.appName}</div>
 
     <div class="group">
-      <span class="label">{strings.shell.campaign}</span>
-      <button class="btn campaign" disabled>{strings.shell.noCampaign}</button>
-      <span class="soon">{strings.comingSoon}</span>
+      <span class="label" id="campaign-label">{strings.shell.campaign}</span>
+      <!-- Back to the start screen to pick or create another campaign -->
+      <a class="btn campaign" href="/" aria-describedby="campaign-label" title={strings.shell.switchCampaign}>
+        <span class="campaign-name">{campaign.name}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </a>
     </div>
 
     <ul class="nav">
@@ -80,25 +85,9 @@
     </div>
 
     <div class="footer">
-      <button
-        class="btn settings"
-        aria-label={strings.shell.openSettings}
-        title={strings.shell.openSettings}
-        aria-haspopup="dialog"
-        onclick={() => (settingsOpen = true)}
-      >
-        <!-- Gear icon from Lucide (ISC licence) -->
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-          />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      </button>
+      <SettingsButton bind:open={settingsOpen} />
     </div>
   </nav>
-
-  <SettingsDialog bind:open={settingsOpen} />
 
   <div class="column">
     <header class="top">
@@ -118,11 +107,9 @@
         <span class="app-name">{strings.appName}</span>
       </div>
 
-      <search class="search">
-        <label for="global-search" class="sr-only">{strings.shell.searchLabel}</label>
-        <input id="global-search" type="search" placeholder={strings.shell.searchPlaceholder} disabled />
-        <span class="soon">{strings.comingSoon}</span>
-      </search>
+      <div class="search">
+        <SearchBar />
+      </div>
     </header>
 
     <main class="content">
@@ -139,6 +126,7 @@
 
   .sidebar {
     flex: 0 0 var(--sidebar-width);
+    min-width: 0; /* long campaign names truncate instead of widening the sidebar */
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
@@ -161,7 +149,27 @@
   }
 
   .campaign {
-    justify-content: flex-start;
+    justify-content: space-between;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .campaign:hover {
+    background: var(--color-surface-sunken);
+  }
+
+  .campaign-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .campaign svg {
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    color: var(--color-text-muted);
   }
 
   .nav {
@@ -219,24 +227,6 @@
     margin-top: calc(-1 * var(--space-3));
   }
 
-  .settings {
-    padding: 0;
-    width: var(--control-height);
-    border-color: transparent;
-    background: transparent;
-    color: var(--color-text-muted);
-  }
-
-  .settings:hover {
-    background: var(--color-surface-sunken);
-    color: var(--color-text);
-  }
-
-  .settings svg {
-    width: var(--icon-size);
-    height: var(--icon-size);
-  }
-
   .column {
     flex: 1;
     min-width: 0;
@@ -253,31 +243,8 @@
   }
 
   .search {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
     max-width: var(--content-max-width);
     padding: var(--space-5) var(--space-7) var(--space-3);
-  }
-
-  .search input {
-    width: 100%;
-    min-height: var(--control-height-xl);
-    padding: 0 var(--space-5);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    font-size: var(--text-xl);
-  }
-
-  .search input:disabled {
-    cursor: not-allowed;
-    background: var(--color-surface-sunken);
-    border-color: var(--color-border);
-  }
-
-  .search input::placeholder {
-    color: var(--color-text-muted);
   }
 
   .content {

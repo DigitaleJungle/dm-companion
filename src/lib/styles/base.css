@@ -98,6 +98,17 @@ a {
   background: var(--color-accent-hover);
 }
 
+/* Destructive actions */
+.btn-danger {
+  border-color: var(--color-danger);
+  background: var(--color-surface);
+  color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
 /* Small square icon-only button */
 .icon-btn {
   display: inline-flex;

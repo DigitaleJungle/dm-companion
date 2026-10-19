@@ -2,11 +2,12 @@
   import "$lib/styles/tokens.css";
   import "$lib/styles/base.css";
   import type { Snippet } from "svelte";
-  import AppShell from "$lib/components/AppShell.svelte";
+  import { onMount } from "svelte";
+  import { loadTheme } from "$lib/stores/theme.svelte";
 
   let { children }: { children: Snippet } = $props();
+
+  onMount(loadTheme);
 </script>
 
-<AppShell>
-  {@render children()}
-</AppShell>
+{@render children()}

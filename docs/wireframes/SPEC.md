@@ -10,14 +10,25 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - The ruleset is not fixed yet. Rules data, monsters and encounter difficulty thresholds must come from a swappable data source and a per-campaign ruleset setting.
 - Lore lives in the DM's **LegendKeeper** world. The app only **reads** it, never edits it.
 
-## App shell (all DM screens)
+## Start screen (no wireframe)
+
+- The first screen when the app opens. It has no sidebar.
+- **App name** at the top, then a **prominent search bar**. Once search works, it searches rules, monsters, spells and lore across every campaign.
+- **Campaigns**: your campaigns, most recently opened first, each with when it was last opened. Picking one opens its Landing screen.
+- **New campaign**: a name field and a Create button. Names are required, at most 100 characters, and unique (ignoring case). Creating opens the new campaign.
+- The Settings gear sits in the bottom-left corner, and the app version is shown small at the bottom.
+- Empty state: "No campaigns yet." Campaign folders that can't be read are listed in a warning and left untouched.
+
+## App shell (all DM screens inside a campaign)
 
 - **Left sidebar**
   - App name.
-  - Campaign switcher.
+  - Campaign switcher: shows the current campaign; clicking it goes back to the Start screen.
   - Navigation: Home, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
   - Player-screen status box at the bottom, with a "Blank screen" button.
-  - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. It has no settings yet.
+  - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. Settings has a side panel listing its sections:
+    - **Theme**: an Appearance dropdown with System, Light and Dark. System is the default and follows the operating system live. The choice is saved app-wide (not per campaign) and applies from the very first paint. The player display always stays dark.
+    - **Campaigns**: an **Add campaign** field (the new campaign is added to the list; Settings stays open), active campaigns with **Rename** (edited in place; same name rules as creating) and **Archive**. Archiving moves the campaign's folder to an archive folder with all its data; archived campaigns are listed separately with **Restore** and **Delete permanently**. Only archived campaigns can be deleted, after a "This can't be undone" confirmation. Names stay unique across active and archived campaigns. Archiving the open campaign returns to the Start screen; renaming it updates the sidebar and Home at once.
 - **Global search**: a search bar is always visible at the top of every DM screen and stays in place while the content scrolls. It has no keyboard shortcut.
 - Search results, stat blocks and LegendKeeper pages can be opened in **tabs** (see the Search screen).
 - The layout must stay usable on a small laptop. When the window gets narrow, the sidebar hides behind a menu toggle in a top bar and opens as a drawer over the content. Escape, clicking outside, or navigating closes it.
@@ -26,7 +37,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 | File | Screen | Purpose |
 |---|---|---|
-| `00-landing.html` | Landing | The start page when the app opens. |
+| `00-landing.html` | Landing | A campaign's home page, opened from the Start screen. |
 | `01-search.html` | Global search | Search everything and preview a result. |
 | `02-run-encounter.html` | Run encounter | The live combat tracker. |
 | `03-encounter-builder.html` | Encounter builder | Prepare encounters before the session. |

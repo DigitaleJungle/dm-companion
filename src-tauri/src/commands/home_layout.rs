@@ -1,33 +1,15 @@
 //! Order of the cards on the Home screen, saved app-wide in the app data folder.
 
+use crate::storage::{to_json, write_atomic, StorageError};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 /// Every card Home knows about. Each may appear at most once.
 pub const CARD_IDS: [&str; 6] = ["encounters", "party", "legendKeeper", "notes", "continue", "tools"];
 const FILE_NAME: &str = "home-layout.json";
-
-// Saves can arrive concurrently; they share one temp file, so write one at a time.
-static WRITE_LOCK: Mutex<()> = Mutex::new(());
-
-#[derive(Debug, Serialize, PartialEq)]
-#[serde(tag = "kind", content = "message", rename_all = "camelCase")]
-pub enum LayoutError {
-    Io(String),
-    /// The saved file could not be read as a valid layout. A copy was kept next to it.
-    Corrupt(String),
-    Invalid(String),
-}
-
-impl From<io::Error> for LayoutError {
-    fn from(e: io::Error) -> Self {
-        LayoutError::Io(e.to_string())
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 struct Layout {
@@ -47,7 +29,7 @@ fn validate(cards: &[String]) -> Result<(), String> {
 }
 
 /// `None` when nothing has been saved yet.
-pub fn load(path: &Path) -> Result<Option<Vec<String>>, LayoutError> {
+pub fn load(path: &Path) -> Result<Option<Vec<String>>, StorageError> {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -61,43 +43,30 @@ pub fn load(path: &Path) -> Result<Option<Vec<String>>, LayoutError> {
         Err(reason) => {
             // Keep the bad file, so the next save never destroys something we couldn't read.
             fs::copy(path, path.with_extension("corrupt.json"))?;
-            Err(LayoutError::Corrupt(reason))
+            Err(StorageError::Corrupt(reason))
         }
     }
 }
 
-/// Validates, then writes atomically: temp file, flush to disk, rename over the old file.
-pub fn save(path: &Path, cards: &[String]) -> Result<(), LayoutError> {
-    validate(cards).map_err(LayoutError::Invalid)?;
-    let json = serde_json::to_string_pretty(&Layout { cards: cards.to_vec() }).map_err(|e| LayoutError::Io(e.to_string()))?;
-    let _guard = WRITE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let tmp = path.with_extension("json.tmp");
-    {
-        let mut file = fs::File::create(&tmp)?;
-        file.write_all(json.as_bytes())?;
-        file.sync_all()?;
-    }
-    fs::rename(&tmp, path)?;
-    Ok(())
+pub fn save(path: &Path, cards: &[String]) -> Result<(), StorageError> {
+    validate(cards).map_err(StorageError::Invalid)?;
+    write_atomic(path, &to_json(&Layout { cards: cards.to_vec() })?)
 }
 
-fn layout_path(app: &AppHandle) -> Result<PathBuf, LayoutError> {
+fn layout_path(app: &AppHandle) -> Result<PathBuf, StorageError> {
     app.path()
         .app_data_dir()
         .map(|dir| dir.join(FILE_NAME))
-        .map_err(|e| LayoutError::Io(e.to_string()))
+        .map_err(|e| StorageError::Io(e.to_string()))
 }
 
 #[tauri::command]
-pub async fn get_home_cards(app: AppHandle) -> Result<Option<Vec<String>>, LayoutError> {
+pub async fn get_home_cards(app: AppHandle) -> Result<Option<Vec<String>>, StorageError> {
     load(&layout_path(&app)?)
 }
 
 #[tauri::command]
-pub async fn set_home_cards(app: AppHandle, cards: Vec<String>) -> Result<(), LayoutError> {
+pub async fn set_home_cards(app: AppHandle, cards: Vec<String>) -> Result<(), StorageError> {
     save(&layout_path(&app)?, &cards)
 }
 
@@ -139,8 +108,8 @@ mod tests {
     #[test]
     fn rejects_unknown_and_duplicate_cards_without_writing() {
         let path = temp_file("invalid");
-        assert!(matches!(save(&path, &cards(&["party", "dragons"])), Err(LayoutError::Invalid(_))));
-        assert!(matches!(save(&path, &cards(&["party", "party"])), Err(LayoutError::Invalid(_))));
+        assert!(matches!(save(&path, &cards(&["party", "dragons"])), Err(StorageError::Invalid(_))));
+        assert!(matches!(save(&path, &cards(&["party", "party"])), Err(StorageError::Invalid(_))));
         assert!(!path.exists());
     }
 
@@ -149,7 +118,7 @@ mod tests {
         let path = temp_file("corrupt");
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, "{ not json").unwrap();
-        assert!(matches!(load(&path), Err(LayoutError::Corrupt(_))));
+        assert!(matches!(load(&path), Err(StorageError::Corrupt(_))));
         assert_eq!(fs::read_to_string(path.with_extension("corrupt.json")).unwrap(), "{ not json");
     }
 
@@ -158,6 +127,6 @@ mod tests {
         let path = temp_file("bad-id");
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, r#"{"cards":["party","dragons"]}"#).unwrap();
-        assert!(matches!(load(&path), Err(LayoutError::Corrupt(_))));
+        assert!(matches!(load(&path), Err(StorageError::Corrupt(_))));
     }
 }

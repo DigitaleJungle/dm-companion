@@ -4,8 +4,11 @@
   import Card from "$lib/components/Card.svelte";
   import Menu from "$lib/components/Menu.svelte";
   import { strings } from "$lib/strings";
-  import { getHomeCards, setHomeCards, type LayoutError } from "$lib/api/homeLayout";
+  import { getHomeCards, setHomeCards } from "$lib/api/homeLayout";
+  import { errorMessage as reason } from "$lib/api/storage";
   import { CARD_IDS, addCard, hiddenCards, moveCard, removeCard, type CardId } from "./cards";
+
+  let { name }: { name: string } = $props();
 
   const t = strings.home;
   const l = t.layout;
@@ -25,7 +28,6 @@
   let undo = $state<{ id: CardId; order: CardId[] } | null>(null);
   const hidden = $derived(order ? hiddenCards(order) : []);
 
-  const reason = (e: unknown) => (e as LayoutError)?.message ?? String(e);
 
   onMount(async () => {
     try {
@@ -121,8 +123,8 @@
 <div class="home">
   <section class="header" aria-label={strings.shell.campaign}>
     <div class="intro">
-      <h1>{t.noCampaignTitle}</h1>
-      <p class="muted">{t.noCampaignText}</p>
+      <h1>{name}</h1>
+      <p class="muted">{t.subtitle}</p>
     </div>
     <div class="start">
       <button class="btn-primary btn" disabled>{t.startSession}</button>

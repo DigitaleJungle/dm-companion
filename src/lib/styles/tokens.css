@@ -1,6 +1,7 @@
-/* Design tokens. Components use these; never hard-code colours, spacing or font sizes. */
+/* Design tokens. Components use these; never hard-code colours, spacing or font sizes.
+   Colours switch on <html data-theme="light|dark">, set from Settings → Theme (System follows the OS). */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   /* Light theme */
   --color-bg: #f5f6f8;
@@ -10,6 +11,7 @@
   --color-border-strong: #c9ced6;
   --color-text: #15181e;
   --color-text-muted: #59606d; /* ≥ 5.5:1 on bg and surface */
+  --color-text-placeholder: #8a909b; /* deliberately quiet: ~3:1, for hint text only */
   --color-accent: #2557d6; /* button fill, white text 6:1 */
   --color-accent-hover: #1d47b3;
   --color-accent-text: #ffffff;
@@ -63,6 +65,11 @@
   --icon-size: 20px;
   --drawer-width: min(280px, 85vw);
   --dialog-width: 560px;
+  --settings-width: 720px;
+  --settings-min-height: 320px;
+  --settings-side-width: 180px;
+  --select-width: 280px;
+  --start-width: 640px;
   --z-drawer: 100;
   --z-menu: 50;
   --menu-min-width: 160px;
@@ -72,23 +79,23 @@
   --shadow-drawer: 0 8px 32px rgb(10 12 16 / 0.25);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0e1014;
-    --color-surface: #171a20;
-    --color-surface-sunken: #1f232b;
-    --color-border: #2a2f39;
-    --color-border-strong: #3a404c;
-    --color-text: #e7e9ed;
-    --color-text-muted: #a3aab7; /* ≥ 7:1 on surface */
-    --color-accent: #2f63e0; /* white text 5:1 */
-    --color-accent-hover: #4174ea;
-    --color-accent-text: #ffffff;
-    --color-accent-soft: #1c2740;
-    --color-link: #8db2ff;
-    --color-focus: #8db2ff;
-    --color-danger: #ff9b8f;
-    --color-danger-soft: #3a1d1b;
-    --shadow-card: none;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0e1014;
+  --color-surface: #171a20;
+  --color-surface-sunken: #1f232b;
+  --color-border: #2a2f39;
+  --color-border-strong: #3a404c;
+  --color-text: #e7e9ed;
+  --color-text-muted: #a3aab7; /* ≥ 7:1 on surface */
+  --color-text-placeholder: #6f7683; /* ~3:1 */
+  --color-accent: #2f63e0; /* white text 5:1 */
+  --color-accent-hover: #4174ea;
+  --color-accent-text: #ffffff;
+  --color-accent-soft: #1c2740;
+  --color-link: #8db2ff;
+  --color-focus: #8db2ff;
+  --color-danger: #ff9b8f;
+  --color-danger-soft: #3a1d1b;
+  --shadow-card: none;
 }

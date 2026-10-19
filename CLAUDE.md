@@ -32,7 +32,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 ## Structure
 - `docs/wireframes/` — spec and wireframes (read-only reference)
 - `src/` — Svelte frontend
-  - `lib/views/` — one folder per screen: `home`, `search`, `encounter`, `builder`, `characters`, `legendkeeper`, `player-display`
+  - `lib/views/` — one folder per screen: `start`, `home`, `search`, `encounter`, `builder`, `characters`, `legendkeeper`, `player-display`
   - `lib/components/` — reusable UI components (app shell, sidebar, tabs, stat block, dice roller…)
   - `lib/api/` — typed wrappers around Tauri `invoke`; the only place the frontend talks to Rust
   - `lib/stores/` — shared state (current campaign, open tabs, active encounter)
@@ -68,11 +68,11 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Use tokens from `tokens.css`. No hard-coded colors, spacing or font sizes.
 - Every view handles empty, loading and error states. Examples: no campaign yet, LegendKeeper offline, no search results.
 - Fully keyboard accessible, visible focus, WCAG AA contrast.
-- Support light and dark mode via `prefers-color-scheme`. The player display is always dark and uses large text readable from across a table.
+- Support light and dark mode. Colours switch on `<html data-theme="light|dark">` (see `tokens.css`); Settings → Theme picks Light, Dark or System, and System follows `prefers-color-scheme` (`src/lib/stores/theme.svelte.ts`). Don't use `prefers-color-scheme` media queries in components. The player display is always dark and uses large text readable from across a table.
 - Use platform-correct modifier keys (Cmd on macOS, Ctrl on Windows) for any shortcut. There are no global shortcuts for search or screens (no Cmd/Ctrl K, no F-keys). The only shortcut in the spec:
   - next turn: Space, only when focus is not in a text field
 - Format dates and numbers with `Intl` using the system locale. Never hard-code a format.
-- Keep startup fast: lazy-load views that aren't needed on the first screen. The landing screen is the first screen.
+- Keep startup fast: lazy-load views that aren't needed on the first screen. The Start screen (campaign picker, `/`) is the first screen; a campaign's Landing/Home lives at `/campaign/<id>`.
 - All UI text comes from `strings.ts`.
 
 ## Workflow
