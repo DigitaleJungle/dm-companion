@@ -1,6 +1,6 @@
 [package]
 name = "dm-companion"
-version = "0.1.2"
+version = "0.1.3"
 description = "Desktop companion for a Dungeon Master running in-person D&D sessions"
 authors = ["David Delanoye"]
 edition = "2024"

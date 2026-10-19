@@ -98,6 +98,32 @@ a {
   background: var(--color-accent-hover);
 }
 
+/* Small square icon-only button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover,
+.icon-btn[aria-expanded="true"] {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+.icon-btn svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
 /* Disabled controls keep readable text (no opacity) so contrast stays AA */
 .btn:disabled,
 .btn-primary:disabled {

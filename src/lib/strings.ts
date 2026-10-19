@@ -11,7 +11,6 @@ export const strings = {
     noCampaign: "No campaign",
     nav: {
       home: "Home",
-      search: "Search",
       runEncounter: "Run encounter",
       encounterBuilder: "Encounter builder",
       characters: "Characters",
@@ -21,6 +20,8 @@ export const strings = {
     playerScreenStatus: "Not available yet",
     openOnDisplay2: "Open on display 2",
     openSettings: "Settings",
+    searchLabel: "Search rules, monsters, spells and lore",
+    searchPlaceholder: "Search rules, monsters, spells, lore…",
   },
 
   settings: {
@@ -33,8 +34,19 @@ export const strings = {
     noCampaignTitle: "No campaign yet",
     noCampaignText: "Campaigns are coming soon. Your next session, recap and notes will show up here.",
     startSession: "Start session",
-    searchLabel: "Search rules, monsters, spells and lore",
-    searchPlaceholder: (shortcut: string) => `Search rules, monsters, spells, lore…  (${shortcut})`,
+    layout: {
+      loading: "Loading…",
+      cardOptions: (card: string) => `Options for ${card}`,
+      moveLeft: "Move left",
+      moveRight: "Move right",
+      remove: "Remove",
+      addCard: "Add card",
+      removed: (card: string) => `${card} removed`,
+      undo: "Undo",
+      dismiss: "Dismiss",
+      loadError: (reason: string) => `Couldn't load your card layout, so the default is shown. ${reason}`,
+      saveError: (reason: string) => `Couldn't save your card layout. ${reason}`,
+    },
     encounters: {
       title: "Prepared encounters",
       new: "+ New",

@@ -3,7 +3,6 @@
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
   import { strings } from "$lib/strings";
-  import { modKey } from "$lib/platform";
   import SettingsDialog from "$lib/components/SettingsDialog.svelte";
 
   let { children }: { children: Snippet } = $props();
@@ -29,35 +28,18 @@
 
   const nav = strings.shell.nav;
   // href is null until the screen is built; those items render disabled with "Coming soon".
-  const items: { label: string; shortcut: string; href: string | null }[] = [
-    { label: nav.home, shortcut: "F1", href: "/" },
-    { label: nav.search, shortcut: modKey("K"), href: null },
-    { label: nav.runEncounter, shortcut: "F2", href: null },
-    { label: nav.encounterBuilder, shortcut: "F3", href: null },
-    { label: nav.characters, shortcut: "F4", href: null },
-    { label: nav.legendKeeper, shortcut: "F5", href: null },
+  const items: { label: string; href: string | null }[] = [
+    { label: nav.home, href: "/" },
+    { label: nav.runEncounter, href: null },
+    { label: nav.encounterBuilder, href: null },
+    { label: nav.characters, href: null },
+    { label: nav.legendKeeper, href: null },
   ];
 </script>
 
 <svelte:window onkeydown={onKeydown} />
 
 <div class="shell">
-  <header class="topbar">
-    <button
-      bind:this={toggle}
-      class="btn menu-toggle"
-      aria-expanded={menuOpen}
-      aria-controls="sidebar"
-      aria-label={menuOpen ? strings.shell.closeMenu : strings.shell.openMenu}
-      onclick={() => (menuOpen = !menuOpen)}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
-    </button>
-    <span class="app-name">{strings.appName}</span>
-  </header>
-
   {#if menuOpen}
     <button class="backdrop" tabindex="-1" aria-label={strings.shell.closeMenu} onclick={closeMenu}></button>
   {/if}
@@ -76,16 +58,14 @@
         <li>
           {#if item.href}
             <a class="nav-item" href={item.href} aria-current={page.url.pathname === item.href ? "page" : undefined}>
-              <span class="nav-label">{item.label}</span>
-              <kbd>{item.shortcut}</kbd>
+              {item.label}
             </a>
           {:else}
             <span class="nav-item disabled">
-              <span class="nav-label">
+              <span>
                 {item.label}
                 <span class="soon">{strings.comingSoon}</span>
               </span>
-              <kbd>{item.shortcut}</kbd>
             </span>
           {/if}
         </li>
@@ -120,9 +100,35 @@
 
   <SettingsDialog bind:open={settingsOpen} />
 
-  <main class="content">
-    {@render children()}
-  </main>
+  <div class="column">
+    <header class="top">
+      <div class="topbar">
+        <button
+          bind:this={toggle}
+          class="btn menu-toggle"
+          aria-expanded={menuOpen}
+          aria-controls="sidebar"
+          aria-label={menuOpen ? strings.shell.closeMenu : strings.shell.openMenu}
+          onclick={() => (menuOpen = !menuOpen)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+        <span class="app-name">{strings.appName}</span>
+      </div>
+
+      <search class="search">
+        <label for="global-search" class="sr-only">{strings.shell.searchLabel}</label>
+        <input id="global-search" type="search" placeholder={strings.shell.searchPlaceholder} disabled />
+        <span class="soon">{strings.comingSoon}</span>
+      </search>
+    </header>
+
+    <main class="content">
+      {@render children()}
+    </main>
+  </div>
 </div>
 
 <style>
@@ -194,12 +200,6 @@
     font-weight: var(--weight-regular);
   }
 
-  kbd {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-  }
-
   .player-box {
     margin-top: auto;
     display: flex;
@@ -237,9 +237,51 @@
     height: var(--icon-size);
   }
 
-  .content {
+  .column {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Search stays visible at the top of every screen while the content scrolls */
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: calc(var(--z-drawer) - 2);
+    background: var(--color-bg);
+  }
+
+  .search {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: var(--content-max-width);
+    padding: var(--space-5) var(--space-7) var(--space-3);
+  }
+
+  .search input {
+    width: 100%;
+    min-height: var(--control-height-xl);
+    padding: 0 var(--space-5);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    font-size: var(--text-xl);
+  }
+
+  .search input:disabled {
+    cursor: not-allowed;
+    background: var(--color-surface-sunken);
+    border-color: var(--color-border);
+  }
+
+  .search input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .content {
+    flex: 1;
   }
 
   .topbar,
@@ -253,10 +295,11 @@
       flex-direction: column;
     }
 
+    .search {
+      padding: var(--space-3) var(--space-4) var(--space-2);
+    }
+
     .topbar {
-      position: sticky;
-      top: 0;
-      z-index: calc(var(--z-drawer) - 2);
       display: flex;
       align-items: center;
       gap: var(--space-2);

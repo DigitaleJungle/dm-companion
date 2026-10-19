@@ -3,6 +3,14 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.1.3] - 2026-10-19
+### Added
+- The Home cards can be rearranged. Each card has a ⋯ menu with Move left, Move right and Remove, and a drag handle that shows on hover. Removed cards come back through the "+ Add card" tile, and a removal can be undone.
+- The card order is saved and kept between restarts.
+### Changed
+- The search bar is now at the top of every screen and stays visible while scrolling. Search is no longer a sidebar item.
+- Removed the keyboard shortcuts for search (Ctrl K) and for switching screens (F1–F5).
+
 ## [0.1.2] - 2026-10-19
 ### Added
 - A Settings panel, opened from the gear button at the bottom left of the sidebar. It has no settings yet.

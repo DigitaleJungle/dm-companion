@@ -15,10 +15,10 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - **Left sidebar**
   - App name.
   - Campaign switcher.
-  - Navigation: Home (F1), Search (Ctrl K), Run encounter (F2), Encounter builder (F3), Characters (F4), LegendKeeper (F5).
+  - Navigation: Home, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
   - Player-screen status box at the bottom, with a "Blank screen" button.
   - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. It has no settings yet.
-- **Global search** is always one keystroke away (Ctrl K), from every screen.
+- **Global search**: a search bar is always visible at the top of every DM screen and stays in place while the content scrolls. It has no keyboard shortcut.
 - Search results, stat blocks and LegendKeeper pages can be opened in **tabs** (see the Search screen).
 - The layout must stay usable on a small laptop. When the window gets narrow, the sidebar hides behind a menu toggle in a top bar and opens as a drawer over the content. Escape, clicking outside, or navigating closes it.
 
@@ -39,8 +39,8 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - Campaign name and the next session (number, date and time).
   - A link to last session's recap.
   - Buttons: **Start session** (primary, opens Run encounter and the player display) and **Prep mode**.
-- **Search**: a large search bar with recent searches as chips underneath.
-- **Cards**
+- **Search**: uses the global search bar at the top (see App shell), with recent searches as chips underneath.
+- **Cards** (always editable: each card has one ⋯ menu with Move left, Move right and Remove. Hovering a card shows a drag handle next to the ⋯ menu; drag it to reorder the card; the other cards slide out of the way, and Escape cancels. Removing shows "… removed · Undo". A dashed "+ Add card" tile at the end of the grid adds removed cards back. Each card appears at most once. The order is saved app-wide.)
   - Prepared encounters, each with a "Run" button.
   - Party snapshot (AC, passive Perception).
   - LegendKeeper pinned and recently viewed pages.
@@ -139,7 +139,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - Search results show the lore pages that mention them.
   - LegendKeeper pages show the encounters linked to them.
 - **Pins**: anything can be pinned to the current session.
-- **Keyboard first**: Ctrl K for search, F1–F5 for screens, Space for the next turn.
+- **Keyboard**: no global shortcuts for search or for switching screens. Space advances to the next turn.
 - **Storage**: characters, encounters, notes and settings are stored locally, per campaign.
 
 ## Open questions before building

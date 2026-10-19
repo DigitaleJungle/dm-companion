@@ -69,9 +69,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Every view handles empty, loading and error states. Examples: no campaign yet, LegendKeeper offline, no search results.
 - Fully keyboard accessible, visible focus, WCAG AA contrast.
 - Support light and dark mode via `prefers-color-scheme`. The player display is always dark and uses large text readable from across a table.
-- Use platform-correct shortcuts (Cmd on macOS, Ctrl on Windows). Shortcuts from the spec:
-  - search: Cmd/Ctrl K
-  - screens: F1–F5
+- Use platform-correct modifier keys (Cmd on macOS, Ctrl on Windows) for any shortcut. There are no global shortcuts for search or screens (no Cmd/Ctrl K, no F-keys). The only shortcut in the spec:
   - next turn: Space, only when focus is not in a text field
 - Format dates and numbers with `Intl` using the system locale. Never hard-code a format.
 - Keep startup fast: lazy-load views that aren't needed on the first screen. The landing screen is the first screen.
