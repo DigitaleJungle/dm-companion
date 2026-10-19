@@ -2,15 +2,15 @@
 
 A desktop app for a Dungeon Master running in-person D&D sessions. It covers searching rules, monsters, spells and lore, running encounters, storing player characters, and reading the DM's LegendKeeper world. It drives a second, player-facing window on a TV or second monitor.
 
-**Current version:** 0.0.1
+**Current version:** 0.1.0
 
 ## Status
 
-Early development. The app is scaffolded, and no screens are built yet.
+Early development. The app shell and the Home screen layout are in place, with light and dark mode. Home shows empty states for now. Campaigns, notes and every other feature are marked "Coming soon" until they're built.
 
-Planned screens, in build order:
+Screens, in build order:
 
-1. App shell + Home
+1. App shell + Home: layout done, no data yet
 2. Search
 3. Run encounter
 4. Encounter builder

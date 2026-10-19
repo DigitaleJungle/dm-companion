@@ -3,6 +3,16 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.1.0] - 2026-10-19
+### Added
+- App shell: sidebar with the campaign switcher, navigation with shortcut hints, and the player-screen box. It stacks above the content on narrow windows.
+- Home screen layout: the header, a large search bar, and cards for prepared encounters, party, LegendKeeper, session notes, continue where you left off, and quick tools.
+- A modern, clean design with light and dark mode that follow the system setting.
+- F1 goes to Home.
+### Changed
+- Features that aren't built yet are shown disabled, with "Coming soon".
+- The window opens at 1280×800.
+
 ## [0.0.1] - 2026-10-19
 ### Added
 - README and this changelog.

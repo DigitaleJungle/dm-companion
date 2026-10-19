@@ -146,3 +146,4 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 1. **LegendKeeper access.** Check whether LegendKeeper offers an API or export. If it doesn't, the reader needs an imported export file or an embedded web view.
 2. **Rules data source.** Decide which source to use (e.g. SRD data files) and how licensed books or homebrew get added.
 3. **Desktop framework.** For example Electron or Tauri. It must support a second window on another display.
+4. **Prep mode.** The Landing header lists a Prep mode button, but its behaviour is undefined. It is left out of Home until decided.
