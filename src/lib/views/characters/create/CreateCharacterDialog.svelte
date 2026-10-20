@@ -137,7 +137,7 @@
 
 {#snippet lineageSelect()}
   <label class="inline-field">
-    <span class="label-text">{t.pick.lineage}</span>
+    <span class="label-text">{t.pick.lineage} <span class="required" aria-hidden="true">*</span></span>
     <select bind:value={draft.lineage}>
       <option value={null}>{t.pick.choose}</option>
       {#each lineages as l (l)}<option value={l}>{l}</option>{/each}
@@ -149,7 +149,7 @@
   {#if lineages.length && !lineageKey}{@render lineageSelect()}{/if}
   {#if subs.length}
     <label class="inline-field">
-      <span class="label-text">{t.pick.subspecies}</span>
+      <span class="label-text">{t.pick.subspecies} <span class="required" aria-hidden="true">*</span></span>
       <select value={draft.subspecies ? String(draft.subspecies.id) : ""} onchange={(e) => chooseSubspecies(subs.find((s) => String(s.id) === e.currentTarget.value) ?? null)}>
         <option value="">{t.pick.choose}</option>
         {#each subs as s (s.id)}<option value={String(s.id)}>{s.name || draft.species?.name} ({s.source})</option>{/each}
@@ -158,7 +158,7 @@
   {/if}
   {#if sizes.length > 1}
     <label class="inline-field">
-      <span class="label-text">{t.pick.size}</span>
+      <span class="label-text">{t.pick.size} <span class="required" aria-hidden="true">*</span></span>
       <select bind:value={draft.size}>
         <option value={null}>{t.pick.choose}</option>
         {#each sizes as s (s)}<option value={s}>{SIZES[s] ?? s}</option>{/each}
@@ -365,6 +365,7 @@
     padding: 0;
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--space-1) var(--space-2);
   }
 
@@ -420,6 +421,8 @@
   }
 
   .content {
+    width: min(100%, var(--wizard-content-width));
+    margin: 0 auto;
     padding: var(--space-5);
     display: flex;
     flex-direction: column;
@@ -462,6 +465,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+    padding: var(--space-5);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   .fields {
@@ -495,10 +502,6 @@
   .label-text {
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-  }
-
-  .required {
-    color: var(--color-danger);
   }
 
   .wizard :global(input.text),
@@ -567,7 +570,8 @@
   }
 
   @media (max-width: 720px) {
-    .content {
+    .content,
+    .body {
       padding: var(--space-4);
     }
   }

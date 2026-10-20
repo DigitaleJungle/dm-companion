@@ -47,6 +47,7 @@
 
 <div class="choice">
   <div class="list">
+    <p class="list-label" aria-hidden="true">{label} <span class="required" aria-hidden="true">*</span></p>
     <label for="{id}-filter" class="sr-only">{t.filter(label)}</label>
     <input id="{id}-filter" class="filter" type="search" bind:value={filter} placeholder={t.filterPlaceholder} autocomplete="off" />
     {#if rows.length === 0}
@@ -54,7 +55,7 @@
     {:else if visible.length === 0}
       <p class="muted">{t.none}</p>
     {:else}
-      <ul aria-label={label}>
+      <ul aria-label="{label} ({strings.characters.wizard.basics.required})">
         {#each visible as row (row.id)}
           <li>
             <button class="row" aria-pressed={selected?.id === row.id} onclick={() => onselect(row)}>
@@ -98,6 +99,11 @@
     gap: var(--space-2);
     max-height: calc(100vh - 2 * var(--space-8));
     min-height: 0;
+  }
+
+  .list-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
   }
 
   .filter {
@@ -160,10 +166,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    padding: var(--space-4);
-    border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
   }
 
   /* Keep the entry text tight: it sits next to a list, not on its own page. */

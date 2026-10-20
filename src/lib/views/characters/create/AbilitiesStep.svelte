@@ -10,7 +10,6 @@
     ROLL_NOTATION,
     SCORE_CAP,
     STANDARD_ARRAY,
-    bonusTotals,
     emptyAssignment,
     emptyPick,
     proficiencyBonus,
@@ -41,16 +40,6 @@
       { key: "background" as const, from: draft.background?.name ?? "", options: backgroundOptions },
     ].filter((s) => s.options.length > 0),
   );
-  /** "+2 Acolyte, +1 Elf" per ability. */
-  const bonusLines = $derived.by(() => {
-    const parts = [
-      { from: draft.background?.name ?? "", totals: bonusTotals(backgroundOptions, draft.backgroundPick) },
-      { from: draft.species?.name ?? "", totals: bonusTotals(speciesOptions, draft.speciesPick) },
-    ];
-    return Object.fromEntries(
-      ABILITIES.map((a) => [a, parts.flatMap((p) => (p.totals[a] ? [t.bonusFrom(signed.format(p.totals[a]!), p.from)] : [])).join(", ")]),
-    ) as Record<Ability, string>;
-  });
 
   async function roll() {
     rolling = true;
@@ -100,7 +89,7 @@
 
 <div class="method">
   <label class="field">
-    <span class="label-text">{t.method}</span>
+    <span class="label-text">{t.method} <span class="required" aria-hidden="true">*</span></span>
     <select value={draft.method} onchange={(e) => chooseMethod(e.currentTarget.value as Method)}>
       {#each METHODS as method (method)}<option value={method}>{t.methods[method]}</option>{/each}
     </select>
@@ -140,7 +129,7 @@
     <div class="bonus-row">
       {#if section.options.length > 1}
         <label class="field">
-          <span class="label-text">{t.option}</span>
+          <span class="label-text">{t.option} <span class="required" aria-hidden="true">*</span></span>
           <select
             value={String(pickFor(section.key).option)}
             onchange={(e) => setPick(section.key, emptyPick(section.options[Number(e.currentTarget.value)], Number(e.currentTarget.value)))}
@@ -155,7 +144,7 @@
       {#each option?.choices ?? [] as choice, c (c)}
         {#each choice.amounts as amount, slot (slot)}
           <label class="field">
-            <span class="label-text">{t.pickFor(signed.format(amount))}</span>
+            <span class="label-text">{t.pickFor(signed.format(amount))} <span class="required" aria-hidden="true">*</span></span>
             <select value={pickFor(section.key).picks[c]?.[slot] ?? ""} onchange={(e) => pickAbility(section.key, c, slot, e.currentTarget.value)}>
               <option value="">{t.unassigned}</option>
               {#each choice.from as ability (ability)}<option value={ability}>{ABILITY_NAMES[ability]}</option>{/each}
@@ -170,7 +159,7 @@
   </fieldset>
 {/each}
 
-<AbilityCards scores={totals} {saves} proficiency={proficiencyBonus(1)}>
+<AbilityCards scores={totals} {saves} proficiency={proficiencyBonus(1)} required>
   {#snippet control(ability: Ability)}
     {#if draft.method === "manual"}
       <input
@@ -197,9 +186,6 @@
         {/each}
       </select>
     {/if}
-  {/snippet}
-  {#snippet detail(ability: Ability)}
-    {#if bonusLines[ability]}<span class="bonus">{bonusLines[ability]}</span>{/if}
   {/snippet}
 </AbilityCards>
 <p class="muted small">{t.cap(SCORE_CAP)}</p>
@@ -283,12 +269,6 @@
   .value-select {
     width: 100%;
     min-width: 0;
-  }
-
-  .bonus {
-    color: var(--color-link);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
   }
 
   .muted {

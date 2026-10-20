@@ -3,6 +3,18 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.3] - 2026-10-20
+
+### Changed
+
+- Create character: each step's content sits in a centred panel, and the steps are centred at the top.
+- Every required field in the wizard is marked with *.
+- The ability cards no longer repeat the bonus line; the bonuses are still counted in the score.
+
+### Fixed
+
+- A double divider under the Features heading of a class entry (also in the Library).
+
 ## [0.4.2] - 2026-10-20
 
 ### Changed

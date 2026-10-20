@@ -235,6 +235,11 @@
     color: var(--color-text-muted);
   }
 
+  /* A block's heading already has a line under it. */
+  .block .facts {
+    border-top: none;
+  }
+
   .block h4 {
     margin: var(--space-2) 0;
     padding-bottom: var(--space-1);

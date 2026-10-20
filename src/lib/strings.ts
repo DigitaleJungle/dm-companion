@@ -421,7 +421,6 @@ export const strings = {
         modifier: "Modifier",
         save: (bonus: string) => `Save ${bonus}`,
         proficientSave: "proficient",
-        bonusFrom: (bonus: string, from: string) => `${bonus} ${from}`,
         cap: (cap: number) => `Scores can't go above ${cap}.`,
       },
       skills: {

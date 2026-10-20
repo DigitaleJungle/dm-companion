@@ -67,6 +67,11 @@ a {
 }
 
 /* Caption under anything that isn't built yet */
+/* Marks a required field; pair it with `required` or a visible rule so it isn't the only cue. */
+.required {
+  color: var(--color-danger);
+}
+
 .soon {
   display: block;
   font-size: var(--text-xs);

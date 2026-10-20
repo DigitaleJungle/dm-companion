@@ -10,7 +10,7 @@
     saves,
     proficiency,
     control,
-    detail,
+    required = false,
   }: {
     scores: Record<Ability, number | null>;
     /** Abilities whose saving throw adds the proficiency bonus. */
@@ -18,8 +18,8 @@
     proficiency: number;
     /** Replaces the plain score, e.g. an input or a select. */
     control?: Snippet<[Ability]>;
-    /** Extra line under the modifier, e.g. a bonus. */
-    detail?: Snippet<[Ability]>;
+    /** Marks each ability's control as required. */
+    required?: boolean;
   } = $props();
 
   const t = strings.characters.wizard.abilities;
@@ -30,19 +30,20 @@
 <ul class="cards">
   {#each ABILITIES as ability (ability)}
     {@const score = scores[ability]}
-    <li class="card">
-      <span class="name">{ABILITY_NAMES[ability]}</span>
+    <li class="item">
+      <div class="card">
+      <span class="name">{ABILITY_NAMES[ability]}{#if required}{" "}<span class="required" aria-hidden="true">*</span>{/if}</span>
       {#if control}
         {@render control(ability)}
       {:else}
         <span class="score">{score === null ? t.unassigned : plain.format(score)}</span>
       {/if}
-      {#if detail}{@render detail(ability)}{/if}
       <span class="mod"><span class="sr-only">{t.modifier} </span>{score === null ? t.unassigned : signed.format(modifier(score))}</span>
       <span class="save" class:on={saves.has(ability)}>
         {t.save(score === null ? t.unassigned : signed.format(modifier(score) + (saves.has(ability) ? proficiency : 0)))}
         {#if saves.has(ability)}<span class="sr-only">({t.proficientSave})</span>{/if}
       </span>
+      </div>
     </li>
   {/each}
 </ul>
@@ -57,7 +58,14 @@
     gap: var(--space-3);
   }
 
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
   .card {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;

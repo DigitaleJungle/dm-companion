@@ -48,7 +48,7 @@
   {@const from = group.choice.from ?? skills.map((s) => s.key)}
   <fieldset>
     <legend class="label">
-      {group.choice.from ? t.choose(group.choice.count, originName(group)) : t.chooseAny(group.choice.count, originName(group))}
+      {group.choice.from ? t.choose(group.choice.count, originName(group)) : t.chooseAny(group.choice.count, originName(group))} <span class="required" aria-hidden="true">*</span>
     </legend>
     <p class="muted small" aria-live="polite">{t.remaining(group.choice.count - picks.length)}</p>
     <div class="options">
