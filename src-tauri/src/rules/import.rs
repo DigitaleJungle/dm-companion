@@ -35,7 +35,7 @@ impl<R: Read> Read for Counting<R> {
 }
 
 /// Path inside the archive without its top folder (GitHub tarballs wrap everything in `<repo>-<sha>/`).
-fn relative(path: &Path) -> Option<String> {
+pub fn relative(path: &Path) -> Option<String> {
     let parts: Vec<&str> = path.components().filter_map(|c| match c {
         Component::Normal(p) => p.to_str(),
         _ => None,
@@ -46,6 +46,40 @@ fn relative(path: &Path) -> Option<String> {
     };
     (parts.len() > start).then(|| parts[start..].join("/"))
 }
+
+/// How many files to look at before deciding what kind of archive this is.
+pub const SNIFF_FILES: u32 = 300;
+
+/// Tells a rules data archive from an images archive by looking at the files as they stream past,
+/// so picking the wrong file fails within a moment instead of after reading gigabytes.
+#[derive(Default)]
+pub struct Sniff {
+    pub files: u32,
+    pub images: u32,
+    /// Saw a `data/*.json` file, the mark of a rules data archive.
+    pub data_json: bool,
+}
+
+impl Sniff {
+    pub fn record(&mut self, rel: &str) {
+        self.files += 1;
+        let lower = rel.to_ascii_lowercase();
+        if [".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".avif"].iter().any(|ext| lower.ends_with(ext)) {
+            self.images += 1;
+        }
+        if lower.starts_with("data/") && lower.ends_with(".json") {
+            self.data_json = true;
+        }
+    }
+
+    /// Mostly images so far (at least half of the files seen).
+    pub fn mostly_images(&self) -> bool {
+        self.files > 0 && self.images * 2 >= self.files
+    }
+}
+
+pub const WRONG_FOR_DATA: &str = "This looks like an images archive, not rules data. Use Import images for it.";
+pub const WRONG_FOR_IMAGES: &str = "This looks like a rules data archive, not images. Use Import data for it.";
 
 /// (JSON key inside the file, entity kind) for each data file the library uses.
 fn entity_keys(path: &str) -> &'static [(&'static str, &'static str)] {
@@ -218,11 +252,18 @@ fn build(archive: &Path, tmp: &Path, removed: &[String], now: u64, progress: &mu
     let not_archive = |e: io::Error| StorageError::Invalid(format!("This isn't a readable .tar.gz file ({e})."));
 
     let mut import = Import { writer: Writer::create(tmp)?, removed, version: None, saw_books: false };
+    let mut sniff = Sniff::default();
     let mut last_reported = 0;
     for entry in tar.entries().map_err(not_archive)? {
         let mut entry = entry.map_err(not_archive)?;
         let path = entry.path().map_err(not_archive)?.into_owned();
         let Some(rel) = relative(&path) else { continue };
+        if entry.header().entry_type().is_file() {
+            sniff.record(&rel);
+            if sniff.files == SNIFF_FILES && !sniff.data_json && sniff.mostly_images() {
+                return Err(StorageError::Invalid(WRONG_FOR_DATA.into()));
+            }
+        }
         let wanted = rel == "package.json" || rel == "data/books.json" || rel == "data/adventures.json" || rel.starts_with("data/book/book-") || !entity_keys(&rel).is_empty();
         if wanted && rel.ends_with(".json") {
             let mut bytes = Vec::with_capacity(entry.size() as usize);
@@ -237,6 +278,9 @@ fn build(archive: &Path, tmp: &Path, removed: &[String], now: u64, progress: &mu
         }
     }
 
+    if !sniff.data_json && sniff.mostly_images() {
+        return Err(StorageError::Invalid(WRONG_FOR_DATA.into()));
+    }
     let Some(version) = import.version.clone() else {
         return Err(StorageError::Invalid("This archive has no package.json with a version. Is it 5etools data?".into()));
     };
@@ -338,6 +382,32 @@ pub mod tests {
     }
 
     #[test]
+    fn rejects_an_images_archive_early_and_keeps_the_existing_library() {
+        let dir = temp_dir("wrong-kind");
+        let rules = dir.join("rules");
+        import_archive(&fixture(&dir, "1.0.0"), &rules, &[], 1, &mut |_| {}).unwrap();
+
+        // More files than the sniff window, all images, wrapped like a GitHub tarball.
+        let file = dir.join("img.tar.gz");
+        let mut tar = tar::Builder::new(GzEncoder::new(File::create(&file).unwrap(), Compression::fast()));
+        for i in 0..(SNIFF_FILES + 50) {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(3);
+            header.set_mode(0o644);
+            header.set_cksum();
+            tar.append_data(&mut header, format!("5etools-img-abc/bestiary/MM/{i}.webp"), &b"img"[..]).unwrap();
+        }
+        tar.into_inner().unwrap().finish().unwrap();
+
+        let mut reports = 0;
+        let err = import_archive(&file, &rules, &[], 2, &mut |_| reports += 1).unwrap_err();
+        assert_eq!(err, StorageError::Invalid(WRONG_FOR_DATA.into()));
+        let conn = library::open(&rules).unwrap().unwrap();
+        assert_eq!(library::info(&conn).unwrap().version, "1.0.0");
+        assert!(!rules.join("library.sqlite.tmp").exists());
+    }
+
+    #[test]
     fn find_prefers_the_named_source_then_the_newest() {
         let dir = temp_dir("find");
         let rules = dir.join("rules");
@@ -401,6 +471,20 @@ pub mod tests {
         println!("  library size: {} MB", fs::metadata(library::path(&dir)).unwrap().len() / 1_048_576);
         println!("  _copy entities: {}, of which in XPHB/XDMG/XMM: {}", count(&conn, "SELECT count(*) FROM entities WHERE json LIKE '%\"_copy\"%'"), count(&conn, "SELECT count(*) FROM entities WHERE json LIKE '%\"_copy\"%' AND source IN ('XPHB','XDMG','XMM')"));
         assert!(library::find(&conn, "spell", "Fireball", Some("XPHB")).unwrap().is_some());
+    }
+
+    /// Opt-in: both real archives swapped. `DMC_RULES_ARCHIVE=… DMC_IMAGES_ARCHIVE=… cargo test real_wrong_kind -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn real_wrong_kind() {
+        let (Ok(data), Ok(images)) = (std::env::var("DMC_RULES_ARCHIVE"), std::env::var("DMC_IMAGES_ARCHIVE")) else { return };
+        let dir = temp_dir("real-wrong");
+        let started = std::time::Instant::now();
+        let err = import_archive(Path::new(&images), &dir, &[], 1, &mut |_| {}).unwrap_err();
+        println!("images as data: {err:?} after {:?}", started.elapsed());
+        let started = std::time::Instant::now();
+        let err = crate::rules::images::import_images(Path::new(&data), &dir, 1, &mut |_| {}).unwrap_err();
+        println!("data as images: {err:?} after {:?}", started.elapsed());
     }
 
     #[test]

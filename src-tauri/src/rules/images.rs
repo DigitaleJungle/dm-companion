@@ -1,6 +1,6 @@
 //! Optional images: a user-provided .tar.gz extracted to `<rules dir>/img/`, referenced by book entries.
 
-use super::import::{Counting, Progress};
+use super::import::{relative, Counting, Progress, Sniff, SNIFF_FILES, WRONG_FOR_IMAGES};
 use crate::storage::{to_json, write_atomic, StorageError};
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ use std::time::Duration;
 
 const DIR: &str = "img";
 const MARKER: &str = ".imported.json";
+const NOT_IMAGES: &str = "This archive doesn't contain 5etools images. If it's rules data, use Import data for it.";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,14 +71,30 @@ pub fn import_images(archive: &Path, rules_dir: &Path, now: u64, progress: &mut 
     let result = (|| {
         let mut tar = tar::Archive::new(GzDecoder::new(reader));
         let mut last_reported = 0;
+        let mut sniff = Sniff::default();
         for entry in tar.entries().map_err(not_archive)? {
+            let mut entry = entry.map_err(not_archive)?;
+            if entry.header().entry_type().is_file() {
+                if let Some(rel) = relative(&entry.path().map_err(not_archive)?) {
+                    sniff.record(&rel);
+                }
+                if sniff.data_json {
+                    return Err(StorageError::Invalid(WRONG_FOR_IMAGES.into()));
+                }
+                if sniff.files == SNIFF_FILES && !sniff.mostly_images() {
+                    return Err(StorageError::Invalid(NOT_IMAGES.into()));
+                }
+            }
             // unpack_in refuses paths that would land outside the folder.
-            entry.map_err(not_archive)?.unpack_in(&tmp).map_err(not_archive)?;
+            entry.unpack_in(&tmp).map_err(not_archive)?;
             let done = count.load(Ordering::Relaxed);
             if done - last_reported > total / 200 {
                 last_reported = done;
                 progress(Progress { done, total });
             }
+        }
+        if !sniff.mostly_images() {
+            return Err(StorageError::Invalid(NOT_IMAGES.into()));
         }
         let root = content_root(&tmp)?;
         let info = ImagesInfo { files: count_files(&root)?, imported_at: now };
@@ -157,6 +174,29 @@ mod tests {
 
         remove_images(&rules).unwrap();
         assert_eq!(super::info(&rules), None);
+    }
+
+    #[test]
+    fn rejects_a_rules_data_archive_and_keeps_the_old_images() {
+        let dir = temp_dir("images-wrong");
+        let rules = dir.join("rules");
+        fs::create_dir_all(&rules).unwrap();
+        import_images(&archive(&dir, &["covers/A.webp"]), &rules, 1, &mut |_| {}).unwrap();
+        let data = crate::rules::import::tests::fixture(&dir, "1.0.0");
+        let err = import_images(&data, &rules, 2, &mut |_| {}).unwrap_err();
+        assert_eq!(err, StorageError::Invalid(WRONG_FOR_IMAGES.into()));
+        assert!(rules.join("img/covers/A.webp").exists());
+        assert!(!rules.join("img.tmp").exists());
+    }
+
+    #[test]
+    fn rejects_an_archive_without_images() {
+        let dir = temp_dir("images-none");
+        let rules = dir.join("rules");
+        fs::create_dir_all(&rules).unwrap();
+        let err = import_images(&archive(&dir, &["notes/readme.md", "notes/todo.txt"]), &rules, 1, &mut |_| {}).unwrap_err();
+        assert_eq!(err, StorageError::Invalid(NOT_IMAGES.into()));
+        assert!(!rules.join("img").exists());
     }
 
     #[test]

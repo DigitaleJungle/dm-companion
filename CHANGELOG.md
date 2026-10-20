@@ -3,6 +3,10 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.2.1] - 2026-10-20
+### Fixed
+- Importing an images archive as rules data, or rules data as images, is now refused within a second with a message saying which import to use. It used to read the whole archive first, or accept the wrong file. Your existing data is never touched.
+
 ## [0.2.0] - 2026-10-19
 ### Added
 - Settings → Rules data: import 5etools-format rules data from a .tar.gz file on your computer. It's processed into a local library (books, chapters, spells, creatures, items, classes and more, plus a search index), and a failed import keeps your previous data.
