@@ -3,6 +3,15 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.0] - 2026-10-20
+### Added
+- Library, opened from the Library button at the top right of the start screen. The Reading tab has your books, a collapsible table of contents and the chapter text, with tables, insets, embedded stat blocks and imported images. Clicking a section jumps straight to it.
+- Catalog tab: browse spells, creatures, items, feats, classes, rules and more by category, with a filter and a full entry view (spell details, creature stat blocks with spellcasting, item rarity, feat prerequisites, class features).
+- References in the text open a preview card next to them. References inside the card can be followed and returned from.
+- Traps and hazards are now imported.
+### Fixed
+- Cross-reference and filter tags no longer show stray text (such as "x" or "class=Warlock") in the reader or the search index. Import your data again to update the search index.
+
 ## [0.2.2] - 2026-10-20
 ### Added
 - The app remembers its window size (and whether it was maximized) from the last session. It opens at that size straight away, with no visible resize or blank window on startup.

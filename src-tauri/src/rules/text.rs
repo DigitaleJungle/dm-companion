@@ -21,6 +21,8 @@ fn tag_display(tag: &str, body: &str) -> String {
                 format!("+{first}")
             }
         }
+        // These show their first part; the rest is a link target or filter, not text.
+        "filter" | "book" | "adventure" | "link" | "quickref" | "area" => first.to_string(),
         // `{@spell name|source|display}`: a third part, when present, is the text to show.
         _ => parts.get(2).filter(|d| !d.is_empty()).copied().unwrap_or(first).to_string(),
     }
@@ -111,6 +113,8 @@ mod tests {
         assert_eq!(strip_tags("Roll {@dice 1d6} and {@b stop}"), "Roll 1d6 and stop");
         assert_eq!(strip_tags("Make a {@dc 15} save, {@hit 5} to hit"), "Make a DC 15 save, +5 to hit");
         assert_eq!(strip_tags("no tags here"), "no tags here");
+        assert_eq!(strip_tags("{@filter Warlock spells|spells|class=Warlock}"), "Warlock spells");
+        assert_eq!(strip_tags("See {@area Proficiency|036|x}"), "See Proficiency");
     }
 
     #[test]

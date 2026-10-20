@@ -19,6 +19,18 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - The Settings gear sits in the bottom-left corner, and the app version is shown small at the bottom.
 - Empty state: "No campaigns yet." Campaign folders that can't be read are listed in a warning and left untouched.
 
+## Library (no wireframe)
+
+- Opened from a **Library** button at the top right of the Start screen. It replaces the screen (same window); **Back** returns to the Start screen. Where you are is kept in the address, so back/forward work inside the Library.
+- **Reading** tab, three columns:
+  - **Library**: the imported books, alphabetical.
+  - **Contents**: the book's chapters ("Chapter 1: …", "Appendix A: …") with their sections nested and collapsible. Clicking a chapter opens it; clicking a section opens its chapter and scrolls to it.
+  - **Reading pane**: the chapter text with headings, lists, tables, insets, quotes and the stat blocks books embed (loaded as they scroll into view). Images show when they were imported in Settings; nothing is fetched from the internet.
+- **Catalog** tab: categories (spells, creatures, items, feats, backgrounds, species, classes, subclasses, optional features, conditions, diseases, rules glossary, actions, languages, skills, senses, item properties and masteries, hazards, traps), a filterable alphabetical list, and the selected entry.
+- **References** in the text (a spell, creature, condition…) open a **preview card** next to them. References inside the card can be followed, with Back; Escape, ✕ or clicking outside closes it and returns focus.
+- Entries show a summary for their type: spells (level, school, casting time, range, components, duration), creatures (size, type, alignment, AC, HP, speed, ability scores, saves, skills, senses, languages, CR, then traits, actions, bonus actions, reactions, legendary actions and spellcasting), items (type, rarity, attunement), feats (prerequisite) and classes (hit die, primary ability, features by level).
+- Empty state: "No rules data yet", with a button that opens Settings on Rules data.
+
 ## App shell (all DM screens inside a campaign)
 
 - **Left sidebar**

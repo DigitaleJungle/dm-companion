@@ -106,6 +106,7 @@ fn entity_keys(path: &str) -> &'static [(&'static str, &'static str)] {
         "languages.json" => &[("language", "language")],
         "skills.json" => &[("skill", "skill")],
         "senses.json" => &[("sense", "sense")],
+        "trapshazards.json" => &[("trap", "trap"), ("hazard", "hazard")],
         _ => &[],
     }
 }

@@ -5,7 +5,7 @@
   import CampaignSettings from "$lib/components/CampaignSettings.svelte";
   import RulesSettings from "$lib/components/RulesSettings.svelte";
 
-  let { open = $bindable(false) }: { open?: boolean } = $props();
+  let { open = $bindable(false), section }: { open?: boolean; section?: "theme" | "campaigns" | "rules" } = $props();
   let dialog: HTMLDialogElement | undefined = $state();
 
   const t = strings.settings;
@@ -16,6 +16,11 @@
   ] as const;
   type SectionId = (typeof sections)[number]["id"];
   let active = $state<SectionId>("theme");
+
+  // Opening with a section (e.g. from the Library) shows that section first.
+  $effect(() => {
+    if (open && section) active = section;
+  });
 
   // Vertical tabs: Up/Down (and Home/End) move between sections; only the selected tab is in the Tab order.
   function onTabKeydown(event: KeyboardEvent) {

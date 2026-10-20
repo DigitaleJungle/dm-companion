@@ -85,6 +85,13 @@
     </section>
   </main>
 
+  <a class="btn library-link" href="/library">
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5v-2z" /><path d="M8 7h8" />
+    </svg>
+    {strings.library.open}
+  </a>
+
   <div class="corner">
     <SettingsButton />
   </div>
@@ -205,6 +212,20 @@
     position: fixed;
     left: var(--space-4);
     bottom: var(--space-4);
+  }
+
+  .library-link {
+    position: fixed;
+    top: var(--space-4);
+    right: var(--space-4);
+    gap: var(--space-2);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .library-link svg {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 
   .version {
