@@ -3,6 +3,14 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.0] - 2026-10-20
+
+### Added
+
+- Characters overview, opened from a new Characters button on the Start screen: every character from every campaign as a card with avatar (subclass or class art, else a person icon), name, class and subclass (multiclass supported), total level and campaign.
+- Copy a character into another active campaign from its card menu.
+- A Create character button, coming soon.
+
 ## [0.3.5] - 2026-10-20
 
 ### Changed

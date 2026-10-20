@@ -40,6 +40,8 @@ pub fn run() {
             commands::campaigns::restore_campaign,
             commands::campaigns::set_campaign_sources,
             commands::campaigns::delete_campaign,
+            commands::characters::list_characters,
+            commands::characters::copy_character,
             commands::home_layout::get_home_cards,
             commands::home_layout::set_home_cards,
             commands::settings::get_settings,

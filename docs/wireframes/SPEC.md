@@ -16,6 +16,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - **App name** at the top, then a **prominent search bar**. Once search works, it searches rules, monsters, spells and lore across every campaign.
 - **Campaigns**: your campaigns, most recently opened first, each with when it was last opened. Picking one opens its Landing screen.
 - **New campaign**: a name field and a Create button. Names are required, at most 100 characters, and unique (ignoring case). Creating opens the new campaign.
+- **Characters** and **Library** buttons sit at the top right, in that order.
 - The Settings gear sits in the bottom-left corner, and the app version is shown small at the bottom.
 - Empty state: "No campaigns yet." Campaign folders that can't be read are listed in a warning and left untouched.
 
@@ -141,6 +142,13 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - The sidebar lists saved encounters.
 
 ### 04 · Characters
+- **Characters overview** (no wireframe), opened from the Start screen's **Characters** button. It replaces the screen; **Back** returns to the Start screen.
+  - Every character from every campaign (active and archived) as a card, sorted by name. A character belongs to exactly one campaign; it is stored in that campaign's folder.
+  - A card shows the avatar, name, class with subclass ("Fighter (Champion)", or "Fighter 3 (Champion) / Wizard 2" when multiclassed), total level, and the campaign (tagged "Archived" when it is).
+  - Avatar: the character's own picture once Create character exists; until then, and when none was added, the imported art for the subclass, else the class, else a neutral person icon.
+  - The card's "…" menu copies the character into another active campaign (as a new, separate character).
+  - **Create character** is a placeholder for now ("Coming soon").
+  - States: loading, "No characters yet.", a load error with Retry, and a warning listing character files that couldn't be read (left untouched).
 - **Character list**
   - New character, Import… and a filter.
   - Groups: active party, and retired characters / NPC allies.

@@ -43,7 +43,7 @@ pub struct Dirs {
 }
 
 // Ids become folder names, so only allow characters that can't escape the campaigns folders.
-fn check_id(id: &str) -> Result<(), StorageError> {
+pub(crate) fn check_id(id: &str) -> Result<(), StorageError> {
     if !id.is_empty() && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
         Ok(())
     } else {
@@ -192,12 +192,12 @@ pub fn delete(dirs: &Dirs, id: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn dirs(app: &AppHandle) -> Result<Dirs, StorageError> {
+pub(crate) fn dirs(app: &AppHandle) -> Result<Dirs, StorageError> {
     let data = app.path().app_data_dir().map_err(|e| StorageError::Io(e.to_string()))?;
     Ok(Dirs { active: data.join("campaigns"), archived: data.join("archived-campaigns") })
 }
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 

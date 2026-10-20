@@ -85,12 +85,20 @@
     </section>
   </main>
 
-  <a class="btn library-link" href="/library">
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5v-2z" /><path d="M8 7h8" />
-    </svg>
+  <nav class="top-links">
+    <a class="btn" href="/characters">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+      {strings.characters.title}
+    </a>
+    <a class="btn" href="/library">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5v-2z" /><path d="M8 7h8" />
+      </svg>
     {strings.library.open}
-  </a>
+    </a>
+  </nav>
 
   <div class="corner">
     <SettingsButton />
@@ -214,16 +222,21 @@
     bottom: var(--space-4);
   }
 
-  .library-link {
+  .top-links {
     position: fixed;
     top: var(--space-4);
     right: var(--space-4);
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .top-links a {
     gap: var(--space-2);
     color: var(--color-text);
     text-decoration: none;
   }
 
-  .library-link svg {
+  .top-links svg {
     width: var(--icon-size);
     height: var(--icon-size);
   }
