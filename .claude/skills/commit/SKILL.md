@@ -5,7 +5,7 @@ description: Commit the current changes with a version bump, tests and a tag. Us
 
 # Commit
 
-Every commit carries its own version. The pre-commit hook (`.githooks/pre-commit`) refuses a commit unless the version went up and `npm run verify` passes.
+Every commit made through this skill carries its own version. The pre-commit hook (`.githooks/pre-commit`) refuses a commit whose version is lower than the last one, or that fails `npm run verify`. It allows an unchanged version, but this skill always bumps.
 
 1. **Look at the change.** Run `git status` and `git diff` (including untracked files). If nothing changed, say so and stop.
 2. **Pick the level.**

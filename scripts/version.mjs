@@ -102,8 +102,9 @@ function check() {
   }
   const current = files[0].version;
   const previous = headVersion();
-  if (previous && compareVersions(current, previous) <= 0) {
-    fail(`version ${current} is not higher than the last commit's ${previous}. Run: node scripts/version.mjs bump <patch|minor|major>`);
+  // Keeping the version is fine (small commits); going backwards is not.
+  if (previous && compareVersions(current, previous) < 0) {
+    fail(`version ${current} is lower than the last commit's ${previous}. Run: node scripts/version.mjs bump <patch|minor|major>`);
   }
   if (!changelogHasEntries(readFileSync(CHANGELOG, "utf8"), current)) {
     fail(`add at least one entry under "## [${current}]" in ${CHANGELOG}`);

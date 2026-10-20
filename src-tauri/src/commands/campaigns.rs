@@ -21,6 +21,9 @@ pub struct Campaign {
     /// Milliseconds since the Unix epoch.
     pub created_at: u64,
     pub last_opened_at: u64,
+    /// Sourcebooks (rules sources) this campaign uses. Empty for new campaigns and older files.
+    #[serde(default)]
+    pub sources: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -111,7 +114,7 @@ pub fn create(dirs: &Dirs, name: &str, now: u64) -> Result<Campaign, StorageErro
         n += 1;
         id = format!("{base}-{n}");
     }
-    let campaign = Campaign { id: id.clone(), name, created_at: now, last_opened_at: now };
+    let campaign = Campaign { id: id.clone(), name, created_at: now, last_opened_at: now, sources: vec![] };
     write_atomic(&dirs.active.join(&id).join(FILE_NAME), &to_json(&campaign)?)?;
     Ok(campaign)
 }
@@ -157,13 +160,34 @@ pub fn restore(dirs: &Dirs, id: &str) -> Result<(), StorageError> {
     move_folder(&dirs.archived, &dirs.active, id)
 }
 
-/// Permanently deletes an archived campaign. Active campaigns must be archived first.
-pub fn delete_archived(dirs: &Dirs, id: &str) -> Result<(), StorageError> {
+/// Sets the sourcebooks an active campaign uses. Source ids are short plain identifiers like "XPHB".
+pub fn set_sources(dirs: &Dirs, id: &str, sources: &[String]) -> Result<Campaign, StorageError> {
     check_id(id)?;
-    let dir = dirs.archived.join(id);
-    if !dir.join(FILE_NAME).exists() {
-        return Err(StorageError::NotFound("Only archived campaigns can be deleted.".into()));
+    let mut clean: Vec<String> = vec![];
+    for source in sources {
+        let valid = !source.is_empty() && source.len() <= 32 && source.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !valid {
+            return Err(StorageError::Invalid(format!("\"{source}\" is not a source id.")));
+        }
+        if !clean.iter().any(|s| s.eq_ignore_ascii_case(source)) {
+            clean.push(source.clone());
+        }
     }
+    let dir = dirs.active.join(id);
+    let mut campaign = read(&dir)?;
+    campaign.sources = clean;
+    write_atomic(&dir.join(FILE_NAME), &to_json(&campaign)?)?;
+    Ok(campaign)
+}
+
+/// Permanently deletes a campaign and all its data, whether it is active or archived.
+pub fn delete(dirs: &Dirs, id: &str) -> Result<(), StorageError> {
+    check_id(id)?;
+    let dir = [&dirs.active, &dirs.archived]
+        .into_iter()
+        .map(|root| root.join(id))
+        .find(|dir| dir.join(FILE_NAME).exists())
+        .ok_or_else(|| StorageError::NotFound("That campaign doesn't exist.".into()))?;
     fs::remove_dir_all(dir)?;
     Ok(())
 }
@@ -208,8 +232,13 @@ pub async fn restore_campaign(app: AppHandle, id: String) -> Result<(), StorageE
 }
 
 #[tauri::command]
-pub async fn delete_archived_campaign(app: AppHandle, id: String) -> Result<(), StorageError> {
-    delete_archived(&dirs(&app)?, &id)
+pub async fn set_campaign_sources(app: AppHandle, id: String, sources: Vec<String>) -> Result<Campaign, StorageError> {
+    set_sources(&dirs(&app)?, &id, &sources)
+}
+
+#[tauri::command]
+pub async fn delete_campaign(app: AppHandle, id: String) -> Result<(), StorageError> {
+    delete(&dirs(&app)?, &id)
 }
 
 #[cfg(test)]
@@ -262,7 +291,8 @@ mod tests {
         assert!(matches!(open(&dirs, "", 1), Err(StorageError::Invalid(_))));
         assert!(matches!(open(&dirs, "abc", 1), Err(StorageError::NotFound(_))));
         assert!(matches!(archive(&dirs, "../x"), Err(StorageError::Invalid(_))));
-        assert!(matches!(delete_archived(&dirs, "..\\x"), Err(StorageError::Invalid(_))));
+        assert!(matches!(delete(&dirs, "..\\x"), Err(StorageError::Invalid(_))));
+        assert!(matches!(set_sources(&dirs, "../x", &[]), Err(StorageError::Invalid(_))));
     }
 
     #[test]
@@ -298,16 +328,36 @@ mod tests {
     }
 
     #[test]
-    fn only_archived_campaigns_can_be_deleted() {
+    fn deletes_active_and_archived_campaigns() {
         let dirs = temp_dirs("delete");
-        let a = create(&dirs, "Thornwood", 1).unwrap();
-        assert!(matches!(delete_archived(&dirs, &a.id), Err(StorageError::NotFound(_))));
-        assert!(dirs.active.join(&a.id).exists());
+        let active = create(&dirs, "Thornwood", 1).unwrap();
+        let archived = create(&dirs, "Strahd", 2).unwrap();
+        archive(&dirs, &archived.id).unwrap();
 
-        archive(&dirs, &a.id).unwrap();
-        delete_archived(&dirs, &a.id).unwrap();
-        assert!(!dirs.archived.join(&a.id).exists());
-        assert!(list(&dirs).unwrap().archived.is_empty());
+        delete(&dirs, &active.id).unwrap();
+        delete(&dirs, &archived.id).unwrap();
+        assert!(!dirs.active.join(&active.id).exists() && !dirs.archived.join(&archived.id).exists());
+        assert!(matches!(delete(&dirs, &active.id), Err(StorageError::NotFound(_))));
+        let list = list(&dirs).unwrap();
+        assert!(list.campaigns.is_empty() && list.archived.is_empty());
+    }
+
+    #[test]
+    fn sources_start_empty_and_can_be_set() {
+        let dirs = temp_dirs("sources");
+        let a = create(&dirs, "Thornwood", 1).unwrap();
+        assert!(a.sources.is_empty());
+        let set = set_sources(&dirs, &a.id, &["XPHB".into(), "XDMG".into(), "xphb".into()]).unwrap();
+        assert_eq!(set.sources, vec!["XPHB".to_string(), "XDMG".to_string()]); // duplicates dropped
+        assert_eq!(open(&dirs, &a.id, 2).unwrap().sources, set.sources);
+        assert!(matches!(set_sources(&dirs, &a.id, &["../etc".into()]), Err(StorageError::Invalid(_))));
+        // Archived campaigns can't be changed until restored.
+        let b = create(&dirs, "Strahd", 3).unwrap();
+        archive(&dirs, &b.id).unwrap();
+        assert!(matches!(set_sources(&dirs, &b.id, &["XPHB".into()]), Err(StorageError::NotFound(_))));
+        // Files from before this field load with no sources.
+        fs::write(dirs.active.join(&a.id).join(FILE_NAME), r#"{"id":"x","name":"Old","createdAt":1,"lastOpenedAt":1}"#).unwrap();
+        assert!(read(&dirs.active.join(&a.id)).unwrap().sources.is_empty());
     }
 
     #[test]

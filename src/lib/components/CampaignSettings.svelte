@@ -1,102 +1,61 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
   import { strings } from "$lib/strings";
   import { errorMessage } from "$lib/api/storage";
   import type { Campaign } from "$lib/api/campaigns";
-  import {
-    campaigns,
-    createCampaign,
-    refreshCampaigns,
-    renameCampaign,
-    archiveCampaign,
-    restoreCampaign,
-    deleteArchivedCampaign,
-  } from "$lib/stores/campaigns.svelte";
+  import { campaigns, createCampaign, refreshCampaigns } from "$lib/stores/campaigns.svelte";
+  import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
+  import Gear from "$lib/components/icons/Gear.svelte";
 
   const t = strings.settings.campaigns;
 
-  let renaming = $state<string | null>(null); // id being renamed
-  let newName = $state("");
-  let confirmingDelete = $state<string | null>(null); // archived id awaiting confirmation
-  let busy = $state(false);
-  let error = $state<{ id: string; message: string } | null>(null);
+  let addName = $state("");
+  let adding = $state(false);
+  let addError = $state<string | null>(null);
+  let editing = $state<string | null>(null); // campaign whose settings are open
+  let dialogOpen = $state(false);
 
   onMount(refreshCampaigns);
 
-  async function focus(id: string) {
-    await tick();
-    document.getElementById(id)?.focus();
-  }
-
-  // Runs one change at a time and shows a failure on the row it belongs to.
-  async function run(id: string, action: () => Promise<void>, focusAfter?: string) {
-    busy = true;
-    error = null;
-    try {
-      await action();
-      if (focusAfter) focus(focusAfter);
-    } catch (e) {
-      error = { id, message: t.error(errorMessage(e)) };
-    } finally {
-      busy = false;
-    }
-  }
-
-  function startRename(campaign: Campaign) {
-    renaming = campaign.id;
-    newName = campaign.name;
-    error = null;
-    focus(`rename-input-${campaign.id}`);
-  }
-
-  function cancelRename(id: string) {
-    renaming = null;
-    focus(`rename-${id}`);
-  }
-
-  async function saveRename(event: SubmitEvent, id: string) {
-    event.preventDefault();
-    await run(id, async () => {
-      await renameCampaign(id, newName);
-      renaming = null;
-    }, `rename-${id}`);
-  }
-
-  function onRenameKeydown(event: KeyboardEvent, id: string) {
-    if (event.key === "Escape") {
-      event.preventDefault(); // cancel the rename, not the whole Settings dialog
-      cancelRename(id);
-    }
-  }
-
   // Adding from Settings stays here (unlike the Start screen, which opens the new campaign).
-  let addName = $state("");
   async function add(event: SubmitEvent) {
     event.preventDefault();
-    await run("add", async () => {
+    adding = true;
+    addError = null;
+    try {
       await createCampaign(addName);
       addName = "";
-    });
+    } catch (e) {
+      addError = t.error(errorMessage(e));
+    } finally {
+      adding = false;
+    }
   }
 
-  function askDelete(id: string) {
-    confirmingDelete = id;
-    error = null;
-    focus(`cancel-delete-${id}`);
-  }
-
-  function cancelDelete(id: string) {
-    confirmingDelete = null;
-    focus(`delete-${id}`);
-  }
-
-  async function confirmDelete(id: string) {
-    await run(id, async () => {
-      await deleteArchivedCampaign(id);
-      confirmingDelete = null;
-    }, "archived-title");
+  function openSettings(campaign: Campaign) {
+    editing = campaign.id;
+    dialogOpen = true;
   }
 </script>
+
+{#snippet rows(list: Campaign[], archived: boolean)}
+  <ul>
+    {#each list as campaign (campaign.id)}
+      <li class="row">
+        <span class="name" class:archived>{campaign.name}</span>
+        <button
+          class="icon-btn"
+          aria-label={strings.campaignSettings.openFor(campaign.name)}
+          title={strings.campaignSettings.openFor(campaign.name)}
+          aria-haspopup="dialog"
+          onclick={() => openSettings(campaign)}
+        >
+          <Gear />
+        </button>
+      </li>
+    {/each}
+  </ul>
+{/snippet}
 
 <div class="campaign-settings">
   <h3 class="title">{t.title}</h3>
@@ -111,43 +70,7 @@
       {#if campaigns.list.campaigns.length === 0}
         <p class="muted">{t.noActive}</p>
       {:else}
-        <ul>
-          {#each campaigns.list.campaigns as campaign (campaign.id)}
-            <li>
-              {#if renaming === campaign.id}
-                <form class="row" onsubmit={(e) => saveRename(e, campaign.id)}>
-                  <label for="rename-input-{campaign.id}" class="sr-only">{t.renameLabel(campaign.name)}</label>
-                  <input
-                    id="rename-input-{campaign.id}"
-                    class="name-input"
-                    bind:value={newName}
-                    maxlength="100"
-                    autocomplete="off"
-                    onkeydown={(e) => onRenameKeydown(e, campaign.id)}
-                  />
-                  <button class="btn btn-primary small" type="submit" disabled={busy || !newName.trim()}>{t.save}</button>
-                  <button class="btn small" type="button" onclick={() => cancelRename(campaign.id)}>{t.cancel}</button>
-                </form>
-              {:else}
-                <div class="row">
-                  <span class="name">{campaign.name}</span>
-                  <div class="actions" role="group" aria-label={t.actionsFor(campaign.name)}>
-                    <button id="rename-{campaign.id}" class="btn small" disabled={busy} onclick={() => startRename(campaign)}>{t.rename}</button>
-                    <button
-                      id="archive-{campaign.id}"
-                      class="btn small"
-                      disabled={busy}
-                      onclick={() => run(campaign.id, () => archiveCampaign(campaign.id), `restore-${campaign.id}`)}
-                    >
-                      {t.archive}
-                    </button>
-                  </div>
-                </div>
-              {/if}
-              {#if error?.id === campaign.id}<p class="error" role="alert">{error.message}</p>{/if}
-            </li>
-          {/each}
-        </ul>
+        {@render rows(campaigns.list.campaigns, false)}
       {/if}
       <form class="add" onsubmit={add}>
         <label for="add-campaign" class="sr-only">{t.addLabel}</label>
@@ -158,61 +81,33 @@
           placeholder={t.addPlaceholder}
           maxlength="100"
           autocomplete="off"
-          aria-describedby={error?.id === "add" ? "add-error" : undefined}
+          aria-describedby={addError ? "add-error" : undefined}
         />
-        <button class="btn small" type="submit" disabled={busy || !addName.trim()}>{t.add}</button>
+        <button class="btn" type="submit" disabled={adding || !addName.trim()}>{t.add}</button>
       </form>
-      {#if error?.id === "add"}<p id="add-error" class="error" role="alert">{error.message}</p>{/if}
+      {#if addError}<p id="add-error" class="error" role="alert">{addError}</p>{/if}
     </section>
 
     <section aria-labelledby="archived-title">
-      <h4 id="archived-title" class="subheading" tabindex="-1">{t.archived}</h4>
+      <h4 id="archived-title" class="subheading">{t.archived}</h4>
       {#if campaigns.list.archived.length === 0}
         <p class="muted">{t.noArchived}</p>
       {:else}
-        <ul>
-          {#each campaigns.list.archived as campaign (campaign.id)}
-            <li>
-              {#if confirmingDelete === campaign.id}
-                <div class="confirm" role="alertdialog" aria-labelledby="confirm-{campaign.id}">
-                  <p id="confirm-{campaign.id}">{t.confirmDelete(campaign.name)}</p>
-                  <div class="actions">
-                    <button id="cancel-delete-{campaign.id}" class="btn small" onclick={() => cancelDelete(campaign.id)}>{t.cancel}</button>
-                    <button class="btn btn-danger small" disabled={busy} onclick={() => confirmDelete(campaign.id)}>{t.confirm}</button>
-                  </div>
-                </div>
-              {:else}
-                <div class="row">
-                  <span class="name archived">{campaign.name}</span>
-                  <div class="actions" role="group" aria-label={t.actionsFor(campaign.name)}>
-                    <button
-                      id="restore-{campaign.id}"
-                      class="btn small"
-                      disabled={busy}
-                      onclick={() => run(campaign.id, () => restoreCampaign(campaign.id), `archive-${campaign.id}`)}
-                    >
-                      {t.restore}
-                    </button>
-                    <button id="delete-{campaign.id}" class="btn btn-danger small" disabled={busy} onclick={() => askDelete(campaign.id)}>
-                      {t.delete}
-                    </button>
-                  </div>
-                </div>
-              {/if}
-              {#if error?.id === campaign.id}<p class="error" role="alert">{error.message}</p>{/if}
-            </li>
-          {/each}
-        </ul>
+        {@render rows(campaigns.list.archived, true)}
       {/if}
     </section>
   {/if}
 </div>
 
+{#if editing}
+  <CampaignSettingsDialog campaignId={editing} bind:open={dialogOpen} />
+{/if}
+
 <style>
   .campaign-settings {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
   }
 
   .title {
@@ -220,9 +115,9 @@
     font-weight: var(--weight-semibold);
   }
 
-  .muted {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
+  .subheading {
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
   }
 
   section {
@@ -239,22 +134,15 @@
     border-radius: var(--radius-md);
   }
 
-  li {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-  }
-
-  li + li {
-    border-top: var(--border-width) solid var(--color-border);
-  }
-
   .row {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    min-height: var(--control-height);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  }
+
+  .row + .row {
+    border-top: var(--border-width) solid var(--color-border);
   }
 
   .name {
@@ -270,14 +158,9 @@
     color: var(--color-text-muted);
   }
 
-  .name-input {
-    flex: 1;
-    min-width: 0;
-    min-height: var(--control-height-sm);
-    padding: 0 var(--space-2);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
+  .icon-btn :global(.gear) {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 
   .add {
@@ -285,41 +168,23 @@
     gap: var(--space-2);
   }
 
-  .add .name-input {
+  .name-input {
+    flex: 1;
+    min-width: 0;
     min-height: var(--control-height);
     padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-md);
-  }
-
-  .add .small {
-    min-height: var(--control-height);
+    background: var(--color-surface);
   }
 
   .name-input::placeholder {
     color: var(--color-text-placeholder);
   }
 
-  .actions {
-    display: flex;
-    gap: var(--space-2);
-    flex: none;
-  }
-
-  .small {
-    min-height: var(--control-height-sm);
-    padding: 0 var(--space-3);
-  }
-
-  .confirm {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-2) 0;
+  .muted {
+    color: var(--color-text-muted);
     font-size: var(--text-sm);
-  }
-
-  .confirm .actions {
-    justify-content: flex-end;
   }
 
   .error {
@@ -328,14 +193,5 @@
     background: var(--color-danger-soft);
     color: var(--color-danger);
     font-size: var(--text-sm);
-  }
-
-  .subheading {
-    font-size: var(--text-md);
-    font-weight: var(--weight-semibold);
-  }
-
-  h4:focus-visible {
-    outline-offset: 2px;
   }
 </style>

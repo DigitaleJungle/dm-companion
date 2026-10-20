@@ -3,6 +3,14 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.3] - 2026-10-20
+### Added
+- Campaign settings, opened from a cog next to the campaign switcher or from a campaign's cog in Settings → Campaigns: rename inline, archive or restore, choose the campaign's sourcebooks, and delete it permanently (archived or not).
+- Campaign library in the campaign sidebar: Reading and Catalog limited to the campaign's sourcebooks. A preview from a book the campaign doesn't use shows a banner with "Add it to this campaign".
+### Changed
+- Settings → Campaigns lists campaigns with a cog each instead of inline Rename, Archive, Restore and Delete buttons.
+- New and existing campaigns start with no sourcebooks; pick them in Campaign settings.
+
 ## [0.3.2] - 2026-10-20
 ### Changed
 - The Library Catalog is now a table like a reference site: tabs All, Rules, Player, Reference and DM Tools with category sub-tabs, a search box with result count, filter checkboxes per category, sortable columns specific to each category, and pages of 50. Clicking a row opens the entry; Back returns to the same filters and page.

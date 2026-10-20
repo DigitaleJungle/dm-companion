@@ -13,11 +13,14 @@
     group,
     kind,
     entityId,
+    allowedSources = null,
     onnavigate,
   }: {
     group: string;
     kind: string;
     entityId: number | null;
+    /** Lower-case source ids to show (a campaign's sourcebooks); null shows everything. */
+    allowedSources?: Set<string> | null;
     onnavigate: (group: string, kind: string, entityId: number | null) => void;
   } = $props();
 
@@ -30,9 +33,12 @@
 
   // ---- Books (sources) shown in the Catalog, remembered in settings -------------------------------
   const sources = $derived(
-    (rules.status?.library?.sources ?? []).filter((s) => s.entities > 0).sort((a, b) => a.name.localeCompare(b.name)),
+    (rules.status?.library?.sources ?? [])
+      .filter((s) => s.entities > 0 && (!allowedSources || allowedSources.has(s.id.toLowerCase())))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   );
   const hidden = new SvelteSet<string>();
+  const shownCount = $derived(sources.filter((s) => !hidden.has(s.id)).length);
   let settingsError = $state<string | null>(null);
 
   onMount(async () => {
@@ -59,9 +65,12 @@
     saveHidden();
   }
 
+  // Only touches the books listed here (a campaign's), leaving any others as they were.
   function setAll(shown: boolean) {
-    hidden.clear();
-    if (!shown) for (const s of sources) hidden.add(s.id);
+    for (const s of sources) {
+      if (shown) hidden.delete(s.id);
+      else hidden.add(s.id);
+    }
     page = 0;
     saveHidden();
   }
@@ -98,7 +107,9 @@
     page = 0;
   });
 
-  const inBooks = $derived((rows ?? []).filter((r) => !hidden.has(r.source)));
+  const inBooks = $derived(
+    (rows ?? []).filter((r) => !hidden.has(r.source) && (!allowedSources || allowedSources.has(r.source.toLowerCase()))),
+  );
   const options = $derived(
     Object.fromEntries(config.filters.map((f) => [f.id, f.options ?? f.optionsFrom?.(inBooks) ?? []])) as Record<string, FilterOption[]>,
   );
@@ -168,9 +179,9 @@
   <aside class="books" aria-labelledby="catalog-books">
     <h2 id="catalog-books" class="column-title">{t.booksLabel}</h2>
     <div class="book-tools">
-      <button class="btn small" disabled={hidden.size === 0} onclick={() => setAll(true)}>{t.selectAll}</button>
-      <button class="btn small" disabled={hidden.size === sources.length} onclick={() => setAll(false)}>{t.deselectAll}</button>
-      <span class="count">{t.booksCount(sources.length - sources.filter((s) => hidden.has(s.id)).length, sources.length)}</span>
+      <button class="btn small" disabled={shownCount === sources.length} onclick={() => setAll(true)}>{t.selectAll}</button>
+      <button class="btn small" disabled={shownCount === 0} onclick={() => setAll(false)}>{t.deselectAll}</button>
+      <span class="count">{t.booksCount(shownCount, sources.length)}</span>
     </div>
     {#if settingsError}<p class="error" role="alert">{settingsError}</p>{/if}
     <ul>
@@ -261,7 +272,7 @@
 
         {#if loadError}
           <p class="error" role="alert">{loadError}</p>
-        {:else if rows && sources.length && hidden.size === sources.length}
+        {:else if rows && sources.length && shownCount === 0}
           <p class="muted pad">{t.noBooksSelected}</p>
         {:else if rows && matching.length === 0}
           <p class="muted pad">{t.noEntries}</p>

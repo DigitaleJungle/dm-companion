@@ -85,8 +85,8 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 
 ## Commits and releases
 - Commit only through the `commit` skill (`.claude/skills/commit/`). It bumps the version, commits, tags `vX.Y.Z` and pushes.
-- Every commit bumps the version. **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features. Ask if unclear.
+- Every commit made through the `commit` skill bumps the version. **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features. Ask if unclear.
 - Every commit adds its entries to `CHANGELOG.md` and keeps `README.md` current: the version line, the status and features, and any usage text.
-- The pre-commit hook (`.githooks/pre-commit`, turned on by `npm install`) rejects a commit that has no version bump, has no CHANGELOG entry for the new version, or fails `npm run verify`. Never use `--no-verify`.
+- The pre-commit hook (`.githooks/pre-commit`, turned on by `npm install`) rejects a commit whose version is lower than the last commit's, whose version files disagree, whose version has no CHANGELOG entry, or that fails `npm run verify`. Keeping the same version is allowed, for small commits without a release. Never use `--no-verify`.
 - Publish only through the `publish` skill (`.claude/skills/publish/`). It builds locally and creates a GitHub release with the Windows installers. macOS isn't built yet.
 - Repo: github.com/DigitaleJungle/dm-companion (public). `dnd_5e_charactersheet_formfillable.pdf` is git-ignored on purpose.

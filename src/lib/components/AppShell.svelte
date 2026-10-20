@@ -5,6 +5,8 @@
   import { strings } from "$lib/strings";
   import SearchBar from "$lib/components/SearchBar.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
+  import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
+  import Gear from "$lib/components/icons/Gear.svelte";
   import type { Campaign } from "$lib/api/campaigns";
 
   let { campaign, children }: { campaign: Campaign; children: Snippet } = $props();
@@ -12,6 +14,7 @@
   // Narrow windows only: the sidebar becomes a drawer behind the menu toggle.
   let menuOpen = $state(false);
   let settingsOpen = $state(false);
+  let campaignSettingsOpen = $state(false);
   let toggle: HTMLButtonElement | undefined = $state();
 
   function closeMenu() {
@@ -24,14 +27,15 @@
   });
 
   function onKeydown(event: KeyboardEvent) {
-    // While settings is open, Escape belongs to the dialog; the drawer stays open behind it.
-    if (menuOpen && !settingsOpen && event.key === "Escape") closeMenu();
+    // While a dialog is open, Escape belongs to it; the drawer stays open behind it.
+    if (menuOpen && !settingsOpen && !campaignSettingsOpen && event.key === "Escape") closeMenu();
   }
 
   const nav = strings.shell.nav;
   // href is null until the screen is built; those items render disabled with "Coming soon".
   const items: { label: string; href: string | null }[] = $derived([
     { label: nav.home, href: `/campaign/${campaign.id}` },
+    { label: nav.campaignLibrary, href: `/campaign/${campaign.id}/library` },
     { label: nav.runEncounter, href: null },
     { label: nav.encounterBuilder, href: null },
     { label: nav.characters, href: null },
@@ -52,10 +56,22 @@
     <div class="group">
       <span class="label" id="campaign-label">{strings.shell.campaign}</span>
       <!-- Back to the start screen to pick or create another campaign -->
-      <a class="btn campaign" href="/" aria-describedby="campaign-label" title={strings.shell.switchCampaign}>
-        <span class="campaign-name">{campaign.name}</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      </a>
+      <div class="campaign-row">
+        <a class="btn campaign" href="/" aria-describedby="campaign-label" title={strings.shell.switchCampaign}>
+          <span class="campaign-name">{campaign.name}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </a>
+        <button
+          class="icon-btn campaign-cog"
+          aria-label={strings.campaignSettings.open}
+          title={strings.campaignSettings.open}
+          aria-haspopup="dialog"
+          onclick={() => (campaignSettingsOpen = true)}
+        >
+          <Gear />
+        </button>
+      </div>
+      <CampaignSettingsDialog campaignId={campaign.id} bind:open={campaignSettingsOpen} />
     </div>
 
     <ul class="nav">
@@ -121,7 +137,7 @@
 <style>
   .shell {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
   }
 
   .sidebar {
@@ -133,6 +149,7 @@
     padding: var(--space-5) var(--space-3);
     background: var(--color-surface);
     border-right: var(--border-width) solid var(--color-border);
+    overflow-y: auto;
   }
 
   .app-name {
@@ -227,9 +244,12 @@
     margin-top: calc(-1 * var(--space-3));
   }
 
+  /* The content column scrolls (not the window), so pages like the Library can fill its height. */
   .column {
     flex: 1;
     min-width: 0;
+    height: 100vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
   }
@@ -249,6 +269,31 @@
 
   .content {
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .campaign-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .campaign-row .campaign {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .campaign-cog {
+    flex: none;
+    width: var(--control-height);
+    height: var(--control-height);
+  }
+
+  .campaign-cog :global(.gear) {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 
   .topbar,

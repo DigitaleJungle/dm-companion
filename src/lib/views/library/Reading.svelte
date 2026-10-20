@@ -13,18 +13,23 @@
     bookId,
     chapter,
     heading,
+    allowedSources = null,
     onnavigate,
   }: {
     bookId: string | null;
     chapter: number;
     /** Element id of a heading to scroll to, without "#". */
     heading: string;
+    /** Lower-case source ids to show; null shows every book. */
+    allowedSources?: Set<string> | null;
     onnavigate: (book: string, chapter: number, heading?: string) => void;
   } = $props();
 
   const t = strings.library;
   const books = $derived(
-    (rules.status?.library?.sources ?? []).filter((s) => s.isBook).sort((a, b) => a.name.localeCompare(b.name)),
+    (rules.status?.library?.sources ?? [])
+      .filter((s) => s.isBook && (!allowedSources || allowedSources.has(s.id.toLowerCase())))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   );
   const current = $derived(bookId ?? books[0]?.id ?? null);
 

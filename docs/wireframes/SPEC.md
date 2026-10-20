@@ -37,16 +37,29 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - Entries show a summary for their type: spells (level, school, casting time, range, components, duration), creatures (size, type, alignment, AC, HP, speed, ability scores, saves, skills, senses, languages, CR, then traits, actions, bonus actions, reactions, legendary actions and spellcasting), items (type, rarity, attunement), feats (prerequisite) and classes (hit die, primary ability, features by level).
 - Empty state: "No rules data yet", with a button that opens Settings on Rules data.
 
+## Campaign settings (no wireframe)
+
+- A dialog for one campaign, opened from the cog next to the sidebar's campaign switcher or from a campaign's cog in Settings → Campaigns. One scrolling page:
+  - **Name**: shown at the top; **Rename** edits it inline (Enter saves, Escape cancels; same name rules as creating).
+  - **Status**: Active with **Archive**, or Archived with **Restore**. Archiving the open campaign returns to the Start screen.
+  - **Sourcebooks**: checkboxes for every imported book, Select all / Deselect all and a selected/total count; changes save immediately. New campaigns start with **no** sourcebooks. An archived campaign's books can't be changed until it's restored.
+  - **Delete permanently**: for active and archived campaigns alike, after a "This can't be undone" confirmation. Deleting the open campaign returns to the Start screen.
+
+## Campaign library
+
+- A **Campaign library** item in the campaign sidebar opens the same Reading and Catalog screens inside the campaign shell, showing only the campaign's sourcebooks. With no sourcebooks selected it says so, with a **Choose sourcebooks** button that opens Campaign settings.
+- A preview card for an entry from a book the campaign doesn't use still opens, with a banner: "From <book>, which isn't active for <campaign>." **Add it to this campaign** activates that book for the campaign immediately; the banner disappears and the card stays open.
+
 ## App shell (all DM screens inside a campaign)
 
 - **Left sidebar**
   - App name.
-  - Campaign switcher: shows the current campaign; clicking it goes back to the Start screen.
-  - Navigation: Home, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
+  - Campaign switcher: shows the current campaign; clicking it goes back to the Start screen. A cog wheel next to it opens **Campaign settings** for this campaign.
+  - Navigation: Home, Campaign library, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
   - Player-screen status box at the bottom, with a "Blank screen" button.
   - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. Settings has a side panel listing its sections:
     - **Theme**: an Appearance dropdown with System, Light and Dark. System is the default and follows the operating system live. The choice is saved app-wide (not per campaign) and applies from the very first paint. The player display always stays dark. An **Animations** dropdown (System, On, Off) controls all app animations (drawer, menus, card reordering, scrolling to a section); System follows the operating system's reduce-motion setting.
-    - **Campaigns**: an **Add campaign** field (the new campaign is added to the list; Settings stays open), active campaigns with **Rename** (edited in place; same name rules as creating) and **Archive**. Archiving moves the campaign's folder to an archive folder with all its data; archived campaigns are listed separately with **Restore** and **Delete permanently**. Only archived campaigns can be deleted, after a "This can't be undone" confirmation. Names stay unique across active and archived campaigns. Archiving the open campaign returns to the Start screen; renaming it updates the sidebar and Home at once.
+    - **Campaigns**: an **Add campaign** field (the new campaign is added to the list; Settings stays open), and the active and archived campaigns, each with a cog wheel that opens its **Campaign settings**.
     - **Rules data**: import 5etools-format rules data from a `.tar.gz` on your computer (the app never downloads book content). Import processes it into a local library; a failed import keeps the previous data. Each import first checks that the file is the right kind (rules data vs. images) and stops within seconds with a clear message if not. Shows the installed version and import date. **Updates**: you enter a GitHub `owner/repo`; **Check for updates** compares its latest release version with yours and tells you to import the newer `.tar.gz`. **Images** are optional, imported from a second `.tar.gz` and removable. **Books and sources** is a filterable table of everything imported (name, abbreviation, number of entries), grouped, with a checkbox per source and per group; **Remove selected** removes them in one confirmed step. Removed sources are listed separately and skipped on future imports until **Allow again**. The Settings dialog has a fixed size; only the section content scrolls. An attribution line credits Wizards of the Coast.
 - **Global search**: a search bar is always visible at the top of every DM screen and stays in place while the content scrolls. It has no keyboard shortcut.
 - Search results, stat blocks and LegendKeeper pages can be opened in **tabs** (see the Search screen).

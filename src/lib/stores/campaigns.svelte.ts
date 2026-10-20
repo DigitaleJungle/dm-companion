@@ -47,7 +47,15 @@ export async function restoreCampaign(id: string) {
   await refreshCampaigns();
 }
 
-export async function deleteArchivedCampaign(id: string) {
-  await api.deleteArchivedCampaign(id);
+export async function setCampaignSources(id: string, sources: string[]) {
+  const updated = await api.setCampaignSources(id, sources);
+  if (campaigns.current?.id === id) campaigns.current = updated;
   await refreshCampaigns();
+}
+
+/** Deletes an active or archived campaign; leaves its screens if it was open. */
+export async function deleteCampaign(id: string) {
+  await api.deleteCampaign(id);
+  await refreshCampaigns();
+  if (campaigns.current?.id === id) await goto("/");
 }

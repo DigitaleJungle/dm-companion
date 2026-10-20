@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /** Mirrors `Campaign` in src-tauri/src/commands/campaigns.rs. Times are ms since the Unix epoch. */
-export type Campaign = { id: string; name: string; createdAt: number; lastOpenedAt: number };
+export type Campaign = { id: string; name: string; createdAt: number; lastOpenedAt: number; sources: string[] };
 export type CampaignList = { campaigns: Campaign[]; archived: Campaign[]; unreadable: string[] };
 
 // All of these reject with a StorageError.
@@ -31,7 +31,12 @@ export function restoreCampaign(id: string): Promise<void> {
   return invoke("restore_campaign", { id });
 }
 
-/** Permanently deletes an archived campaign and all its data. */
-export function deleteArchivedCampaign(id: string): Promise<void> {
-  return invoke("delete_archived_campaign", { id });
+/** Sets the sourcebooks an active campaign uses. */
+export function setCampaignSources(id: string, sources: string[]): Promise<Campaign> {
+  return invoke("set_campaign_sources", { id, sources });
+}
+
+/** Permanently deletes a campaign (active or archived) and all its data. */
+export function deleteCampaign(id: string): Promise<void> {
+  return invoke("delete_campaign", { id });
 }

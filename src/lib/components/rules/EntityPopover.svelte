@@ -5,6 +5,12 @@
   import { closePreview, isPreviewAnchor, preview, previewBack, setPreviewCard } from "$lib/rules/preview.svelte";
   import { strings } from "$lib/strings";
   import EntityView from "./EntityView.svelte";
+  import type { Campaign } from "$lib/api/campaigns";
+  import { setCampaignSources } from "$lib/stores/campaigns.svelte";
+  import { rules } from "$lib/stores/rules.svelte";
+
+  /** In a campaign library, entries from books the campaign doesn't use get a banner with a one-click fix. */
+  let { campaign = null }: { campaign?: Campaign | null } = $props();
 
   const t = strings.library;
   const MARGIN = 12;
@@ -14,6 +20,26 @@
   let status = $state<"loading" | "missing" | "error" | "ready">("loading");
   let error = $state("");
   const current = $derived(preview.trail.at(-1) ?? null);
+
+  const outsideCampaign = $derived(
+    !!campaign && !!entity && !campaign.sources.some((s) => s.toLowerCase() === entity!.source.toLowerCase()),
+  );
+  const bookName = $derived(rules.status?.library?.sources.find((s) => s.id.toLowerCase() === entity?.source.toLowerCase())?.name ?? entity?.source ?? "");
+  let adding = $state(false);
+  let addError = $state<string | null>(null);
+
+  async function addSourceToCampaign() {
+    if (!campaign || !entity) return;
+    adding = true;
+    addError = null;
+    try {
+      await setCampaignSources(campaign.id, [...campaign.sources, entity.source]);
+    } catch (e) {
+      addError = errorMessage(e);
+    } finally {
+      adding = false;
+    }
+  }
 
   /** Below the reference, or above it when there's more room there. */
   const position = $derived.by(() => {
@@ -93,6 +119,13 @@
       </button>
     </div>
     {#if status === "ready" && entity}
+      {#if outsideCampaign && campaign}
+        <div class="banner" role="note">
+          <p>{strings.campaignSettings.notActive(bookName, campaign.name)}</p>
+          <button class="link" disabled={adding} onclick={addSourceToCampaign}>{strings.campaignSettings.addToCampaign}</button>
+          {#if addError}<p class="error" role="alert">{strings.campaignSettings.error(addError)}</p>{/if}
+        </div>
+      {/if}
       <EntityView {entity} compact />
     {:else if status === "loading"}
       <p class="muted" role="status">{t.loading}</p>
@@ -144,6 +177,33 @@
 
   .muted {
     color: var(--color-text-muted);
+  }
+
+  .banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    font-size: var(--text-sm);
+  }
+
+  .banner p {
+    margin: 0;
+  }
+
+  .link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-link);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .error {
