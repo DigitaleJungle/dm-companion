@@ -3,6 +3,10 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.2.2] - 2026-10-20
+### Added
+- The app remembers its window size (and whether it was maximized) from the last session. It opens at that size straight away, with no visible resize or blank window on startup.
+
 ## [0.2.1] - 2026-10-20
 ### Fixed
 - Importing an images archive as rules data, or rules data as images, is now refused within a second with a message saying which import to use. It used to read the whole archive first, or accept the wrong file. Your existing data is never touched.
