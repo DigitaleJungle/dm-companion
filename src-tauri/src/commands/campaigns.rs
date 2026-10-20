@@ -192,7 +192,7 @@ pub fn delete(dirs: &Dirs, id: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
-pub(crate) fn dirs(app: &AppHandle) -> Result<Dirs, StorageError> {
+fn dirs(app: &AppHandle) -> Result<Dirs, StorageError> {
     let data = app.path().app_data_dir().map_err(|e| StorageError::Io(e.to_string()))?;
     Ok(Dirs { active: data.join("campaigns"), archived: data.join("archived-campaigns") })
 }

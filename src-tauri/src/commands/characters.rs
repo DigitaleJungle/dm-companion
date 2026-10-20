@@ -1,15 +1,18 @@
-//! Characters: one file per character, inside the campaign it belongs to:
-//! `<campaign folder>/characters/<id>.json`. Fields this module doesn't know are kept as they are.
+//! Characters: one file per character. A character in a campaign lives in that campaign's folder,
+//! `<campaign folder>/characters/<id>.json`; one without a campaign lives in `<app data>/characters/<id>.json`.
+//! Fields this module doesn't know are kept as they are.
 
-use super::campaigns::{check_id, dirs, now_ms, Dirs};
+use super::campaigns::{check_id, now_ms, Dirs};
 use crate::storage::{to_json, write_atomic, StorageError};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::io;
-use std::path::Path;
-use tauri::AppHandle;
+use std::path::{Path, PathBuf};
+use tauri::{AppHandle, Manager};
 
 const FOLDER: &str = "characters";
+const MAX_NAME_LEN: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +45,8 @@ struct Summary {
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CharacterCard {
-    pub campaign_id: String,
+    /// None for a character without a campaign.
+    pub campaign_id: Option<String>,
     pub archived: bool,
     pub id: String,
     pub name: String,
@@ -54,8 +58,40 @@ pub struct CharacterCard {
 pub struct CharacterList {
     /// Sorted by name.
     pub characters: Vec<CharacterCard>,
-    /// Files that couldn't be read, as "<campaign id>/characters/<file>". They are left untouched.
+    /// Files that couldn't be read, as "<campaign id>/characters/<file>" or "characters/<file>". They are left untouched.
     pub unreadable: Vec<String>,
+}
+
+/// Where characters live: the campaign folders, plus the folder for characters without a campaign.
+pub struct Places {
+    pub campaigns: Dirs,
+    pub loose: PathBuf,
+}
+
+fn read_folder(folder: &Path, campaign_id: Option<&str>, archived: bool, list: &mut CharacterList) -> Result<(), StorageError> {
+    let files = match fs::read_dir(folder) {
+        Ok(files) => files,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e.into()),
+    };
+    for file in files {
+        let path = file?.path();
+        if path.extension().is_none_or(|ext| ext != "json") {
+            continue;
+        }
+        let parsed = fs::read_to_string(&path).ok().and_then(|text| serde_json::from_str::<Summary>(&text).ok());
+        match parsed {
+            Some(c) => list.characters.push(CharacterCard { campaign_id: campaign_id.map(str::to_string), archived, id: c.id, name: c.name, classes: c.classes }),
+            None => {
+                let file = path.file_name().unwrap_or_default().to_string_lossy();
+                list.unreadable.push(match campaign_id {
+                    Some(id) => format!("{id}/{FOLDER}/{file}"),
+                    None => format!("{FOLDER}/{file}"),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 fn read_campaigns(root: &Path, archived: bool, list: &mut CharacterList) -> Result<(), StorageError> {
@@ -67,76 +103,104 @@ fn read_campaigns(root: &Path, archived: bool, list: &mut CharacterList) -> Resu
     for campaign in campaigns {
         let campaign = campaign?;
         let campaign_id = campaign.file_name().to_string_lossy().into_owned();
-        let files = match fs::read_dir(campaign.path().join(FOLDER)) {
-            Ok(files) => files,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
-            Err(e) => return Err(e.into()),
-        };
-        for file in files {
-            let path = file?.path();
-            if path.extension().is_none_or(|ext| ext != "json") {
-                continue;
-            }
-            let parsed = fs::read_to_string(&path).ok().and_then(|text| serde_json::from_str::<Summary>(&text).ok());
-            match parsed {
-                Some(c) => list.characters.push(CharacterCard { campaign_id: campaign_id.clone(), archived, id: c.id, name: c.name, classes: c.classes }),
-                None => list.unreadable.push(format!("{campaign_id}/{FOLDER}/{}", path.file_name().unwrap_or_default().to_string_lossy())),
-            }
-        }
+        read_folder(&campaign.path().join(FOLDER), Some(&campaign_id), archived, list)?;
     }
     Ok(())
 }
 
-pub fn list(dirs: &Dirs) -> Result<CharacterList, StorageError> {
+pub fn list(places: &Places) -> Result<CharacterList, StorageError> {
     let mut list = CharacterList { characters: vec![], unreadable: vec![] };
-    read_campaigns(&dirs.active, false, &mut list)?;
-    read_campaigns(&dirs.archived, true, &mut list)?;
+    read_campaigns(&places.campaigns.active, false, &mut list)?;
+    read_campaigns(&places.campaigns.archived, true, &mut list)?;
+    read_folder(&places.loose, None, false, &mut list)?;
     list.characters.sort_by_key(|c| c.name.to_lowercase());
     Ok(list)
 }
 
-/// Copies a character (from an active or archived campaign) into another active campaign, under a new id.
-pub fn copy(dirs: &Dirs, from_campaign: &str, id: &str, to_campaign: &str, now: u64) -> Result<CharacterCard, StorageError> {
-    check_id(from_campaign)?;
+/// The characters folder of an active campaign, or the app-wide one for no campaign.
+fn target_folder(places: &Places, campaign: Option<&str>) -> Result<PathBuf, StorageError> {
+    let Some(campaign) = campaign else { return Ok(places.loose.clone()) };
+    check_id(campaign)?;
+    let dir = places.campaigns.active.join(campaign);
+    if !dir.join("campaign.json").exists() {
+        return Err(StorageError::Invalid("Characters can only be added to an active campaign.".into()));
+    }
+    Ok(dir.join(FOLDER))
+}
+
+/// Writes `value` under a fresh id (derived from `now`) into `folder` and returns its card.
+fn write_new(folder: &Path, campaign: Option<&str>, mut value: Value, now: u64) -> Result<CharacterCard, StorageError> {
+    let base = format!("{now:x}");
+    let mut id = base.clone();
+    let mut n = 1;
+    while folder.join(format!("{id}.json")).exists() {
+        n += 1;
+        id = format!("{base}-{n}");
+    }
+    value["id"] = Value::String(id.clone());
+    let summary: Summary = serde_json::from_value(value.clone()).map_err(|e| StorageError::Invalid(format!("The character is incomplete: {e}")))?;
+    write_atomic(&folder.join(format!("{id}.json")), &to_json(&value)?)?;
+    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id, name: summary.name, classes: summary.classes })
+}
+
+/// Saves a new character in an active campaign, or without a campaign. Its id and creation time are set here.
+pub fn create(places: &Places, campaign: Option<&str>, mut character: Value, now: u64) -> Result<CharacterCard, StorageError> {
+    let Some(fields) = character.as_object_mut() else {
+        return Err(StorageError::Invalid("The character is incomplete.".into()));
+    };
+    let name = fields.get("name").and_then(Value::as_str).unwrap_or("").trim().to_string();
+    if name.is_empty() {
+        return Err(StorageError::Invalid("The character needs a name.".into()));
+    }
+    if name.chars().count() > MAX_NAME_LEN {
+        return Err(StorageError::Invalid(format!("Keep the name under {MAX_NAME_LEN} characters.")));
+    }
+    fields.insert("name".into(), Value::String(name));
+    fields.insert("createdAt".into(), Value::from(now));
+    let folder = target_folder(places, campaign)?;
+    write_new(&folder, campaign, character, now)
+}
+
+/// Copies a character (from an active or archived campaign, or from no campaign) into another active campaign, under a new id.
+pub fn copy(places: &Places, from_campaign: Option<&str>, id: &str, to_campaign: &str, now: u64) -> Result<CharacterCard, StorageError> {
     check_id(id)?;
-    check_id(to_campaign)?;
-    if from_campaign == to_campaign {
+    if from_campaign == Some(to_campaign) {
         return Err(StorageError::Invalid("The character is already in that campaign.".into()));
     }
-    let target = dirs.active.join(to_campaign);
-    if !target.join("campaign.json").exists() {
-        return Err(StorageError::Invalid("Characters can only be copied into an active campaign.".into()));
+    let folder = target_folder(places, Some(to_campaign))?;
+    let file = format!("{id}.json");
+    let source = match from_campaign {
+        Some(from) => {
+            check_id(from)?;
+            let dirs = &places.campaigns;
+            [&dirs.active, &dirs.archived].into_iter().map(|root| root.join(from).join(FOLDER).join(&file)).find(|path| path.exists())
+        }
+        None => Some(places.loose.join(&file)).filter(|path| path.exists()),
     }
-    let source = [&dirs.active, &dirs.archived]
-        .into_iter()
-        .map(|root| root.join(from_campaign).join(FOLDER).join(format!("{id}.json")))
-        .find(|path| path.exists())
-        .ok_or_else(|| StorageError::NotFound("That character doesn't exist.".into()))?;
+    .ok_or_else(|| StorageError::NotFound("That character doesn't exist.".into()))?;
     let text = fs::read_to_string(source)?;
-    let mut value: serde_json::Value = serde_json::from_str(&text).map_err(|e| StorageError::Corrupt(e.to_string()))?;
-    let summary: Summary = serde_json::from_value(value.clone()).map_err(|e| StorageError::Corrupt(e.to_string()))?;
+    let value: Value = serde_json::from_str(&text).map_err(|e| StorageError::Corrupt(e.to_string()))?;
+    write_new(&folder, Some(to_campaign), value, now)
+}
 
-    let folder = target.join(FOLDER);
-    let base = format!("{now:x}");
-    let mut new_id = base.clone();
-    let mut n = 1;
-    while folder.join(format!("{new_id}.json")).exists() {
-        n += 1;
-        new_id = format!("{base}-{n}");
-    }
-    value["id"] = serde_json::Value::String(new_id.clone());
-    write_atomic(&folder.join(format!("{new_id}.json")), &to_json(&value)?)?;
-    Ok(CharacterCard { campaign_id: to_campaign.to_string(), archived: false, id: new_id, name: summary.name, classes: summary.classes })
+fn places(app: &AppHandle) -> Result<Places, StorageError> {
+    let data = app.path().app_data_dir().map_err(|e| StorageError::Io(e.to_string()))?;
+    Ok(Places { campaigns: Dirs { active: data.join("campaigns"), archived: data.join("archived-campaigns") }, loose: data.join(FOLDER) })
 }
 
 #[tauri::command]
 pub async fn list_characters(app: AppHandle) -> Result<CharacterList, StorageError> {
-    list(&dirs(&app)?)
+    list(&places(&app)?)
 }
 
 #[tauri::command]
-pub async fn copy_character(app: AppHandle, from_campaign: String, id: String, to_campaign: String) -> Result<CharacterCard, StorageError> {
-    copy(&dirs(&app)?, &from_campaign, &id, &to_campaign, now_ms())
+pub async fn create_character(app: AppHandle, campaign: Option<String>, character: Value) -> Result<CharacterCard, StorageError> {
+    create(&places(&app)?, campaign.as_deref(), character, now_ms())
+}
+
+#[tauri::command]
+pub async fn copy_character(app: AppHandle, from_campaign: Option<String>, id: String, to_campaign: String) -> Result<CharacterCard, StorageError> {
+    copy(&places(&app)?, from_campaign.as_deref(), &id, &to_campaign, now_ms())
 }
 
 #[cfg(test)]
@@ -144,79 +208,118 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn temp_dirs(name: &str) -> Dirs {
+    fn temp_places(name: &str) -> Places {
         let root = std::env::temp_dir().join(format!("dmc-characters-{}-{name}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
-        Dirs { active: root.join("campaigns"), archived: root.join("archived-campaigns") }
+        Places { campaigns: Dirs { active: root.join("campaigns"), archived: root.join("archived-campaigns") }, loose: root.join(FOLDER) }
     }
 
     fn campaign(root: &Path, id: &str) {
         write_atomic(&root.join(id).join("campaign.json"), "{}").unwrap();
     }
 
-    fn character(root: &Path, campaign: &str, id: &str, value: serde_json::Value) {
-        write_atomic(&root.join(campaign).join(FOLDER).join(format!("{id}.json")), &value.to_string()).unwrap();
+    fn character(folder: &Path, id: &str, value: Value) {
+        write_atomic(&folder.join(format!("{id}.json")), &value.to_string()).unwrap();
+    }
+
+    fn read(path: PathBuf) -> Value {
+        serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap()
     }
 
     #[test]
     fn no_folders_means_no_characters() {
-        let list = list(&temp_dirs("none")).unwrap();
+        let list = list(&temp_places("none")).unwrap();
         assert!(list.characters.is_empty() && list.unreadable.is_empty());
     }
 
     #[test]
-    fn lists_active_and_archived_characters_by_name() {
-        let dirs = temp_dirs("list");
-        campaign(&dirs.active, "a");
-        campaign(&dirs.active, "empty");
-        campaign(&dirs.archived, "old");
-        character(&dirs.active, "a", "c1", json!({ "id": "c1", "name": "Thalia", "classes": [
+    fn lists_active_archived_and_campaignless_characters_by_name() {
+        let p = temp_places("list");
+        campaign(&p.campaigns.active, "a");
+        campaign(&p.campaigns.active, "empty");
+        campaign(&p.campaigns.archived, "old");
+        character(&p.campaigns.active.join("a").join(FOLDER), "c1", json!({ "id": "c1", "name": "Thalia", "classes": [
             { "name": "Fighter", "source": "XPHB", "level": 3, "subclass": { "name": "Champion", "shortName": "Champion", "source": "XPHB" } },
             { "name": "Wizard", "source": "XPHB", "level": 2 } ] }));
-        character(&dirs.archived, "old", "c2", json!({ "id": "c2", "name": "brom" }));
-        let list = list(&dirs).unwrap();
-        let rows: Vec<_> = list.characters.iter().map(|c| (c.name.as_str(), c.campaign_id.as_str(), c.archived)).collect();
-        assert_eq!(rows, [("brom", "old", true), ("Thalia", "a", false)]);
-        assert_eq!(list.characters[1].classes.len(), 2);
-        assert_eq!(list.characters[1].classes[0].subclass.as_ref().unwrap().short_name, "Champion");
+        character(&p.campaigns.archived.join("old").join(FOLDER), "c2", json!({ "id": "c2", "name": "brom" }));
+        character(&p.loose, "c3", json!({ "id": "c3", "name": "Mira" }));
+        let list = list(&p).unwrap();
+        let rows: Vec<_> = list.characters.iter().map(|c| (c.name.as_str(), c.campaign_id.as_deref(), c.archived)).collect();
+        assert_eq!(rows, [("brom", Some("old"), true), ("Mira", None, false), ("Thalia", Some("a"), false)]);
+        assert_eq!(list.characters[2].classes.len(), 2);
+        assert_eq!(list.characters[2].classes[0].subclass.as_ref().unwrap().short_name, "Champion");
     }
 
     #[test]
     fn unreadable_files_are_reported_and_left_alone() {
-        let dirs = temp_dirs("unreadable");
-        campaign(&dirs.active, "a");
-        write_atomic(&dirs.active.join("a").join(FOLDER).join("bad.json"), "{ not json").unwrap();
-        let list = list(&dirs).unwrap();
-        assert_eq!(list.unreadable, ["a/characters/bad.json"]);
-        assert!(dirs.active.join("a").join(FOLDER).join("bad.json").exists());
+        let p = temp_places("unreadable");
+        campaign(&p.campaigns.active, "a");
+        write_atomic(&p.campaigns.active.join("a").join(FOLDER).join("bad.json"), "{ not json").unwrap();
+        write_atomic(&p.loose.join("worse.json"), "[]").unwrap();
+        let list = list(&p).unwrap();
+        assert_eq!(list.unreadable, ["a/characters/bad.json", "characters/worse.json"]);
+        assert!(p.campaigns.active.join("a").join(FOLDER).join("bad.json").exists());
+    }
+
+    #[test]
+    fn create_saves_in_a_campaign_or_without_one() {
+        let p = temp_places("create");
+        campaign(&p.campaigns.active, "a");
+        let thalia = json!({ "name": "  Thalia ", "player": "Sam", "classes": [{ "name": "Fighter", "source": "XPHB", "level": 1 }] });
+        let card = create(&p, Some("a"), thalia, 255).unwrap();
+        assert_eq!((card.id.as_str(), card.campaign_id.as_deref(), card.name.as_str()), ("ff", Some("a"), "Thalia"));
+        let saved = read(p.campaigns.active.join("a").join(FOLDER).join("ff.json"));
+        assert_eq!((saved["id"].as_str(), saved["player"].as_str(), saved["createdAt"].as_u64()), (Some("ff"), Some("Sam"), Some(255)));
+
+        let loose = create(&p, None, json!({ "name": "Mira" }), 255).unwrap();
+        assert_eq!(loose.campaign_id, None);
+        assert!(p.loose.join("ff.json").exists());
+        assert_eq!(create(&p, None, json!({ "name": "Mira" }), 255).unwrap().id, "ff-2");
+    }
+
+    #[test]
+    fn create_checks_the_name_campaign_and_shape() {
+        let p = temp_places("create-bad");
+        campaign(&p.campaigns.archived, "old");
+        assert!(matches!(create(&p, None, json!({ "name": " " }), 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(create(&p, None, json!({ "name": "x".repeat(101) }), 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(create(&p, None, json!(["Thalia"]), 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(create(&p, None, json!({ "name": "T", "classes": "Fighter" }), 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(create(&p, Some("old"), json!({ "name": "T" }), 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(create(&p, Some("../x"), json!({ "name": "T" }), 1), Err(StorageError::Invalid(_))));
+        assert!(!p.loose.exists());
     }
 
     #[test]
     fn copy_gets_a_new_id_and_keeps_everything_else() {
-        let dirs = temp_dirs("copy");
-        campaign(&dirs.archived, "old");
-        campaign(&dirs.active, "new");
-        character(&dirs.archived, "old", "c1", json!({ "id": "c1", "name": "Thalia", "notes": "keep me" }));
-        let copied = copy(&dirs, "old", "c1", "new", 255).unwrap();
-        assert_eq!((copied.id.as_str(), copied.campaign_id.as_str()), ("ff", "new"));
-        let text = fs::read_to_string(dirs.active.join("new").join(FOLDER).join("ff.json")).unwrap();
-        let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let p = temp_places("copy");
+        campaign(&p.campaigns.archived, "old");
+        campaign(&p.campaigns.active, "new");
+        character(&p.campaigns.archived.join("old").join(FOLDER), "c1", json!({ "id": "c1", "name": "Thalia", "notes": "keep me" }));
+        let copied = copy(&p, Some("old"), "c1", "new", 255).unwrap();
+        assert_eq!((copied.id.as_str(), copied.campaign_id.as_deref()), ("ff", Some("new")));
+        let value = read(p.campaigns.active.join("new").join(FOLDER).join("ff.json"));
         assert_eq!((value["id"].as_str(), value["notes"].as_str()), (Some("ff"), Some("keep me")));
-        assert!(dirs.archived.join("old").join(FOLDER).join("c1.json").exists());
-        assert_eq!(copy(&dirs, "old", "c1", "new", 255).unwrap().id, "ff-2");
+        assert!(p.campaigns.archived.join("old").join(FOLDER).join("c1.json").exists());
+        assert_eq!(copy(&p, Some("old"), "c1", "new", 255).unwrap().id, "ff-2");
+
+        character(&p.loose, "m", json!({ "id": "m", "name": "Mira" }));
+        assert_eq!(copy(&p, None, "m", "new", 16).unwrap().id, "10");
+        assert!(p.loose.join("m.json").exists());
     }
 
     #[test]
     fn copy_refuses_bad_targets_and_path_tricks() {
-        let dirs = temp_dirs("refuse");
-        campaign(&dirs.active, "a");
-        campaign(&dirs.active, "b");
-        campaign(&dirs.archived, "old");
-        character(&dirs.active, "a", "c1", json!({ "id": "c1", "name": "Thalia" }));
-        assert!(matches!(copy(&dirs, "a", "c1", "a", 1), Err(StorageError::Invalid(_))));
-        assert!(matches!(copy(&dirs, "a", "c1", "old", 1), Err(StorageError::Invalid(_))));
-        assert!(matches!(copy(&dirs, "a", "missing", "b", 1), Err(StorageError::NotFound(_))));
-        assert!(matches!(copy(&dirs, "a", "../c1", "b", 1), Err(StorageError::Invalid(_))));
-        assert!(matches!(copy(&dirs, "..", "c1", "b", 1), Err(StorageError::Invalid(_))));
+        let p = temp_places("refuse");
+        campaign(&p.campaigns.active, "a");
+        campaign(&p.campaigns.active, "b");
+        campaign(&p.campaigns.archived, "old");
+        character(&p.campaigns.active.join("a").join(FOLDER), "c1", json!({ "id": "c1", "name": "Thalia" }));
+        assert!(matches!(copy(&p, Some("a"), "c1", "a", 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(copy(&p, Some("a"), "c1", "old", 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(copy(&p, Some("a"), "missing", "b", 1), Err(StorageError::NotFound(_))));
+        assert!(matches!(copy(&p, None, "c1", "b", 1), Err(StorageError::NotFound(_))));
+        assert!(matches!(copy(&p, Some("a"), "../c1", "b", 1), Err(StorageError::Invalid(_))));
+        assert!(matches!(copy(&p, Some(".."), "c1", "b", 1), Err(StorageError::Invalid(_))));
     }
 }

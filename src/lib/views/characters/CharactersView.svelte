@@ -7,6 +7,7 @@
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { strings } from "$lib/strings";
   import { avatarCandidates, classLine, totalLevel } from "./format";
+  import { created } from "./create/draft.svelte";
 
   const t = strings.characters;
   const formatNumber = new Intl.NumberFormat();
@@ -28,6 +29,8 @@
   }
 
   onMount(() => {
+    if (created.name) status = t.created(created.name);
+    created.name = null;
     refreshCampaigns();
     load();
   });
@@ -61,10 +64,7 @@
   <main>
     <div class="heading">
       <h1>{t.title}</h1>
-      <div class="create">
-        <button class="btn btn-primary" disabled>{t.create}</button>
-        <span class="soon">{strings.comingSoon}</span>
-      </div>
+      <a class="btn btn-primary create" href="/characters/new">{t.create}</a>
     </div>
 
     <p class="note" role="status">{status ?? ""}</p>
@@ -90,7 +90,7 @@
                 <p>{character.classes.length ? classLine(character.classes) : t.noClass}</p>
                 {#if character.classes.length}<p class="muted">{t.level(formatNumber.format(totalLevel(character.classes)))}</p>{/if}
                 <p class="campaign">
-                  <span>{campaignNames.get(character.campaignId) ?? t.unknownCampaign}</span>
+                  <span>{character.campaignId === null ? t.noCampaign : (campaignNames.get(character.campaignId) ?? t.unknownCampaign)}</span>
                   {#if character.archived}<span class="tag">{t.archived}</span>{/if}
                 </p>
               </div>
@@ -165,9 +165,7 @@
   }
 
   .create {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+    text-decoration: none;
   }
 
   .grid {

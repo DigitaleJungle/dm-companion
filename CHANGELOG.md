@@ -3,6 +3,16 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.1] - 2026-10-20
+
+### Added
+
+- Create character: a seven-step wizard (basic info, species, class, background, abilities, skills, review) that builds a level 1 character from the imported rules data. A campaign limits the choices to its sourcebooks; "No campaign" offers every book.
+- Abilities by standard array, manual entry or rolling 4d6 (drop lowest), with background and species bonuses.
+- Skill choices from the class, background and species, with the granted skills already ticked.
+- Characters without a campaign, stored app-wide and copyable into a campaign.
+- A dice roller in the backend for dice notation like 4d6kh3 or 2d20kh1+4.
+
 ## [0.4.0] - 2026-10-20
 
 ### Added

@@ -2,7 +2,7 @@
 
 A desktop app for a Dungeon Master running in-person D&D sessions. It covers searching rules, monsters, spells and lore, running encounters, storing player characters, and reading the DM's LegendKeeper world. It drives a second, player-facing window on a TV or second monitor.
 
-**Current version:** 0.4.0
+**Current version:** 0.4.1
 
 ## Status
 
@@ -13,10 +13,10 @@ Early development. What works so far:
 - **Settings:** Theme (System, Light or Dark, and animations on or off), Campaigns (add, rename, archive, restore, and permanently delete archived campaigns) and Rules data.
 - **Rules data:** import 5etools-format data (and optionally images) from `.tar.gz` files you provide, check for newer versions, and remove the books you don't use. DM Companion doesn't include or download any rules content.
 - **Campaign settings:** rename, archive, restore, delete and choose sourcebooks per campaign (with a search filter); the campaign library shows only those books.
-- **Characters:** an overview of every character across campaigns as cards (avatar, name, class and subclass, level, campaign), with copy to another campaign. Creating characters comes next.
+- **Characters:** an overview of every character as cards (avatar, name, class and subclass, level, campaign), with copy to another campaign, and a seven-step Create character wizard for level 1 characters (species, class, background, ability scores by array, manual entry or 4d6 rolls, and skills). Characters can also exist without a campaign.
 - **Library:** read the imported books chapter by chapter, with a table of contents, images and preview cards for references, and browse spells, creatures, items and more in the Catalog: sortable tables with per-category filters and a book filter.
 
-Next up: creating characters, then search over the imported data. Encounters, the character sheet, notes, LegendKeeper and the player display are marked "Coming soon" until they're built.
+Next up: the character sheet, then search over the imported data. Encounters, the character sheet, notes, LegendKeeper and the player display are marked "Coming soon" until they're built.
 
 Screens, in build order:
 

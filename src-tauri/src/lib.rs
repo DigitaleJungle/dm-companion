@@ -1,4 +1,5 @@
 mod commands;
+mod dice;
 mod rules;
 mod storage;
 mod window_state;
@@ -42,6 +43,8 @@ pub fn run() {
             commands::campaigns::delete_campaign,
             commands::characters::list_characters,
             commands::characters::copy_character,
+            commands::characters::create_character,
+            commands::dice::roll_dice,
             commands::home_layout::get_home_cards,
             commands::home_layout::set_home_cards,
             commands::settings::get_settings,

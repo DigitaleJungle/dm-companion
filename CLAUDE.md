@@ -53,7 +53,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - **LegendKeeper is read-only.** Never write to it. Credentials or tokens go in the OS keychain, never in plain files or logs.
 - **The ruleset is not hard-coded.** Rules data, monster stats and encounter difficulty thresholds come from data files and the campaign's ruleset setting.
 - **Dice:** all rolls go through one Rust dice parser (e.g. `2d20kh1+4`), with tests for its notation.
-- **Data is local and per campaign:** characters, encounters, notes, pins and settings. Never lose data on a crash. Write atomically, and only after a valid parse.
+- **Data is local and per campaign:** characters, encounters, notes, pins and settings. The one exception: a character without a campaign is stored app-wide. Never lose data on a crash. Write atomically, and only after a valid parse.
 - **Search must feel instant while typing.** Index in Rust, and never search on the UI thread.
 
 ## Code principles

@@ -143,11 +143,19 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 ### 04 · Characters
 - **Characters overview** (no wireframe), opened from the Start screen's **Characters** button. It replaces the screen; **Back** returns to the Start screen.
-  - Every character from every campaign (active and archived) as a card, sorted by name. A character belongs to exactly one campaign; it is stored in that campaign's folder.
+  - Every character from every campaign (active and archived), and those without a campaign, as a card sorted by name. A character belongs to at most one campaign and is stored in that campaign's folder; one without a campaign is stored app-wide and its card says "No campaign".
   - A card shows the avatar, name, class with subclass ("Fighter (Champion)", or "Fighter 3 (Champion) / Wizard 2" when multiclassed), total level, and the campaign (tagged "Archived" when it is).
   - Avatar: the character's own picture once Create character exists; until then, and when none was added, the imported art for the subclass, else the class, else a neutral person icon.
   - The card's "…" menu copies the character into another active campaign (as a new, separate character).
-  - **Create character** is a placeholder for now ("Coming soon").
+- **Create character** (no wireframe): a seven-step wizard opened from the overview. A stepper shows the steps; Next is enabled once the step is complete, steps already reached can be revisited, and changing an earlier choice clears the choices that depend on it. Leaving with unsaved input asks first ("Discard this character?").
+  1. **Basic info**: name (required, at most 100 characters), player (optional) and campaign. A campaign limits steps 2–4 to its sourcebooks; "No campaign" offers every imported book.
+  2. **Species**: a filterable list with each entry's book, and the full entry next to it. Lineage (2024 versions), subspecies (older books) and size are asked for when the species has them.
+  3. **Class** and 4. **Background**: the same list and entry view. Sidekick classes aren't offered.
+  5. **Abilities**: Standard array (15, 14, 13, 12, 10, 8), Manual (3–18) or Roll (4d6, drop the lowest, six times, through the dice parser; the dropped die is shown struck through). Array and rolled values are assigned one per ability. Then the bonuses: from the background (2024: +2/+1 or +1/+1/+1 among its abilities) and from the species (older books), each bonus to a different ability; scores can't go above 20.
+  6. **Skills**: skills from the background and species are already ticked; then the class's choice and any species or background choice. A skill can't be picked twice.
+  7. **Review**: every choice, plus modifiers, saving throws, proficiency bonus, level 1 hit points, skill bonuses, passive Perception and the background's feat. **Create character** saves it and returns to the overview ("Created <name>.").
+  - Characters start at level 1. Equipment, spells, languages, tools, feat choices, subclass, avatar and alignment come later.
+  - States: no rules data imported, a campaign without sourcebooks (with a Choose sourcebooks button), empty filter results, and save errors.
   - States: loading, "No characters yet.", a load error with Retry, and a warning listing character files that couldn't be read (left untouched).
 - **Character list**
   - New character, Import… and a filter.
@@ -192,7 +200,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - LegendKeeper pages show the encounters linked to them.
 - **Pins**: anything can be pinned to the current session.
 - **Keyboard**: no global shortcuts for search or for switching screens. Space advances to the next turn.
-- **Storage**: characters, encounters, notes and settings are stored locally, per campaign.
+- **Storage**: characters, encounters, notes and settings are stored locally, per campaign. A character without a campaign is stored app-wide.
 - **Window size**: the main window opens at the size it had when it was last closed (and maximized if it was), fitted to the current screen. It appears only once it is ready, so the resize is never visible.
 
 ## Open questions before building
