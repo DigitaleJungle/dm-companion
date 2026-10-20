@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.5] - 2026-10-20
+
+### Changed
+
+- Development runs (`npm run app`) keep their own data folder, separate from the installed app, and the window title says "(dev)". A debug build without the dev config refuses to start.
+
 ## [0.3.4] - 2026-10-20
 
 ### Added

@@ -2,7 +2,7 @@
 
 A desktop app for a Dungeon Master running in-person D&D sessions. It covers searching rules, monsters, spells and lore, running encounters, storing player characters, and reading the DM's LegendKeeper world. It drives a second, player-facing window on a TV or second monitor.
 
-**Current version:** 0.3.4
+**Current version:** 0.3.5
 
 ## Status
 
@@ -35,7 +35,7 @@ Requires Node.js, npm and Rust ([Tauri prerequisites](https://tauri.app/start/pr
 
 ```sh
 npm install          # also turns on the pre-commit hook
-npm run tauri dev    # run the app
+npm run app          # run the app in dev (own data folder, title says "(dev)")
 npm run verify       # type check, tests, clippy, cargo test
 ```
 

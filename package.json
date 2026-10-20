@@ -1,6 +1,6 @@
 {
   "name": "dm-companion",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
+    "app": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "test": "vitest run --passWithNoTests",
     "verify": "npm run check && npm test && cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml"
   },

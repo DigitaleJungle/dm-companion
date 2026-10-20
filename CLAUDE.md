@@ -21,7 +21,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Package manager: npm
 
 ## Commands
-- Dev: `npm run tauri dev`
+- Dev: `npm run app` (dev identifier `be.digitalejungle.dmcompanion.dev`, so dev has its own data folder; a debug build without it refuses to start)
 - Build: `npm run tauri build`
 - Type check: `npm run check`
 - Frontend tests: `npm test` (Vitest). One file: `npx vitest run src/path/to/file.test.ts`. By test name: add `-t "name"`.

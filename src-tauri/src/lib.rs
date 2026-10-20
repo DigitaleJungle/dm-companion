@@ -11,6 +11,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // Dev keeps its own data folder; a debug build on the prod identifier would use real data.
+            if cfg!(debug_assertions) && !app.config().identifier.ends_with(".dev") {
+                return Err("Debug builds must run with the dev config: npm run app".into());
+            }
             if let Some(main) = app.get_webview_window("main") {
                 window_state::restore(&main.as_ref().window());
             }

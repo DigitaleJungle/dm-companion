@@ -1,0 +1,17 @@
+{
+  "identifier": "be.digitalejungle.dmcompanion.dev",
+  "productName": "DM Companion (dev)",
+  "app": {
+    "windows": [
+      {
+        "title": "DM Companion (dev)",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 600,
+        "dragDropEnabled": false,
+        "visible": false
+      }
+    ]
+  }
+}

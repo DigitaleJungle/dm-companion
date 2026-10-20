@@ -177,6 +177,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 ## Cross-cutting behaviour
 
+- **Dev and installed app**: the development build keeps its own data folder, separate from the installed app, and its window title says "(dev)".
 - **Linking**
   - Encounters link to LegendKeeper pages.
   - Search results show the lore pages that mention them.
