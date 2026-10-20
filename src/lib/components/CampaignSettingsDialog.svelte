@@ -28,6 +28,12 @@
     (rules.status?.library?.sources ?? []).filter((s) => s.isBook || s.entities > 0).sort((a, b) => a.name.localeCompare(b.name)),
   );
   const chosen = $derived(new Set((campaign?.sources ?? []).map((s) => s.toLowerCase())));
+  let filter = $state("");
+  const visible = $derived.by(() => {
+    const needle = filter.trim().toLowerCase();
+    return needle ? books.filter((b) => b.name.toLowerCase().includes(needle) || b.id.toLowerCase().includes(needle)) : books;
+  });
+  const visibleChosen = $derived(visible.filter((b) => chosen.has(b.id.toLowerCase())).length);
 
   let renaming = $state(false);
   let newName = $state("");
@@ -40,6 +46,7 @@
     if (open && !dialog?.open) {
       renaming = false;
       confirmingDelete = false;
+      filter = "";
       error = null;
       if (!campaigns.list) refreshCampaigns();
       if (!rules.status) refreshRules();
@@ -163,11 +170,27 @@
         {:else}
           {#if archived}<p class="muted">{t.archivedNote}</p>{/if}
           <div class="row">
-            <button class="btn small" disabled={busy || archived || chosen.size >= books.length} onclick={() => setSources(books.map((b) => b.id))}>{t.selectAll}</button>
-            <button class="btn small" disabled={busy || archived || chosen.size === 0} onclick={() => setSources([])}>{t.deselectAll}</button>
+            <label for="campaign-books-filter" class="sr-only">{strings.settings.rules.filterLabel}</label>
+            <input id="campaign-books-filter" class="filter" type="search" bind:value={filter} placeholder={strings.settings.rules.filterPlaceholder} autocomplete="off" />
+            <!-- Select/deselect act on the books the filter shows. -->
+            <button
+              class="btn small"
+              disabled={busy || archived || visibleChosen === visible.length}
+              onclick={() => setSources([...(campaign?.sources ?? []), ...visible.filter((b) => !chosen.has(b.id.toLowerCase())).map((b) => b.id)])}
+            >
+              {t.selectAll}
+            </button>
+            <button
+              class="btn small"
+              disabled={busy || archived || visibleChosen === 0}
+              onclick={() => setSources((campaign?.sources ?? []).filter((s) => !visible.some((b) => b.id.toLowerCase() === s.toLowerCase())))}
+            >
+              {t.deselectAll}
+            </button>
           </div>
-          <ul class="books">
-            {#each books as book (book.id)}
+          {#if visible.length === 0}<p class="muted">{strings.settings.rules.noMatches}</p>{/if}
+          <ul class="books" hidden={visible.length === 0}>
+            {#each visible as book (book.id)}
               <li>
                 <label class="book">
                   <input
@@ -313,6 +336,25 @@
     color: var(--color-text-muted);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
+  }
+
+  .filter {
+    flex: 1;
+    min-width: 0;
+    min-height: var(--control-height-sm);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+
+  .filter::placeholder {
+    color: var(--color-text-placeholder);
+  }
+
+  .books[hidden] {
+    display: none;
   }
 
   .books {

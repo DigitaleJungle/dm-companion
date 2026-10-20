@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.4] - 2026-10-20
+
+### Added
+
+- Campaign settings: a search field above the sourcebooks filters them by name or abbreviation; Select all and Deselect all act on the books shown.
+
 ## [0.3.3] - 2026-10-20
 ### Added
 - Campaign settings, opened from a cog next to the campaign switcher or from a campaign's cog in Settings → Campaigns: rename inline, archive or restore, choose the campaign's sourcebooks, and delete it permanently (archived or not).

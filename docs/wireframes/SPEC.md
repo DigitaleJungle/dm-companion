@@ -42,7 +42,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - A dialog for one campaign, opened from the cog next to the sidebar's campaign switcher or from a campaign's cog in Settings → Campaigns. One scrolling page:
   - **Name**: shown at the top; **Rename** edits it inline (Enter saves, Escape cancels; same name rules as creating).
   - **Status**: Active with **Archive**, or Archived with **Restore**. Archiving the open campaign returns to the Start screen.
-  - **Sourcebooks**: checkboxes for every imported book, Select all / Deselect all and a selected/total count; changes save immediately. New campaigns start with **no** sourcebooks. An archived campaign's books can't be changed until it's restored.
+  - **Sourcebooks**: checkboxes for every imported book, a search field that filters them by name or abbreviation, Select all / Deselect all (acting on the books shown) and a selected/total count; changes save immediately. New campaigns start with **no** sourcebooks. An archived campaign's books can't be changed until it's restored.
   - **Delete permanently**: for active and archived campaigns alike, after a "This can't be undone" confirmation. Deleting the open campaign returns to the Start screen.
 
 ## Campaign library
