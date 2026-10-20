@@ -2,6 +2,7 @@ import type { CatalogRow } from "$lib/api/rules";
 import type { Roll } from "$lib/api/dice";
 import {
   ABILITIES,
+  SCORE_CAP,
   STANDARD_ARRAY,
   assignedScores,
   bonusComplete,
@@ -31,7 +32,7 @@ export type Method = "standard" | "manual" | "roll";
 export type Options = { species: CatalogRow[]; subspecies: CatalogRow[]; classes: CatalogRow[]; backgrounds: CatalogRow[]; skills: CatalogRow[] };
 
 export const OPTION_KEYS = {
-  species: ["size", "_versions", "skillProficiencies", "ability", "lineage"],
+  species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "entries"],
   subspecies: ["raceName", "raceSource", "skillProficiencies", "ability"],
   class: ["startingProficiencies", "proficiency", "hd", "isSidekick"],
   background: ["skillProficiencies", "ability", "feats"],
@@ -71,9 +72,6 @@ export const draft = $state(blank());
 export function resetDraft() {
   Object.assign(draft, blank());
 }
-
-/** Set once a character is saved, so the overview can say so. */
-export const created = $state({ name: null as string | null });
 
 // --- Changes that clear what depends on them ------------------------------------------------
 
@@ -185,6 +183,16 @@ export const rolledValues = (): number[] => draft.rolls.map((r) => r.total);
 export function baseScores(): Scores | null {
   if (draft.method === "manual") return { ...draft.manual };
   return assignedScores(draft.method === "standard" ? STANDARD_ARRAY : rolledValues(), draft.assignment);
+}
+
+/** One ability's score with its bonuses so far, as soon as it has a base value; null before. */
+export function abilityTotal(ability: Ability): number | null {
+  const values = draft.method === "standard" ? STANDARD_ARRAY : rolledValues();
+  const index = draft.assignment[ability];
+  const base = draft.method === "manual" ? draft.manual[ability] : index === null ? null : (values[index] ?? null);
+  if (base === null) return null;
+  const bonus = (bonusTotals(speciesBonuses(), draft.speciesPick)[ability] ?? 0) + (bonusTotals(backgroundBonuses(), draft.backgroundPick)[ability] ?? 0);
+  return Math.min(SCORE_CAP, base + bonus);
 }
 
 export function scores(): Scores | null {

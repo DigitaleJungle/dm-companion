@@ -86,18 +86,78 @@
   .options {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--menu-min-width)), 1fr));
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-2);
   }
 
   .check {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--space-2);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
     cursor: pointer;
+    user-select: none;
+  }
+
+  .check:hover:not(.taken) {
+    background: var(--color-surface-sunken);
+  }
+
+  .check:has(input:checked) {
+    border-color: var(--color-link);
+    background: var(--color-accent-soft);
+    color: var(--color-link);
+    font-weight: var(--weight-semibold);
+  }
+
+  .check:has(input:focus-visible) {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
+  }
+
+  .check:has(input:disabled) {
+    cursor: default;
   }
 
   .check.taken {
+    border-style: dashed;
     color: var(--color-text-muted);
+  }
+
+  .check input {
+    appearance: none;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--space-4);
+    height: var(--space-4);
+    margin: 0;
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: 50%;
+    background: var(--color-surface);
+    cursor: inherit;
+  }
+
+  .check input:focus-visible {
+    outline: none;
+  }
+
+  .check input:checked {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+
+  .check input:checked::after {
+    content: "";
+    width: 30%;
+    height: 55%;
+    margin-top: -12%;
+    border: solid var(--color-accent-text);
+    border-width: 0 calc(2 * var(--border-width)) calc(2 * var(--border-width)) 0;
+    transform: rotate(45deg);
   }
 
   .muted {

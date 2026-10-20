@@ -358,6 +358,7 @@ export const strings = {
     wizard: {
       title: "Create character",
       cancel: "Cancel",
+      close: "Close",
       steps: { basics: "Basic info", species: "Species", class: "Class", background: "Background", abilities: "Abilities", skills: "Skills", review: "Review" },
       stepsLabel: "Steps",
       stepOf: (n: string, total: string) => `Step ${n} of ${total}`,
@@ -378,10 +379,11 @@ export const strings = {
       basics: {
         name: "Name",
         player: "Player",
-        playerHint: "Optional",
+        required: "required",
         campaign: "Campaign",
         noCampaign: "No campaign (every book)",
-        campaignHint: "The next steps only offer this campaign's sourcebooks.",
+        campaignInfoLabel: "About the campaign choice",
+        campaignInfo: "The rules offered in the next steps follow this campaign's sourcebooks.",
       },
       pick: {
         filter: (kind: string) => `Filter ${kind}`,
@@ -417,6 +419,9 @@ export const strings = {
         bonus: "Bonus",
         total: "Total",
         modifier: "Modifier",
+        save: (bonus: string) => `Save ${bonus}`,
+        proficientSave: "proficient",
+        bonusFrom: (bonus: string, from: string) => `${bonus} ${from}`,
         cap: (cap: number) => `Scores can't go above ${cap}.`,
       },
       skills: {

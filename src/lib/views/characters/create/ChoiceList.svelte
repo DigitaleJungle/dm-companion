@@ -12,8 +12,19 @@
     rows,
     selected,
     onselect,
-    children,
-  }: { id: string; label: string; rows: CatalogRow[]; selected: CatalogRow | null; onselect: (row: CatalogRow) => void; children?: Snippet } = $props();
+    lead,
+    choices = {},
+  }: {
+    id: string;
+    label: string;
+    rows: CatalogRow[];
+    selected: CatalogRow | null;
+    onselect: (row: CatalogRow) => void;
+    /** Choices shown under the entry title. */
+    lead?: Snippet;
+    /** Choices shown under the entry with that (lowercase) name. */
+    choices?: Record<string, Snippet>;
+  } = $props();
 
   const t = strings.characters.wizard.pick;
   let filter = $state("");
@@ -58,11 +69,10 @@
 
   <div class="details">
     {#if selected}
-      {#if children}<div class="extra">{@render children()}</div>{/if}
       {#if entityError}
         <p class="error" role="alert">{entityError}</p>
       {:else if entity}
-        <EntityView {entity} />
+        <EntityView {entity} compact {lead} {choices} />
       {:else}
         <p class="muted" role="status">{t.loadingEntry}</p>
       {/if}
@@ -149,19 +159,22 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
+    gap: var(--space-3);
+    padding: var(--space-4);
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
   }
 
-  .extra {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    padding-bottom: var(--space-4);
-    border-bottom: var(--border-width) solid var(--color-border);
+  /* Keep the entry text tight: it sits next to a list, not on its own page. */
+  .details :global(.heading) {
+    margin: var(--space-4) 0 var(--space-1);
+    font-size: var(--text-md);
+  }
+
+  .details :global(p),
+  .details :global(ul) {
+    margin-bottom: var(--space-2);
   }
 
   .muted {

@@ -3,6 +3,17 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.2] - 2026-10-20
+
+### Changed
+
+- Create character opens as a modal over the Characters overview instead of its own page; closing with unsaved input asks first.
+- Back and Next sit at the top right of every step; required fields are marked with *; the campaign explanation is an (i) tip.
+- Species: a more compact entry, with the lineage select placed under the trait it changes and size or subspecies under the title.
+- Abilities: the method is a dropdown, and the six abilities are cards in one row showing the score, bonus, modifier and saving throw as soon as a value is set.
+- Skills are modern toggle chips.
+- Review names the species by its chosen version, e.g. "Dragonborn (Black)".
+
 ## [0.4.1] - 2026-10-20
 
 ### Added

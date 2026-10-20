@@ -13,12 +13,13 @@
     bonusTotals,
     emptyAssignment,
     emptyPick,
-    modifier,
+    proficiencyBonus,
     type Ability,
     type BonusOption,
     type BonusPick,
   } from "$lib/characters/rules";
-  import { backgroundBonuses, baseScores, chooseMethod, draft, rolledValues, scores, speciesBonuses, type Method } from "./draft.svelte";
+  import AbilityCards from "./AbilityCards.svelte";
+  import { abilityTotal, backgroundBonuses, chooseMethod, draft, rolledValues, savingThrows, speciesBonuses, type Method } from "./draft.svelte";
 
   const t = strings.characters.wizard.abilities;
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
@@ -30,21 +31,26 @@
   let rollError = $state<string | null>(null);
 
   const values = $derived(draft.method === "standard" ? STANDARD_ARRAY : rolledValues());
-  const base = $derived(baseScores());
-  const total = $derived(scores());
   const speciesOptions = $derived(speciesBonuses());
   const backgroundOptions = $derived(backgroundBonuses());
-  const bonus = $derived.by(() => {
-    const s = bonusTotals(speciesOptions, draft.speciesPick);
-    const b = bonusTotals(backgroundOptions, draft.backgroundPick);
-    return Object.fromEntries(ABILITIES.map((a) => [a, (s[a] ?? 0) + (b[a] ?? 0)])) as Record<Ability, number>;
-  });
+  const totals = $derived(Object.fromEntries(ABILITIES.map((a) => [a, abilityTotal(a)])) as Record<Ability, number | null>);
+  const saves = $derived(new Set(savingThrows()));
   const sections = $derived(
     [
       { key: "species" as const, from: draft.species?.name ?? "", options: speciesOptions },
       { key: "background" as const, from: draft.background?.name ?? "", options: backgroundOptions },
     ].filter((s) => s.options.length > 0),
   );
+  /** "+2 Acolyte, +1 Elf" per ability. */
+  const bonusLines = $derived.by(() => {
+    const parts = [
+      { from: draft.background?.name ?? "", totals: bonusTotals(backgroundOptions, draft.backgroundPick) },
+      { from: draft.species?.name ?? "", totals: bonusTotals(speciesOptions, draft.speciesPick) },
+    ];
+    return Object.fromEntries(
+      ABILITIES.map((a) => [a, parts.flatMap((p) => (p.totals[a] ? [t.bonusFrom(signed.format(p.totals[a]!), p.from)] : [])).join(", ")]),
+    ) as Record<Ability, string>;
+  });
 
   async function roll() {
     rolling = true;
@@ -74,10 +80,6 @@
     else draft.backgroundPick = pick;
   }
 
-  function chooseOption(key: "species" | "background", options: BonusOption[], index: number) {
-    setPick(key, emptyPick(options[index], index));
-  }
-
   function pickAbility(key: "species" | "background", choice: number, slot: number, value: string) {
     const pick = pickFor(key);
     pick.picks[choice] ??= [];
@@ -96,129 +98,137 @@
   };
 </script>
 
-<fieldset class="methods">
-  <legend class="label">{t.method}</legend>
-  {#each METHODS as method (method)}
-    <label class="radio">
-      <input type="radio" name="ability-method" checked={draft.method === method} onchange={() => chooseMethod(method)} />
-      {t.methods[method]}
-    </label>
-  {/each}
-</fieldset>
+<div class="method">
+  <label class="field">
+    <span class="label-text">{t.method}</span>
+    <select value={draft.method} onchange={(e) => chooseMethod(e.currentTarget.value as Method)}>
+      {#each METHODS as method (method)}<option value={method}>{t.methods[method]}</option>{/each}
+    </select>
+  </label>
+  {#if draft.method === "roll"}
+    <button class="btn" onclick={roll} disabled={rolling}>{rolling ? t.rolling : draft.rolls.length ? t.reroll : t.roll}</button>
+  {:else if draft.method === "standard"}
+    <p class="muted">{t.values(list.format(STANDARD_ARRAY.map((v) => plain.format(v))))}</p>
+  {:else}
+    <p class="muted">{t.manualRange(MANUAL_MIN, MANUAL_MAX)}</p>
+  {/if}
+</div>
 
 {#if draft.method === "roll"}
-  <div class="rolls">
-    <button class="btn" onclick={roll} disabled={rolling}>{rolling ? t.rolling : draft.rolls.length ? t.reroll : t.roll}</button>
-    {#if rollError}<p class="error" role="alert">{rollError}</p>{/if}
-    {#if draft.rolls.length}
-      <ol class="roll-list">
-        {#each draft.rolls as r, i (i)}
-          <li>
-            <span class="muted">{t.rolled(i + 1)}</span>
-            <span class="dice">
-              {#each r.dice as die, j (j)}
-                <span class="die" class:dropped={!die.kept}>{plain.format(die.value)}{#if !die.kept}<span class="sr-only"> ({t.dropped})</span>{/if}</span>
-              {/each}
-            </span>
-            <strong>{plain.format(r.total)}</strong>
-          </li>
-        {/each}
-      </ol>
-    {/if}
-  </div>
-{:else if draft.method === "standard"}
-  <p class="muted">{t.values(list.format(STANDARD_ARRAY.map((v) => plain.format(v))))}</p>
-{:else}
-  <p class="muted">{t.manualRange(MANUAL_MIN, MANUAL_MAX)}</p>
+  {#if rollError}<p class="error" role="alert">{rollError}</p>{/if}
+  {#if draft.rolls.length}
+    <ol class="roll-list">
+      {#each draft.rolls as r, i (i)}
+        <li>
+          <span class="muted">{t.rolled(i + 1)}</span>
+          <span class="dice">
+            {#each r.dice as die, j (j)}
+              <span class="die" class:dropped={!die.kept}>{plain.format(die.value)}{#if !die.kept}<span class="sr-only"> ({t.dropped})</span>{/if}</span>
+            {/each}
+          </span>
+          <strong>{plain.format(r.total)}</strong>
+        </li>
+      {/each}
+    </ol>
+  {/if}
 {/if}
 
 {#each sections as section (section.key)}
   {@const option = section.options[pickFor(section.key).option]}
   <fieldset class="bonuses">
     <legend class="label">{t.bonuses(section.from)}</legend>
-    {#if section.options.length > 1}
-      <div class="options">
-        {#each section.options as option, i (i)}
-          <label class="radio">
-            <input type="radio" name="{section.key}-bonus-option" checked={pickFor(section.key).option === i} onchange={() => chooseOption(section.key, section.options, i)} />
-            {optionLabel(option)}
-          </label>
-        {/each}
-      </div>
-    {/if}
-    {#if option}
-      {#if Object.keys(option.fixed).length}
+    <div class="bonus-row">
+      {#if section.options.length > 1}
+        <label class="field">
+          <span class="label-text">{t.option}</span>
+          <select
+            value={String(pickFor(section.key).option)}
+            onchange={(e) => setPick(section.key, emptyPick(section.options[Number(e.currentTarget.value)], Number(e.currentTarget.value)))}
+          >
+            {#each section.options as o, i (i)}<option value={String(i)}>{optionLabel(o)}</option>{/each}
+          </select>
+        </label>
+      {/if}
+      {#if option && Object.keys(option.fixed).length}
         <p class="muted">{t.fixed(Object.entries(option.fixed).map(([a, n]) => `${ABILITY_NAMES[a]} ${signed.format(n)}`).join(", "))}</p>
       {/if}
-      {#each option.choices as choice, c (c)}
-        <div class="picks">
-          {#each choice.amounts as amount, slot (slot)}
-            <label>
-              <span class="small">{t.pickFor(signed.format(amount))}</span>
-              <select value={pickFor(section.key).picks[c]?.[slot] ?? ""} onchange={(e) => pickAbility(section.key, c, slot, e.currentTarget.value)}>
-                <option value="">{t.unassigned}</option>
-                {#each choice.from as ability (ability)}
-                  <option value={ability}>{ABILITY_NAMES[ability]}</option>
-                {/each}
-              </select>
-            </label>
-          {/each}
-        </div>
-        {#if duplicate(pickFor(section.key).picks[c])}<p class="error" role="alert">{t.differentAbilities}</p>{/if}
+      {#each option?.choices ?? [] as choice, c (c)}
+        {#each choice.amounts as amount, slot (slot)}
+          <label class="field">
+            <span class="label-text">{t.pickFor(signed.format(amount))}</span>
+            <select value={pickFor(section.key).picks[c]?.[slot] ?? ""} onchange={(e) => pickAbility(section.key, c, slot, e.currentTarget.value)}>
+              <option value="">{t.unassigned}</option>
+              {#each choice.from as ability (ability)}<option value={ability}>{ABILITY_NAMES[ability]}</option>{/each}
+            </select>
+          </label>
+        {/each}
       {/each}
-    {/if}
+    </div>
+    {#each option?.choices ?? [] as _, c (c)}
+      {#if duplicate(pickFor(section.key).picks[c])}<p class="error" role="alert">{t.differentAbilities}</p>{/if}
+    {/each}
   </fieldset>
 {/each}
 
-<table class="scores">
-  <thead>
-    <tr>
-      <th scope="col"><span class="sr-only">{strings.characters.wizard.review.abilities}</span></th>
-      <th scope="col">{t.base}</th>
-      <th scope="col">{t.bonus}</th>
-      <th scope="col">{t.total}</th>
-      <th scope="col">{t.modifier}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each ABILITIES as ability (ability)}
-      <tr>
-        <th scope="row">{ABILITY_NAMES[ability]}</th>
-        <td>
-          {#if draft.method === "manual"}
-            <input
-              class="score-input"
-              type="number"
-              min={MANUAL_MIN}
-              max={MANUAL_MAX}
-              value={draft.manual[ability]}
-              aria-label={t.assign(ABILITY_NAMES[ability])}
-              onchange={(e) => setManual(ability, e.currentTarget.value)}
-            />
-          {:else}
-            <select
-              value={draft.assignment[ability] ?? ""}
-              aria-label={t.assign(ABILITY_NAMES[ability])}
-              disabled={values.length === 0}
-              onchange={(e) => assign(ability, e.currentTarget.value)}
-            >
-              <option value="">{t.unassigned}</option>
-              {#each values as value, i (i)}
-                <option value={i} disabled={ABILITIES.some((other) => other !== ability && draft.assignment[other] === i)}>{plain.format(value)}</option>
-              {/each}
-            </select>
-          {/if}
-        </td>
-        <td>{bonus[ability] ? signed.format(bonus[ability]) : ""}</td>
-        <td><strong>{total ? plain.format(total[ability]) : base ? "" : t.unassigned}</strong></td>
-        <td>{total ? signed.format(modifier(total[ability])) : ""}</td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
+<AbilityCards scores={totals} {saves} proficiency={proficiencyBonus(1)}>
+  {#snippet control(ability: Ability)}
+    {#if draft.method === "manual"}
+      <input
+        class="score score-input"
+        type="number"
+        min={MANUAL_MIN}
+        max={MANUAL_MAX}
+        value={draft.manual[ability]}
+        aria-label={t.assign(ABILITY_NAMES[ability])}
+        onchange={(e) => setManual(ability, e.currentTarget.value)}
+      />
+    {:else}
+      <span class="score">{totals[ability] === null ? t.unassigned : plain.format(totals[ability]!)}</span>
+      <select
+        class="value-select"
+        value={draft.assignment[ability] === null ? "" : String(draft.assignment[ability])}
+        aria-label={t.assign(ABILITY_NAMES[ability])}
+        disabled={values.length === 0}
+        onchange={(e) => assign(ability, e.currentTarget.value)}
+      >
+        <option value="">{t.unassigned}</option>
+        {#each values as value, i (i)}
+          <option value={String(i)} disabled={ABILITIES.some((other) => other !== ability && draft.assignment[other] === i)}>{plain.format(value)}</option>
+        {/each}
+      </select>
+    {/if}
+  {/snippet}
+  {#snippet detail(ability: Ability)}
+    {#if bonusLines[ability]}<span class="bonus">{bonusLines[ability]}</span>{/if}
+  {/snippet}
+</AbilityCards>
 <p class="muted small">{t.cap(SCORE_CAP)}</p>
 
 <style>
+  .method,
+  .bonus-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .method p,
+  .bonus-row p {
+    padding-bottom: var(--space-2);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .label-text {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+
   fieldset {
     margin: 0;
     padding: 0;
@@ -226,32 +236,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-  }
-
-  .methods,
-  .options {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
-  }
-
-  .methods legend {
-    width: 100%;
-    margin-bottom: var(--space-2);
-  }
-
-  .radio {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-  }
-
-  .rolls {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
   }
 
   .roll-list {
@@ -290,47 +274,21 @@
     text-decoration: line-through;
   }
 
-  .bonuses {
-    padding-top: var(--space-2);
+  .score-input {
+    width: 100%;
+    max-width: calc(var(--control-height) * 2);
+    text-align: center;
   }
 
-  .picks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
+  .value-select {
+    width: 100%;
+    min-width: 0;
   }
 
-  .picks label {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .scores {
-    width: min(100%, var(--dialog-width));
-    border-collapse: collapse;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .scores th,
-  .scores td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-width) solid var(--color-border);
-    text-align: left;
-  }
-
-  .scores thead th {
-    color: var(--color-text-muted);
+  .bonus {
+    color: var(--color-link);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
-  }
-
-  .scores tbody th {
-    font-weight: var(--weight-semibold);
-  }
-
-  .score-input {
-    width: calc(var(--control-height) * 2);
   }
 
   .muted {

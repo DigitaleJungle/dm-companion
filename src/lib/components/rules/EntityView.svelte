@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setContext, type Snippet } from "svelte";
   import type { Entity } from "$lib/api/rules";
   import { strings } from "$lib/strings";
   import {
@@ -13,10 +14,28 @@
     spellLevel,
     type Fact,
   } from "$lib/rules/format";
-  import Entries, { type Entry } from "./Entries.svelte";
+  import Entries, { CHOICES, type Choices, type Entry } from "./Entries.svelte";
   import Inline from "./Inline.svelte";
 
-  let { entity, compact = false }: { entity: Entity; compact?: boolean } = $props();
+  let {
+    entity,
+    compact = false,
+    lead,
+    choices = {},
+  }: {
+    entity: Entity;
+    compact?: boolean;
+    /** Controls shown under the title, before the text. */
+    lead?: Snippet;
+    /** Controls shown under the entry with that (lowercase) name. */
+    choices?: Record<string, Snippet>;
+  } = $props();
+
+  setContext<Choices>(CHOICES, {
+    get choices() {
+      return choices;
+    },
+  });
 
   const t = strings.library;
   const data = $derived(entity.data as Entry);
@@ -59,6 +78,8 @@
     <p class="meta">{t.kinds[kind] ?? kind}, {t.page(entity.source, entity.page)}</p>
     {#if subtitle}<p class="subtitle"><Inline text={subtitle} /></p>{/if}
   </header>
+
+  {#if lead}<div class="lead">{@render lead()}</div>{/if}
 
   {#if copied}
     <p class="based"><Inline segments={[{ type: "link", kind: copied.kind, name: copied.name, source: copied.source, text: t.basedOn(copied.name, copied.source ?? "") }]} /></p>
@@ -158,6 +179,12 @@
 
   .subtitle {
     font-style: italic;
+  }
+
+  .lead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
   }
 
   .based {

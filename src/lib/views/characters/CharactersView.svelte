@@ -7,7 +7,7 @@
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { strings } from "$lib/strings";
   import { avatarCandidates, classLine, totalLevel } from "./format";
-  import { created } from "./create/draft.svelte";
+  import CreateCharacterDialog from "./create/CreateCharacterDialog.svelte";
 
   const t = strings.characters;
   const formatNumber = new Intl.NumberFormat();
@@ -16,6 +16,12 @@
   let loadError = $state<string | null>(null);
   let status = $state<string | null>(null);
   let copyError = $state<string | null>(null);
+  let creating = $state(false);
+
+  async function onCreated(card: CharacterCard) {
+    await load();
+    status = t.created(card.name);
+  }
 
   const campaignNames = $derived(new Map([...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].map((c) => [c.id, c.name])));
 
@@ -29,8 +35,6 @@
   }
 
   onMount(() => {
-    if (created.name) status = t.created(created.name);
-    created.name = null;
     refreshCampaigns();
     load();
   });
@@ -64,7 +68,10 @@
   <main>
     <div class="heading">
       <h1>{t.title}</h1>
-      <a class="btn btn-primary create" href="/characters/new">{t.create}</a>
+      <button class="btn btn-primary" onclick={() => {
+          status = null;
+          creating = true;
+        }}>{t.create}</button>
     </div>
 
     <p class="note" role="status">{status ?? ""}</p>
@@ -114,6 +121,8 @@
   </main>
 </div>
 
+<CreateCharacterDialog bind:open={creating} oncreated={onCreated} />
+
 <style>
   .characters {
     min-height: 100vh;
@@ -162,10 +171,6 @@
     font-size: var(--text-xl);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-tight);
-  }
-
-  .create {
-    text-decoration: none;
   }
 
   .grid {

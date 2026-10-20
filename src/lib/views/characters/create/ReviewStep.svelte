@@ -1,7 +1,8 @@
 <script lang="ts">
   import { ABILITY_NAMES, SIZES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
-  import { ABILITIES, level1Hp, modifier, proficiencyBonus } from "$lib/characters/rules";
+  import { level1Hp, modifier, proficiencyBonus, speciesLabel, type Ability } from "$lib/characters/rules";
+  import AbilityCards from "./AbilityCards.svelte";
   import { allSkills, backgroundFeats, draft, hitDie, savingThrows, scores } from "./draft.svelte";
 
   let { skills, campaignName }: { skills: { key: string; name: string; ability: string }[]; campaignName: string } = $props();
@@ -20,9 +21,7 @@
     skills.map((s) => ({ ...s, proficient: proficient.has(s.key), bonus: final ? modifier(final[s.ability as keyof typeof final] ?? 10) + (proficient.has(s.key) ? pb : 0) : 0 })),
   );
   const perception = $derived(skillRows.find((s) => s.key === "perception")?.bonus ?? (final ? modifier(final.wis) : 0));
-  const species = $derived(
-    [draft.species?.name, draft.lineage, draft.subspecies?.name, draft.size ? SIZES[draft.size] : null].filter(Boolean).join(", "),
-  );
+  const species = $derived(speciesLabel(draft.species?.name ?? "", draft.lineage ?? draft.subspecies?.name));
   const feats = $derived(backgroundFeats());
 </script>
 
@@ -31,6 +30,7 @@
   <div><dt>{t.player}</dt><dd>{draft.player.trim() || t.none}</dd></div>
   <div><dt>{t.campaign}</dt><dd>{campaignName}</dd></div>
   <div><dt>{t.species}</dt><dd>{species} <span class="source">{draft.species?.source}</span></dd></div>
+  {#if draft.size}<div><dt>{strings.characters.wizard.pick.size}</dt><dd>{SIZES[draft.size] ?? draft.size}</dd></div>{/if}
   <div><dt>{t.class}</dt><dd>{draft.cls?.name} <span class="source">{draft.cls?.source}</span></dd></div>
   <div><dt>{t.background}</dt><dd>{draft.background?.name} <span class="source">{draft.background?.source}</span></dd></div>
   <div><dt>{t.level}</dt><dd>{plain.format(level)}</dd></div>
@@ -42,18 +42,7 @@
 
 <section aria-labelledby="review-abilities">
   <h3 id="review-abilities" class="label">{t.abilities}</h3>
-  <ul class="abilities">
-    {#each ABILITIES as ability (ability)}
-      <li>
-        <span class="ability">{ABILITY_NAMES[ability]}</span>
-        <strong class="score">{final ? plain.format(final[ability]) : ""}</strong>
-        <span class="mod">{final ? signed.format(modifier(final[ability])) : ""}</span>
-        <span class="save" class:on={saves.has(ability)}>
-          {t.saves}: {final ? signed.format(modifier(final[ability]) + (saves.has(ability) ? pb : 0)) : ""}
-        </span>
-      </li>
-    {/each}
-  </ul>
+  <AbilityCards scores={(final ?? { str: null, dex: null, con: null, int: null, wis: null, cha: null }) as Record<Ability, number | null>} {saves} proficiency={pb} />
 </section>
 
 <section aria-labelledby="review-skills">
@@ -105,47 +94,6 @@
     list-style: none;
     margin: 0;
     padding: 0;
-  }
-
-  .abilities {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--menu-min-width)), 1fr));
-    gap: var(--space-3);
-  }
-
-  .abilities li {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-3);
-    border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ability {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  .score {
-    font-size: var(--text-xl);
-  }
-
-  .mod {
-    color: var(--color-text-muted);
-  }
-
-  .save {
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-  }
-
-  .save.on {
-    color: var(--color-link);
-    font-weight: var(--weight-semibold);
   }
 
   .skills {

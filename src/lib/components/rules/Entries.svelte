@@ -4,6 +4,10 @@
 
   const SECTION_TYPES = ["section", "entries", "variant", "variantSub", "variantInner"];
 
+  /** Context key: controls (keyed by lowercase entry name) shown right under that entry's heading. */
+  export const CHOICES = Symbol("entry-choices");
+  export type Choices = { readonly choices: Record<string, import("svelte").Snippet> };
+
   /** Book sections nest deeply; headings stop shrinking after h5. */
   export function headingTag(depth: number): string {
     return `h${Math.min(depth + 2, 5)}`;
@@ -17,6 +21,7 @@
 </script>
 
 <script lang="ts">
+  import { getContext } from "svelte";
   import { strings } from "$lib/strings";
   import { headingId } from "$lib/rules/contents";
   import { ABILITY_NAMES } from "$lib/rules/format";
@@ -28,6 +33,7 @@
   let { entry, depth = 0 }: { entry: Entry; depth?: number } = $props();
 
   const t = strings.library;
+  const inline = getContext<Choices | undefined>(CHOICES);
   const abilities = (attrs: string[] = []) => attrs.map((a) => (a === "spellcasting" ? "spellcasting ability" : (ABILITY_NAMES[a] ?? a))).join(" or ");
   const rows = (table: Entry): Entry[][] => (table.rows ?? []).map((r: Entry) => (Array.isArray(r) ? r : (r?.row ?? [])));
   const label = (l: Entry): Entry => (typeof l === "string" ? l : (l?.entry ?? ""));
@@ -52,6 +58,8 @@
     <div class="section">
       {#if entry.name}
         <svelte:element this={headingTag(depth)} id={headingId(entry.name)} class="heading level-{Math.min(depth, 3)}"><Inline text={entry.name} /></svelte:element>
+        {@const choice = inline?.choices[String(entry.name).toLowerCase()]}
+        {#if choice}<div class="entry-choice">{@render choice()}</div>{/if}
       {/if}
       <Entries entry={entry.entries ?? []} depth={depth + (entry.name ? 1 : 0)} />
     </div>
@@ -108,6 +116,10 @@
 {/if}
 
 <style>
+  .entry-choice {
+    margin: 0 0 var(--space-3);
+  }
+
   p {
     margin: 0 0 var(--space-3);
   }
