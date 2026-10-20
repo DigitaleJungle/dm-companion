@@ -409,6 +409,23 @@ pub mod tests {
     }
 
     #[test]
+    fn catalog_returns_only_the_requested_fields() {
+        let dir = temp_dir("catalog");
+        let rules = dir.join("rules");
+        import_archive(&fixture(&dir, "1.0.0"), &rules, &[], 1, &mut |_| {}).unwrap();
+        let conn = library::open(&rules).unwrap().unwrap();
+        let spells = library::catalog(&conn, Some("spell"), &["level".into(), "entries".into(), "missing".into()]).unwrap();
+        assert_eq!(spells.len(), 2);
+        assert_eq!(spells[0].data["level"], 3);
+        assert!(spells[0].data["entries"].is_array()); // structured values stay JSON, not strings
+        assert!(spells[0].data["missing"].is_null());
+        assert!(spells[0].data.get("source").is_none());
+        let all = library::catalog(&conn, None, &[]).unwrap();
+        assert!(all.len() > spells.len());
+        assert!(matches!(library::catalog(&conn, None, &["x') --".into()]), Err(StorageError::Invalid(_))));
+    }
+
+    #[test]
     fn find_prefers_the_named_source_then_the_newest() {
         let dir = temp_dir("find");
         let rules = dir.join("rules");
@@ -472,6 +489,14 @@ pub mod tests {
         println!("  library size: {} MB", fs::metadata(library::path(&dir)).unwrap().len() / 1_048_576);
         println!("  _copy entities: {}, of which in XPHB/XDMG/XMM: {}", count(&conn, "SELECT count(*) FROM entities WHERE json LIKE '%\"_copy\"%'"), count(&conn, "SELECT count(*) FROM entities WHERE json LIKE '%\"_copy\"%' AND source IN ('XPHB','XDMG','XMM')"));
         assert!(library::find(&conn, "spell", "Fireball", Some("XPHB")).unwrap().is_some());
+        let keys: Vec<String> = ["cr", "type", "size", "ac", "hp", "alignment"].iter().map(|k| k.to_string()).collect();
+        let started = std::time::Instant::now();
+        let creatures = library::catalog(&conn, Some("creature"), &keys).unwrap();
+        let bytes = serde_json::to_string(&creatures).unwrap().len();
+        println!("  catalog: {} creatures in {:?}, {} KB as JSON", creatures.len(), started.elapsed(), bytes / 1024);
+        let started = std::time::Instant::now();
+        let all = library::catalog(&conn, None, &[]).unwrap();
+        println!("  catalog: all {} entries in {:?}", all.len(), started.elapsed());
     }
 
     /// Opt-in: both real archives swapped. `DMC_RULES_ARCHIVE=… DMC_IMAGES_ARCHIVE=… cargo test real_wrong_kind -- --ignored --nocapture`

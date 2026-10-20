@@ -22,7 +22,8 @@
   const book = $derived(params.get("book"));
   const chapter = $derived(Math.max(0, Number(params.get("chapter")) || 0));
   const heading = $derived(page.url.hash.slice(1));
-  const kind = $derived(params.get("kind") ?? "spell");
+  const group = $derived(params.get("group") ?? "all");
+  const kind = $derived(params.get("kind") ?? (group === "all" ? "all" : "spell"));
   const entityId = $derived(params.get("e") ? Number(params.get("e")) : null);
 
   function go(query: Record<string, string | number | null>, hash = "") {
@@ -59,7 +60,7 @@
     {:else if tab === "reading"}
       <Reading bookId={book} {chapter} {heading} onnavigate={(b, c, h) => go({ tab: "reading", book: b, chapter: c }, h)} />
     {:else}
-      <Catalog {kind} {entityId} onselect={(k, id) => go({ tab: "catalog", kind: k, e: id })} />
+      <Catalog {group} {kind} {entityId} onnavigate={(g, k, id) => go({ tab: "catalog", group: g, kind: k, e: id })} />
     {/if}
   </div>
 

@@ -6,18 +6,18 @@ export type Fact = { label: string; value: string };
 // Raw 5etools JSON: loosely typed on purpose, every field is optional and shapes vary between books.
 type Data = Record<string, any>;
 
-const SCHOOLS: Record<string, string> = {
+export const SCHOOLS: Record<string, string> = {
   A: "Abjuration", C: "Conjuration", D: "Divination", E: "Enchantment", V: "Evocation", I: "Illusion", N: "Necromancy", T: "Transmutation", P: "Psionic",
 };
-const SIZES: Record<string, string> = { T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan" };
+export const SIZES: Record<string, string> = { T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan" };
 const ALIGNMENTS: Record<string, string> = { L: "Lawful", N: "Neutral", C: "Chaotic", G: "Good", E: "Evil", U: "Unaligned", A: "Any alignment" };
 export const ABILITY_NAMES: Record<string, string> = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
-const ITEM_TYPES: Record<string, string> = {
+export const ITEM_TYPES: Record<string, string> = {
   M: "Melee weapon", R: "Ranged weapon", A: "Ammunition", LA: "Light armor", MA: "Medium armor", HA: "Heavy armor", S: "Shield",
   RD: "Rod", RG: "Ring", WD: "Wand", P: "Potion", SC: "Scroll", G: "Adventuring gear", INS: "Instrument", T: "Tool", AT: "Artisan's tools",
   GS: "Gaming set", TAH: "Tack and harness", SCF: "Spellcasting focus", $: "Treasure", FD: "Food and drink", MNT: "Mount", VEH: "Vehicle",
 };
-const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
 export const modifier = (score: number) => {
@@ -35,7 +35,8 @@ export function spellLevel(s: Data): string {
 
 export function castingTime(s: Data): string {
   return (s.time ?? [])
-    .map((t: Data) => {
+    .map((t: Data | string) => {
+      if (typeof t === "string") return plainText(t); // e.g. "Varies"
       const base = plural(t.number, t.unit === "bonus" ? "bonus action" : t.unit);
       return t.condition ? `${base}, ${plainText(t.condition)}` : base;
     })
@@ -101,9 +102,18 @@ export function spellFacts(s: Data): Fact[] {
 
 // ---- Creatures ----------------------------------------------------------------------------------
 
+/** "fey", or "Celestial or Fiend" when the creature has a choice of types (like the Empyrean). */
+export function creatureTypeName(m: Data): string {
+  const type = typeof m.type === "string" ? m.type : m.type?.type;
+  if (typeof type === "string") return capital(type);
+  if (Array.isArray(type?.choose)) return type.choose.map((t: string) => capital(t)).join(" or ");
+  return "";
+}
+
 export function sizeTypeAlignment(m: Data): string {
   const size = (m.size ?? []).map((s: string) => SIZES[s] ?? s).join(" or ");
-  const type = typeof m.type === "string" ? capital(m.type) : m.type ? capital(m.type.type ?? "") + (m.type.tags?.length ? ` (${m.type.tags.map((t: unknown) => capital(typeof t === "string" ? t : String((t as Data).tag ?? ""))).join(", ")})` : "") : "";
+  const tags = typeof m.type === "object" && m.type?.tags?.length ? ` (${m.type.tags.map((t: unknown) => capital(typeof t === "string" ? t : String((t as Data).tag ?? ""))).join(", ")})` : "";
+  const type = creatureTypeName(m) + tags;
   const alignment = (m.alignment ?? []).filter((a: unknown) => typeof a === "string").map((a: string) => ALIGNMENTS[a] ?? a).join(" ");
   return [`${size} ${type}`.trim(), alignment].filter(Boolean).join(", ");
 }

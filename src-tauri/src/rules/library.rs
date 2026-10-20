@@ -270,21 +270,32 @@ pub fn find(conn: &Connection, kind: &str, name: &str, source: Option<&str>) -> 
 
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct EntitySummary {
+pub struct CatalogRow {
     pub id: i64,
     pub kind: String,
     pub source: String,
     pub name: String,
+    /// Only the requested top-level fields of the entry, for table columns and filters.
+    pub data: Value,
 }
 
-/// One page of entities of a kind, alphabetical, optionally filtered by a name fragment.
-pub fn list(conn: &Connection, kind: &str, filter: &str, offset: i64, limit: i64) -> Result<Vec<EntitySummary>, StorageError> {
-    let pattern = format!("%{}%", filter.trim().replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
-    let mut stmt = conn
-        .prepare("SELECT id, kind, source, name FROM entities WHERE kind = ?1 AND name LIKE ?2 ESCAPE '\\' ORDER BY name, source LIMIT ?3 OFFSET ?4")
-        .map_err(db_err)?;
-    stmt.query_map(params![kind, pattern, limit, offset], |r| Ok(EntitySummary { id: r.get(0)?, kind: r.get(1)?, source: r.get(2)?, name: r.get(3)? }))
-        .map_err(db_err)?
-        .collect::<Result<_, _>>()
-        .map_err(db_err)
+/// Every entity of a kind (or of all kinds), alphabetical, with just the given top-level fields.
+/// SQLite extracts the fields, so a 4,500-creature table arrives as small rows, not megabytes of JSON.
+pub fn catalog(conn: &Connection, kind: Option<&str>, keys: &[String]) -> Result<Vec<CatalogRow>, StorageError> {
+    // Keys become part of the SQL, so only plain field names are allowed.
+    if let Some(bad) = keys.iter().find(|k| k.is_empty() || !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')) {
+        return Err(StorageError::Invalid(format!("\"{bad}\" is not a field name.")));
+    }
+    let fields = keys.iter().map(|k| format!("'{k}', json(json -> '$.{k}')")).collect::<Vec<_>>().join(", ");
+    let sql = format!(
+        "SELECT id, kind, source, name, json_object({fields}) FROM entities WHERE ?1 IS NULL OR kind = ?1 ORDER BY name, source"
+    );
+    let mut stmt = conn.prepare(&sql).map_err(db_err)?;
+    stmt.query_map([kind], |r| {
+        let data: String = r.get(4)?;
+        Ok(CatalogRow { id: r.get(0)?, kind: r.get(1)?, source: r.get(2)?, name: r.get(3)?, data: serde_json::from_str(&data).unwrap_or(Value::Null) })
+    })
+    .map_err(db_err)?
+    .collect::<Result<_, _>>()
+    .map_err(db_err)
 }

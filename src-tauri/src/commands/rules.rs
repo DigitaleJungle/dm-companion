@@ -2,7 +2,7 @@
 
 use crate::rules::images::{self, ImagesInfo};
 use crate::rules::import::{import_archive, Progress};
-use crate::rules::library::{self, Book, Entity, EntitySummary, LibraryInfo, LIBRARY_LOCK};
+use crate::rules::library::{self, Book, CatalogRow, Entity, LibraryInfo, LIBRARY_LOCK};
 use crate::storage::{to_json, write_atomic, StorageError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -179,7 +179,9 @@ pub async fn rules_find(app: AppHandle, kind: String, name: String, source: Opti
     with_library(&app, |conn| library::find(conn, &kind, &name, source.as_deref()))
 }
 
+/// All entries of a kind (all kinds when `kind` is None) with the given fields, for the Catalog table.
 #[tauri::command]
-pub async fn rules_list(app: AppHandle, kind: String, filter: String, offset: i64, limit: i64) -> Result<Vec<EntitySummary>, StorageError> {
-    with_library(&app, |conn| library::list(conn, &kind, &filter, offset, limit.clamp(1, 500)))
+pub async fn rules_catalog(app: AppHandle, kind: Option<String>, keys: Vec<String>) -> Result<Vec<CatalogRow>, StorageError> {
+    with_library(&app, |conn| library::catalog(conn, kind.as_deref(), &keys))
 }
+

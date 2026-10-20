@@ -38,6 +38,8 @@ pub struct AppSettings {
     pub animations: Animations,
     /// GitHub `owner/repo` whose latest release is compared with the imported rules data. Set by the user.
     pub rules_update_repo: Option<String>,
+    /// Sources unticked in the Library Catalog's book list (hidden there only).
+    pub catalog_hidden_sources: Vec<String>,
 }
 
 fn validate(settings: &AppSettings) -> Result<(), StorageError> {

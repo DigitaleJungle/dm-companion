@@ -38,6 +38,7 @@ describe("spells", () => {
     });
     expect(facts.map((f) => f.value)).toEqual(["1 reaction, which you take when you are hit", "Self (15-foot cone)", "S", "Concentration, up to 10 minutes"]);
     expect(spellFacts({ range: { type: "point", distance: { type: "touch" } } })[0]).toEqual({ label: "Range", value: "Touch" });
+    expect(spellFacts({ time: ["Varies"] })[0]).toEqual({ label: "Casting Time", value: "Varies" });
   });
 });
 
@@ -55,6 +56,10 @@ describe("creatures", () => {
     ]);
     expect(abilityScores(goblin)[1]).toEqual({ ability: "DEX", score: 15, modifier: "+2" });
     expect(abilityScores(goblin)[0].modifier).toBe("-1");
+  });
+
+  it("names a choice of creature types", () => {
+    expect(sizeTypeAlignment({ size: ["H"], type: { type: { choose: ["celestial", "fiend"] }, tags: ["titan"] } })).toBe("Huge Celestial or Fiend (Titan)");
   });
 
   it("formats armor sources and other speeds", () => {

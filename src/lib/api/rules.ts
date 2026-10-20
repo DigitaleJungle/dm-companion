@@ -13,7 +13,6 @@ export type ImportProgress = { task: "data" | "images"; done: number; total: num
 
 export type Book = { id: string; name: string; group: string; contents: unknown };
 export type Entity = { id: number; kind: string; source: string; name: string; page: number | null; data: Record<string, unknown> };
-export type EntitySummary = { id: number; kind: string; source: string; name: string };
 
 export function rulesStatus(): Promise<RulesStatus> {
   return invoke("rules_status");
@@ -58,6 +57,11 @@ export function findEntity(kind: string, name: string, source?: string): Promise
   return invoke("rules_find", { kind, name, source: source ?? null });
 }
 
-export function listEntities(kind: string, filter: string, offset: number, limit: number): Promise<EntitySummary[]> {
-  return invoke("rules_list", { kind, filter, offset, limit });
+
+/** A Catalog table row: the entry's identity plus only the fields its columns and filters need. */
+export type CatalogRow = { id: number; kind: string; source: string; name: string; data: Record<string, unknown> };
+
+/** Every entry of a kind (or of all kinds when `kind` is null) with the given top-level fields. */
+export function catalogRows(kind: string | null, keys: string[]): Promise<CatalogRow[]> {
+  return invoke("rules_catalog", { kind, keys });
 }

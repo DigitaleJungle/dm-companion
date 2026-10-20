@@ -26,7 +26,13 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - **Library**: the imported books, alphabetical.
   - **Contents**: the book's chapters ("Chapter 1: …", "Appendix A: …") with their sections nested and collapsible. Clicking a chapter opens it; clicking a section opens its chapter and scrolls to it.
   - **Reading pane**: the chapter text with headings, lists, tables, insets, quotes and the stat blocks books embed (loaded as they scroll into view). Images show when they were imported in Settings; nothing is fetched from the internet.
-- **Catalog** tab: categories (spells, creatures, items, feats, backgrounds, species, classes, subclasses, optional features, conditions, diseases, rules glossary, actions, languages, skills, senses, item properties and masteries, hazards, traps), a filterable alphabetical list, and the selected entry.
+- **Catalog** tab:
+  - **Books** column: every source with entries, each with a checkbox, plus Select all / Deselect all and a shown/total count. Unticked books are hidden from the Catalog only and remembered app-wide.
+  - **Tabs**: All, Rules (rules glossary, actions), Player (spells, classes, subclasses, species, backgrounds, feats, optional features), Reference (items, item properties, item masteries, conditions, diseases, languages, skills, senses) and DM Tools (creatures, hazards, traps). Each tab has its categories as sub-tabs; All lists everything with a Category column.
+  - Each category is a **table** with its own columns (e.g. spells: Level, School, Cast Time, Range, Components, Tags; creatures: CR, Type, Size, AC, HP; items: Type, Rarity, Attunement, Weight, Value), always starting with Name and ending with Source. Every column sorts both ways.
+  - A **search** box with a result count, and **filters** as checkbox groups per category (e.g. spell Level, School, Concentration/Ritual; creature CR range, Type, Size; item Category, Rarity, Attunement). Options within a filter combine with OR, filters with AND. Filters with a single option are hidden.
+  - 50 rows per page with Previous / Next and "Showing 1–50 of N".
+  - Clicking a row opens the entry on its own page with "Back to <category>"; the table keeps its search, filters, sort and page.
 - **References** in the text (a spell, creature, condition…) open a **preview card** next to them. References inside the card can be followed, with Back; Escape, ✕ or clicking outside closes it and returns focus.
 - Entries show a summary for their type: spells (level, school, casting time, range, components, duration), creatures (size, type, alignment, AC, HP, speed, ability scores, saves, skills, senses, languages, CR, then traits, actions, bonus actions, reactions, legendary actions and spellcasting), items (type, rarity, attunement), feats (prerequisite) and classes (hit die, primary ability, features by level).
 - Empty state: "No rules data yet", with a button that opens Settings on Rules data.

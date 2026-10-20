@@ -8,6 +8,8 @@ export type AppSettings = {
   animations: Animations;
   /** GitHub `owner/repo` whose latest release is compared with the imported rules data. */
   rulesUpdateRepo: string | null;
+  /** Sources unticked in the Library Catalog's book list. */
+  catalogHiddenSources: string[];
 };
 
 // Both reject with a StorageError.

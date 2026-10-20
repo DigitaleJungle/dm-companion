@@ -3,6 +3,14 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.2] - 2026-10-20
+### Changed
+- The Library Catalog is now a table like a reference site: tabs All, Rules, Player, Reference and DM Tools with category sub-tabs, a search box with result count, filter checkboxes per category, sortable columns specific to each category, and pages of 50. Clicking a row opens the entry; Back returns to the same filters and page.
+- A Books column with checkboxes (Select all / Deselect all) hides books from the Catalog; the choice is remembered.
+### Fixed
+- Creatures with a choice of types (such as the Empyrean) show "Celestial or Fiend" instead of "[object Object]".
+- Actions with a written-out time (such as "Varies") no longer show "undefined".
+
 ## [0.3.1] - 2026-10-20
 ### Added
 - Settings → Theme → Animations: System, On or Off. System follows the operating system's reduce-motion setting; On animates even when the OS has animations turned off.
