@@ -316,10 +316,9 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .sidebar,
-    .sidebar.open {
-      transition: none;
-    }
+  /* Animations off (Settings → Theme, or the OS when set to System). */
+  :global([data-motion="reduce"]) .sidebar,
+  :global([data-motion="reduce"]) .sidebar.open {
+    transition: none;
   }
 </style>

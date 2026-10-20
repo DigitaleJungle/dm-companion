@@ -1,39 +1,57 @@
-import { getSettings, setSettings, type Theme } from "$lib/api/settings";
+import { getSettings, setSettings, type Animations, type Theme } from "$lib/api/settings";
 import { errorMessage } from "$lib/api/storage";
 import { strings } from "$lib/strings";
 
-// Same key the first-paint script in src/app.html reads.
-const CACHE_KEY = "theme";
+// Same keys the first-paint script in src/app.html reads.
+const THEME_KEY = "theme";
+const MOTION_KEY = "animations";
 const systemDark = matchMedia("(prefers-color-scheme: dark)");
+const systemReduce = matchMedia("(prefers-reduced-motion: reduce)");
 
-function cached(): Theme {
+function cached<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
-    const value = localStorage.getItem(CACHE_KEY);
-    return value === "light" || value === "dark" ? value : "system";
+    const value = localStorage.getItem(key) as T | null;
+    return value && allowed.includes(value) ? value : fallback;
   } catch {
-    return "system"; // storage unavailable; the Rust setting still loads below
+    return fallback; // storage unavailable; the Rust setting still loads below
   }
 }
 
-export const theme = $state({ choice: cached(), error: null as string | null });
+/** Appearance settings: colour theme and animations. Both follow the OS when set to "system". */
+export const theme = $state({
+  choice: cached<Theme>(THEME_KEY, ["system", "light", "dark"], "system"),
+  animations: cached<Animations>(MOTION_KEY, ["system", "on", "off"], "system"),
+  error: null as string | null,
+});
+
+/** True when animations should be skipped (the user's choice, or the OS's reduce-motion setting). */
+export function reduceMotion(): boolean {
+  return theme.animations === "off" || (theme.animations === "system" && systemReduce.matches);
+}
 
 function apply() {
+  const root = document.documentElement;
   const dark = theme.choice === "dark" || (theme.choice === "system" && systemDark.matches);
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  root.dataset.theme = dark ? "dark" : "light";
+  root.dataset.motion = reduceMotion() ? "reduce" : "full";
   try {
-    localStorage.setItem(CACHE_KEY, theme.choice);
+    localStorage.setItem(THEME_KEY, theme.choice);
+    localStorage.setItem(MOTION_KEY, theme.animations);
   } catch {
-    // Only the first-paint cache is lost; the saved setting is unaffected.
+    // Only the first-paint cache is lost; the saved settings are unaffected.
   }
 }
 
 // "System" follows the OS live.
 systemDark.addEventListener("change", apply);
+systemReduce.addEventListener("change", apply);
 
-/** Loads the saved theme from Rust at startup. */
+/** Loads the saved appearance settings from Rust at startup. */
 export async function loadTheme() {
   try {
-    theme.choice = (await getSettings()).theme;
+    const saved = await getSettings();
+    theme.choice = saved.theme;
+    theme.animations = saved.animations;
     theme.error = null;
   } catch (e) {
     theme.error = strings.settings.theme.loadError(errorMessage(e));
@@ -41,13 +59,22 @@ export async function loadTheme() {
   apply();
 }
 
-export async function chooseTheme(choice: Theme) {
-  theme.choice = choice;
+async function save(changes: { theme?: Theme; animations?: Animations }) {
   apply();
   try {
-    await setSettings({ theme: choice });
+    await setSettings(changes);
     theme.error = null;
   } catch (e) {
     theme.error = strings.settings.theme.saveError(errorMessage(e));
   }
+}
+
+export function chooseTheme(choice: Theme) {
+  theme.choice = choice;
+  return save({ theme: choice });
+}
+
+export function chooseAnimations(choice: Animations) {
+  theme.animations = choice;
+  return save({ animations: choice });
 }

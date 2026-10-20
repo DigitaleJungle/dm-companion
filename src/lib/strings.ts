@@ -146,6 +146,9 @@ export const strings = {
     theme: {
       title: "Theme",
       label: "Appearance",
+      animationsLabel: "Animations",
+      animationsOn: "On",
+      animationsOff: "Off",
       light: "Light",
       dark: "Dark",
       system: "System",

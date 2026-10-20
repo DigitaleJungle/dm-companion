@@ -2,8 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 
 /** Mirrors `AppSettings` in src-tauri/src/commands/settings.rs. */
 export type Theme = "system" | "light" | "dark";
+export type Animations = "system" | "on" | "off";
 export type AppSettings = {
   theme: Theme;
+  animations: Animations;
   /** GitHub `owner/repo` whose latest release is compared with the imported rules data. */
   rulesUpdateRepo: string | null;
 };

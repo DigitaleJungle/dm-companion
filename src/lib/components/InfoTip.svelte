@@ -70,9 +70,7 @@
     opacity: 1;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .tip {
-      transition: none;
-    }
+  :global([data-motion="reduce"]) .tip {
+    transition: none;
   }
 </style>

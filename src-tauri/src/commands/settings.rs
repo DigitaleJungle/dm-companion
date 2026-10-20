@@ -20,11 +20,22 @@ pub enum Theme {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Animations {
+    /// Follow the operating system's reduce-motion setting.
+    #[default]
+    System,
+    On,
+    Off,
+}
+
 // Missing fields fall back to their defaults, so older files keep loading when settings are added.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
     pub theme: Theme,
+    pub animations: Animations,
     /// GitHub `owner/repo` whose latest release is compared with the imported rules data. Set by the user.
     pub rules_update_repo: Option<String>,
 }
@@ -121,7 +132,7 @@ mod tests {
         let path = temp_file("patch");
         update(&path, serde_json::json!({ "rulesUpdateRepo": "someone/some-repo" })).unwrap();
         let after = update(&path, serde_json::json!({ "theme": "light" })).unwrap();
-        assert_eq!(after, AppSettings { theme: Theme::Light, rules_update_repo: Some("someone/some-repo".into()) });
+        assert_eq!(after, AppSettings { theme: Theme::Light, rules_update_repo: Some("someone/some-repo".into()), ..Default::default() });
         assert_eq!(load(&path).unwrap(), after);
         assert!(update(&path, serde_json::json!({ "rulesUpdateRepo": null })).unwrap().rules_update_repo.is_none());
     }
@@ -134,6 +145,18 @@ mod tests {
         assert!(matches!(update(&path, serde_json::json!({ "rulesUpdateRepo": "../x/y" })), Err(StorageError::Invalid(_))));
         assert!(matches!(update(&path, serde_json::json!({ "rulesUpdateRepo": "a/.." })), Err(StorageError::Invalid(_))));
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn animations_default_to_system_and_save() {
+        let path = temp_file("animations");
+        assert_eq!(load(&path).unwrap().animations, Animations::System);
+        update(&path, serde_json::json!({ "animations": "on" })).unwrap();
+        assert_eq!(load(&path).unwrap().animations, Animations::On);
+        // Settings files from before this option still load.
+        fs::write(&path, r#"{"theme":"dark"}"#).unwrap();
+        assert_eq!(load(&path).unwrap(), AppSettings { theme: Theme::Dark, ..Default::default() });
+        assert!(matches!(update(&path, serde_json::json!({ "animations": "sometimes" })), Err(StorageError::Invalid(_))));
     }
 
     #[test]

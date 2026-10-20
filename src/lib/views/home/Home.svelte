@@ -2,6 +2,7 @@
   import { onMount, tick } from "svelte";
   import { flip } from "svelte/animate";
   import Card from "$lib/components/Card.svelte";
+  import { reduceMotion } from "$lib/stores/theme.svelte";
   import Menu from "$lib/components/Menu.svelte";
   import { strings } from "$lib/strings";
   import { getHomeCards, setHomeCards } from "$lib/api/homeLayout";
@@ -20,7 +21,6 @@
     continue: t.continue.title,
     tools: t.tools.title,
   };
-  const slideMs = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200;
 
   let order = $state<CardId[] | null>(null); // null while loading
   let loadError = $state<string | null>(null);
@@ -143,7 +143,7 @@
         <li
           class="slot"
           class:dragging={dragging === id}
-          animate:flip={{ duration: slideMs }}
+          animate:flip={{ duration: reduceMotion() ? 0 : 200 }}
           ondragenter={() => onDragEnter(id)}
           ondragover={(e) => dragging && e.preventDefault()}
           ondrop={(e) => {

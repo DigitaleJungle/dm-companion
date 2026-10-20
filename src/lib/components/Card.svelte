@@ -96,9 +96,7 @@
     margin-right: calc(-1 * var(--space-2));
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .handle {
-      transition: none;
-    }
+  :global([data-motion="reduce"]) .handle {
+    transition: none;
   }
 </style>

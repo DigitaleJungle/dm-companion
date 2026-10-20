@@ -1,7 +1,7 @@
 <script lang="ts">
   import { strings } from "$lib/strings";
-  import { theme, chooseTheme } from "$lib/stores/theme.svelte";
-  import type { Theme } from "$lib/api/settings";
+  import { theme, chooseTheme, chooseAnimations } from "$lib/stores/theme.svelte";
+  import type { Animations, Theme } from "$lib/api/settings";
   import CampaignSettings from "$lib/components/CampaignSettings.svelte";
   import RulesSettings from "$lib/components/RulesSettings.svelte";
 
@@ -36,6 +36,12 @@
     active = sections[to].id;
     document.getElementById(`settings-tab-${active}`)?.focus();
   }
+
+  const animationChoices: { value: Animations; label: string }[] = [
+    { value: "system", label: t.theme.system },
+    { value: "on", label: t.theme.animationsOn },
+    { value: "off", label: t.theme.animationsOff },
+  ];
 
   const themes: { value: Theme; label: string }[] = [
     { value: "system", label: t.theme.system },
@@ -93,6 +99,18 @@
             onchange={(e) => chooseTheme(e.currentTarget.value as Theme)}
           >
             {#each themes as option (option.value)}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="field">
+          <label for="animations-select">{t.theme.animationsLabel}</label>
+          <select
+            id="animations-select"
+            value={theme.animations}
+            onchange={(e) => chooseAnimations(e.currentTarget.value as Animations)}
+          >
+            {#each animationChoices as option (option.value)}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>

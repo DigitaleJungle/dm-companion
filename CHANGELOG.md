@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.3.1] - 2026-10-20
+### Added
+- Settings → Theme → Animations: System, On or Off. System follows the operating system's reduce-motion setting; On animates even when the OS has animations turned off.
+### Changed
+- Clicking a chapter or section in the Library's contents now scrolls smoothly to it, and a newly opened chapter glides from its top to the section. Your own scrolling interrupts the animation.
+
 ## [0.3.0] - 2026-10-20
 ### Added
 - Library, opened from the Library button at the top right of the start screen. The Reading tab has your books, a collapsible table of contents and the chapter text, with tables, insets, embedded stat blocks and imported images. Clicking a section jumps straight to it.

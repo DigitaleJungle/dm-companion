@@ -5,6 +5,7 @@
   import { errorMessage } from "$lib/api/storage";
   import { contentsTree, headingId, type HeaderNode } from "$lib/rules/contents";
   import { rules } from "$lib/stores/rules.svelte";
+  import { reduceMotion } from "$lib/stores/theme.svelte";
   import { strings } from "$lib/strings";
   import Entries, { type Entry } from "$lib/components/rules/Entries.svelte";
 
@@ -62,7 +63,7 @@
         content = c;
         contentStatus = c ? "ready" : "missing";
         await tick();
-        scrollToHeading();
+        scrollToHeading(true);
       },
       (e) => {
         if (!live) return;
@@ -76,13 +77,62 @@
   // Scrolling to a heading within the chapter that's already open doesn't reload it.
   $effect(() => {
     void heading;
-    if (contentStatus === "ready") tick().then(scrollToHeading);
+    if (contentStatus === "ready") tick().then(() => scrollToHeading());
   });
 
-  function scrollToHeading() {
+  /**
+   * Glides to the chosen heading (or the top). A freshly opened chapter starts at the top first,
+   * so the animation runs from the start of the new text rather than from the old scroll position.
+   */
+  function scrollToHeading(fresh = false) {
+    if (!pane) return;
+    if (fresh) {
+      stopScrolling();
+      pane.scrollTop = 0;
+    }
     const target = heading ? document.getElementById(heading) : null;
-    if (target) target.scrollIntoView({ block: "start" });
-    else if (pane) pane.scrollTop = 0;
+    // Measured every frame: stat blocks that load mid-scroll can push the heading further down.
+    glide(() => {
+      if (!pane || !target) return 0;
+      const gap = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+      return target.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - gap;
+    });
+  }
+
+  // Our own animation rather than native smooth scrolling: its speed doesn't depend on how long the
+  // chapter is, and it lands correctly when the page grows while scrolling.
+  let frame = 0;
+
+  function stopScrolling() {
+    cancelAnimationFrame(frame);
+    frame = 0;
+  }
+
+  /** Scrolling yourself (wheel, touch, keys) takes over from an animation in progress. */
+  function yourScrollingWins(node: HTMLElement) {
+    const events = ["wheel", "touchstart", "keydown"] as const;
+    events.forEach((e) => node.addEventListener(e, stopScrolling, { passive: true }));
+    return () => events.forEach((e) => node.removeEventListener(e, stopScrolling));
+  }
+
+  function glide(targetTop: () => number) {
+    stopScrolling();
+    if (!pane) return;
+    const from = pane.scrollTop;
+    if (reduceMotion()) {
+      pane.scrollTop = targetTop();
+      return;
+    }
+    const duration = Math.min(700, 300 + Math.abs(targetTop() - from) / 50);
+    const start = performance.now();
+    const step = (now: number) => {
+      if (!pane) return;
+      const t = Math.min(1, (now - start) / duration);
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      pane.scrollTop = from + (targetTop() - from) * eased;
+      frame = t < 1 ? requestAnimationFrame(step) : 0;
+    };
+    frame = requestAnimationFrame(step);
   }
 
   function toggle(key: string) {
@@ -165,7 +215,7 @@
     {/if}
   </nav>
 
-  <article class="pane" bind:this={pane} aria-label={book?.name ?? t.reading}>
+  <article class="pane" bind:this={pane} aria-label={book?.name ?? t.reading} {@attach yourScrollingWins}>
     <div class="page">
       {#if contentStatus === "loading"}
         <p class="muted" role="status">{t.loading}</p>
@@ -327,10 +377,8 @@
     font-size: var(--text-sm);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .chevron svg {
-      transition: none;
-    }
+  :global([data-motion="reduce"]) .chevron svg {
+    transition: none;
   }
 
   /* Narrow windows: books and contents stack above the text, each with a limited height. */
