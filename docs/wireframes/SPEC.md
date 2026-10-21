@@ -55,7 +55,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 - **Left sidebar**
   - App name.
-  - Campaign switcher: shows the current campaign; clicking it goes back to the Start screen. A cog wheel next to it opens **Campaign settings** for this campaign.
+  - Campaign switcher: shows the current campaign; clicking it opens a dropdown. Its first option, **Home**, goes back to the Start screen; below it are the active campaigns, and picking one opens it. The current campaign has a green check. A cog wheel next to it opens **Campaign settings** for this campaign.
   - Navigation: Home, Campaign library, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
   - Player-screen status box at the bottom, with a "Blank screen" button.
   - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. Settings has a side panel listing its sections:

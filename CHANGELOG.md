@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.4] - 2026-10-21
+
+### Changed
+
+- The sidebar campaign switcher opens a dropdown: Home (back to the Start screen) and your active campaigns, with a green check on the current one.
+
 ## [0.4.3] - 2026-10-20
 
 ### Changed

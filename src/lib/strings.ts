@@ -8,7 +8,8 @@ export const strings = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     campaign: "Campaign",
-    switchCampaign: "Switch campaign",
+    switchCampaign: (name: string) => `Campaign: ${name}. Switch campaign`,
+    startScreen: "Home",
     nav: {
       home: "Home",
       campaignLibrary: "Campaign library",

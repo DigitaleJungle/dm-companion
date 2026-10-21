@@ -20,6 +20,7 @@
   --color-focus: #2557d6;
   --color-danger: #b42318; /* ≥ 6:1 on surface */
   --color-danger-soft: #fdecea;
+  --color-success: #1a7f37; /* ≥ 5:1 on surface */
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
 
   /* Spacing (4px scale) */
@@ -108,5 +109,6 @@
   --color-focus: #8db2ff;
   --color-danger: #ff9b8f;
   --color-danger-soft: #3a1d1b;
+  --color-success: #4ac26b;
   --shadow-card: none;
 }

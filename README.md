@@ -2,14 +2,14 @@
 
 A desktop app for a Dungeon Master running in-person D&D sessions. It covers searching rules, monsters, spells and lore, running encounters, storing player characters, and reading the DM's LegendKeeper world. It drives a second, player-facing window on a TV or second monitor.
 
-**Current version:** 0.4.3
+**Current version:** 0.4.4
 
 ## Status
 
 Early development. What works so far:
 
 - **Start screen:** create campaigns and pick one to open. Each campaign is saved locally in its own folder.
-- **Campaign Home:** the app shell with an always-visible search bar, and Home cards you can rearrange, remove and add back. The cards themselves show empty states for now.
+- **Campaign Home:** the app shell with an always-visible search bar, a campaign switcher dropdown, and Home cards you can rearrange, remove and add back. The cards themselves show empty states for now.
 - **Settings:** Theme (System, Light or Dark, and animations on or off), Campaigns (add, rename, archive, restore, and permanently delete archived campaigns) and Rules data.
 - **Rules data:** import 5etools-format data (and optionally images) from `.tar.gz` files you provide, check for newer versions, and remove the books you don't use. DM Companion doesn't include or download any rules content.
 - **Campaign settings:** rename, archive, restore, delete and choose sourcebooks per campaign (with a search filter); the campaign library shows only those books.

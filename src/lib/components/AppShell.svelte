@@ -1,8 +1,10 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import { page } from "$app/state";
-  import { afterNavigate } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { strings } from "$lib/strings";
+  import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
+  import Menu from "$lib/components/Menu.svelte";
   import SearchBar from "$lib/components/SearchBar.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
   import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
@@ -31,6 +33,20 @@
     if (menuOpen && !settingsOpen && !campaignSettingsOpen && event.key === "Escape") closeMenu();
   }
 
+  onMount(() => {
+    if (!campaigns.list) refreshCampaigns();
+  });
+
+  // Until the list loads, the switcher offers just Home and the open campaign.
+  const switchItems = $derived([
+    { label: strings.shell.startScreen, onselect: () => goto("/") },
+    ...(campaigns.list?.campaigns ?? [campaign]).map((c) => ({
+      label: c.name,
+      current: c.id === campaign.id,
+      onselect: () => goto(`/campaign/${c.id}`),
+    })),
+  ]);
+
   const nav = strings.shell.nav;
   // href is null until the screen is built; those items render disabled with "Coming soon".
   const items: { label: string; href: string | null }[] = $derived([
@@ -55,12 +71,13 @@
 
     <div class="group">
       <span class="label" id="campaign-label">{strings.shell.campaign}</span>
-      <!-- Back to the start screen to pick or create another campaign -->
       <div class="campaign-row">
-        <a class="btn campaign" href="/" aria-describedby="campaign-label" title={strings.shell.switchCampaign}>
-          <span class="campaign-name">{campaign.name}</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        </a>
+        <Menu id="campaign-switcher" label={strings.shell.switchCampaign(campaign.name)} align="start" triggerClass="btn campaign" items={switchItems}>
+          {#snippet trigger()}
+            <span class="campaign-name">{campaign.name}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          {/snippet}
+        </Menu>
         <button
           class="icon-btn campaign-cog"
           aria-label={strings.campaignSettings.open}
@@ -165,13 +182,14 @@
     padding: 0 var(--space-3);
   }
 
-  .campaign {
+  /* The switcher button renders inside Menu, so its styles reach in with :global. */
+  .campaign-row :global(.campaign) {
+    width: 100%;
     justify-content: space-between;
     color: var(--color-text);
-    text-decoration: none;
   }
 
-  .campaign:hover {
+  .campaign-row :global(.campaign:hover) {
     background: var(--color-surface-sunken);
   }
 
@@ -182,7 +200,7 @@
     white-space: nowrap;
   }
 
-  .campaign svg {
+  .campaign-row :global(.campaign svg) {
     flex: none;
     width: var(--icon-size);
     height: var(--icon-size);
@@ -280,7 +298,7 @@
     gap: var(--space-1);
   }
 
-  .campaign-row .campaign {
+  .campaign-row :global(.menu-root) {
     flex: 1;
     min-width: 0;
   }

@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export type MenuItem = { label: string; onselect: () => void; disabled?: boolean };
+  export type MenuItem = { label: string; onselect: () => void; disabled?: boolean; current?: boolean };
 </script>
 
 <script lang="ts">
@@ -95,8 +95,13 @@
     <ul id="{id}-list" class="menu {align}" role="menu" aria-labelledby={id} tabindex="-1" onkeydown={onMenuKeydown}>
       {#each items as item (item.label)}
         <li role="none">
-          <button role="menuitem" tabindex="-1" aria-disabled={item.disabled || undefined} onclick={() => select(item)}>
-            {item.label}
+          <button role="menuitem" tabindex="-1" aria-disabled={item.disabled || undefined} aria-current={item.current || undefined} onclick={() => select(item)}>
+            <span>{item.label}</span>
+            {#if item.current}
+              <svg class="check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12l5 5 9-10" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            {/if}
           </button>
         </li>
       {/each}
@@ -132,7 +137,10 @@
   }
 
   [role="menuitem"] {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
     width: 100%;
     padding: var(--space-2) var(--space-3);
     border: none;
@@ -147,6 +155,13 @@
   [role="menuitem"]:hover,
   [role="menuitem"]:focus-visible {
     background: var(--color-surface-sunken);
+  }
+
+  .check {
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    color: var(--color-success);
   }
 
   [role="menuitem"][aria-disabled="true"] {
