@@ -10,6 +10,7 @@
   import Catalog from "./Catalog.svelte";
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import SettingsDialog from "$lib/components/SettingsDialog.svelte";
+  import SettingsButton from "$lib/components/SettingsButton.svelte";
   import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
 
   let {
@@ -88,6 +89,8 @@
   <EntityPopover {campaign} />
   <SettingsDialog bind:open={settingsOpen} section="rules" />
   {#if campaign}<CampaignSettingsDialog campaignId={campaign.id} bind:open={campaignSettingsOpen} />{/if}
+  <!-- Same corner as the Start screen; inside a campaign the shell's sidebar has the gear already. -->
+  {#if !campaign}<div class="corner"><SettingsButton /></div>{/if}
 </div>
 
 <style>
@@ -99,6 +102,8 @@
 
   /* Inside the campaign shell: fill the content area below the search bar. */
   .library.embedded {
+    /* The campaign sidebar holds the gear, so the book lists need no strip for it. */
+    --corner-clearance: var(--space-5);
     flex: 1;
     min-height: 0;
     height: auto;
@@ -112,6 +117,12 @@
     padding: var(--space-3) var(--space-5);
     border-bottom: var(--border-width) solid var(--color-border);
     background: var(--color-surface);
+  }
+
+  .corner {
+    position: fixed;
+    left: var(--space-4);
+    bottom: var(--space-4);
   }
 
   .back {

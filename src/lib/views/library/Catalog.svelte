@@ -194,7 +194,7 @@
     </div>
     {#if settingsError}<p class="error" role="alert">{settingsError}</p>{/if}
     {#if sources.length && !listedSources.length}<p class="muted">{strings.settings.rules.noMatches}</p>{/if}
-    <ul>
+    <ul class="book-list">
       {#each listedSources as source (source.id)}
         <li>
           <label class="book">
@@ -343,12 +343,21 @@
     min-height: 0;
   }
 
+  /* Only the book list scrolls; it ends above the strip where the corner Settings gear sits. */
   .books {
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    overflow-y: auto;
-    padding: var(--space-5) var(--space-3);
+    overflow: hidden;
+    padding: var(--space-5) var(--space-3) var(--corner-clearance);
     border-right: var(--border-width) solid var(--color-border);
     background: var(--color-surface);
+  }
+
+  .book-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .column-title {
@@ -713,8 +722,10 @@
       height: auto;
     }
 
+    /* Stacked at the top, the books are nowhere near the corner gear. */
     .books {
       max-height: var(--library-stacked-height);
+      padding-bottom: var(--space-5);
       border-right: none;
       border-bottom: var(--border-width) solid var(--color-border);
     }

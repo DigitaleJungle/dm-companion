@@ -18,6 +18,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - **New campaign**: a name field and a Create button. Names are required, at most 100 characters, and unique (ignoring case). Creating opens the new campaign.
 - **Characters** and **Library** buttons sit at the top right, in that order.
 - The Settings gear sits in the bottom-left corner, and the app version is shown small at the bottom.
+- The Settings gear is on every screen, always in the bottom-left corner: fixed there on the Start screen and the app-wide Characters and Library pages, and at the bottom of the sidebar inside a campaign.
 - Empty state: "No campaigns yet." Campaign folders that can't be read are listed in a warning and left untouched.
 
 ## Library (no wireframe)

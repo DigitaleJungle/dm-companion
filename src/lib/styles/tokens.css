@@ -83,6 +83,8 @@
   --z-drawer: 100;
   --z-menu: 50;
   --menu-min-width: 160px;
+  /* Room at the bottom of a scrolling list so the corner Settings gear never covers its last item. */
+  --corner-clearance: calc(var(--control-height) + 2 * var(--space-4));
   --campaign-books-height: 280px;
   --tooltip-width: 320px;
   --add-tile-height: 96px;

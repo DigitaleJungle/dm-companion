@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Menu from "$lib/components/Menu.svelte";
+  import SettingsButton from "$lib/components/SettingsButton.svelte";
   import CharacterAvatar from "./CharacterAvatar.svelte";
   import { copyCharacter, listCharacters, type CharacterCard, type CharacterList } from "$lib/api/characters";
   import { errorMessage } from "$lib/api/storage";
@@ -119,6 +120,8 @@
       {/if}
     {/if}
   </main>
+
+  <div class="corner"><SettingsButton /></div>
 </div>
 
 <CreateCharacterDialog bind:open={creating} oncreated={onCreated} />
@@ -138,6 +141,13 @@
     background: var(--color-surface);
   }
 
+  /* Same corner as the Start screen. */
+  .corner {
+    position: fixed;
+    left: var(--space-4);
+    bottom: var(--space-4);
+  }
+
   .back {
     gap: var(--space-1);
     padding-left: var(--space-2);
@@ -153,7 +163,7 @@
   main {
     width: min(100%, var(--content-max-width));
     margin: 0 auto;
-    padding: var(--space-6) var(--space-5);
+    padding: var(--space-6) var(--space-5) var(--corner-clearance);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

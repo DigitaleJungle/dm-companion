@@ -183,7 +183,7 @@
       <label for="reading-books-filter" class="sr-only">{strings.settings.rules.filterLabel}</label>
       <input id="reading-books-filter" class="filter" type="search" bind:value={bookFilter} placeholder={strings.settings.rules.filterPlaceholder} autocomplete="off" />
       {#if !listedBooks.length}<p class="muted">{strings.settings.rules.noMatches}</p>{/if}
-      <ul>
+      <ul class="book-list">
         {#each listedBooks as b (b.id)}
           <li>
             <button class="book" aria-current={b.id === current ? "page" : undefined} onclick={() => onnavigate(b.id, 0)}>{b.name}</button>
@@ -271,6 +271,20 @@
     padding: var(--space-5) var(--space-3);
     border-right: var(--border-width) solid var(--color-border);
     background: var(--color-surface);
+  }
+
+  /* Only the book list scrolls; it ends above the strip where the corner Settings gear sits. */
+  .books {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: var(--corner-clearance);
+  }
+
+  .book-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .column-title {
@@ -420,6 +434,11 @@
       max-height: var(--library-stacked-height);
       border-right: none;
       border-bottom: var(--border-width) solid var(--color-border);
+    }
+
+    /* Stacked at the top, the books are nowhere near the corner gear. */
+    .books {
+      padding-bottom: var(--space-5);
     }
 
     .pane {

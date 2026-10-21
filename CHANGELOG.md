@@ -3,6 +3,13 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.8] - 2026-10-21
+
+### Changed
+
+- The Settings gear is on every screen, always in the bottom-left corner. The app-wide Characters and Library pages now have it too.
+- Library: the book list on the left scrolls on its own, below a fixed title, filter box and buttons, and stops above the corner Settings gear so the gear never covers a book.
+
 ## [0.4.7] - 2026-10-21
 
 ### Changed
