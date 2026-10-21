@@ -7,7 +7,7 @@
   import { errorMessage } from "$lib/api/storage";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { strings } from "$lib/strings";
-  import { avatarCandidates, classLine, totalLevel } from "./format";
+  import { avatarCandidates, classLine, selectCharacters, totalLevel, type CharacterSort } from "./format";
   import CreateCharacterDialog from "./create/CreateCharacterDialog.svelte";
 
   const t = strings.characters;
@@ -25,6 +25,34 @@
   }
 
   const campaignNames = $derived(new Map([...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].map((c) => [c.id, c.name])));
+  const campaignOf = (c: CharacterCard) => (c.campaignId === null ? t.noCampaign : (campaignNames.get(c.campaignId) ?? t.unknownCampaign));
+
+  // ---- Search, filters and sort (in memory: the list is small) ----
+  let search = $state("");
+  let campaignFilter = $state("");
+  let classFilter = $state("");
+  let levelFilter = $state("");
+  let sort = $state<CharacterSort>("name");
+  const SORTS: CharacterSort[] = ["name", "campaign", "level"];
+
+  // Options come from the characters themselves, so every choice finds someone.
+  const characters = $derived(list?.characters ?? []);
+  const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  const campaignOptions = $derived(uniqueSorted(characters.map(campaignOf)));
+  const classOptions = $derived(uniqueSorted(characters.flatMap((c) => c.classes.map((k) => k.name))));
+  const levelOptions = $derived([...new Set(characters.map((c) => totalLevel(c.classes)).filter((l) => l > 0))].sort((a, b) => a - b));
+  const shown = $derived(
+    selectCharacters(
+      characters,
+      { search, campaign: campaignFilter || null, className: classFilter || null, level: levelFilter ? Number(levelFilter) : null },
+      sort,
+      campaignOf,
+    ),
+  );
+
+  function clearFilters() {
+    search = campaignFilter = classFilter = levelFilter = "";
+  }
 
   async function load() {
     loadError = null;
@@ -89,8 +117,46 @@
       {#if list.characters.length === 0}
         <p class="muted">{t.empty}</p>
       {:else}
+        <div class="tools" role="search" aria-label={t.toolsLabel}>
+          <label for="characters-search" class="sr-only">{t.searchLabel}</label>
+          <input id="characters-search" class="search" type="search" bind:value={search} placeholder={t.searchPlaceholder} autocomplete="off" />
+          <label class="field">
+            <span>{t.campaignFilter}</span>
+            <select bind:value={campaignFilter}>
+              <option value="">{t.allCampaigns}</option>
+              {#each campaignOptions as option (option)}<option value={option}>{option}</option>{/each}
+            </select>
+          </label>
+          <label class="field">
+            <span>{t.classFilter}</span>
+            <select bind:value={classFilter}>
+              <option value="">{t.allClasses}</option>
+              {#each classOptions as option (option)}<option value={option}>{option}</option>{/each}
+            </select>
+          </label>
+          <label class="field">
+            <span>{t.levelFilter}</span>
+            <select bind:value={levelFilter}>
+              <option value="">{t.allLevels}</option>
+              {#each levelOptions as option (option)}<option value={String(option)}>{formatNumber.format(option)}</option>{/each}
+            </select>
+          </label>
+          <label class="field sort">
+            <span>{t.sortLabel}</span>
+            <select bind:value={sort}>
+              {#each SORTS as option (option)}<option value={option}>{t.sorts[option]}</option>{/each}
+            </select>
+          </label>
+        </div>
+
+        {#if shown.length === 0}
+          <div class="no-matches">
+            <p class="muted">{t.noMatches}</p>
+            <button class="btn small" onclick={clearFilters}>{t.clearFilters}</button>
+          </div>
+        {/if}
         <ul class="grid">
-          {#each list.characters as character (`${character.campaignId}/${character.id}`)}
+          {#each shown as character (`${character.campaignId}/${character.id}`)}
             <li class="card">
               <CharacterAvatar candidates={avatarCandidates(character.classes)} alt={character.name} />
               <div class="info">
@@ -98,7 +164,7 @@
                 <p>{character.classes.length ? classLine(character.classes) : t.noClass}</p>
                 {#if character.classes.length}<p class="muted">{t.level(formatNumber.format(totalLevel(character.classes)))}</p>{/if}
                 <p class="campaign">
-                  <span>{character.campaignId === null ? t.noCampaign : (campaignNames.get(character.campaignId) ?? t.unknownCampaign)}</span>
+                  <span>{campaignOf(character)}</span>
                   {#if character.archived}<span class="tag">{t.archived}</span>{/if}
                 </p>
               </div>
@@ -181,6 +247,58 @@
     font-size: var(--text-xl);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-tight);
+  }
+
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
+  }
+
+  .search {
+    flex: 1 1 var(--select-width);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .search::placeholder {
+    color: var(--color-text-placeholder);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+  }
+
+  /* Sort sits apart from the filters, at the end of the row. */
+  .sort {
+    margin-left: auto;
+  }
+
+  select {
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .no-matches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   .grid {

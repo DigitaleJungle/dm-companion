@@ -1,4 +1,30 @@
-import type { ClassLevel } from "$lib/api/characters";
+import type { CharacterCard, ClassLevel } from "$lib/api/characters";
+
+export type CharacterSort = "name" | "campaign" | "level";
+/** null means "all" for each filter; `campaign` is the campaign label shown on the card. */
+export type CharacterFilters = { search: string; campaign: string | null; className: string | null; level: number | null };
+
+const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+
+/** The characters matching the search (name or class line) and every chosen filter, in the chosen order; ties go by name. */
+export function selectCharacters(
+  characters: CharacterCard[],
+  filters: CharacterFilters,
+  sort: CharacterSort,
+  campaignOf: (c: CharacterCard) => string,
+): CharacterCard[] {
+  const needle = filters.search.trim().toLowerCase();
+  const kept = characters.filter(
+    (c) =>
+      (!needle || c.name.toLowerCase().includes(needle) || classLine(c.classes).toLowerCase().includes(needle)) &&
+      (filters.campaign === null || campaignOf(c) === filters.campaign) &&
+      (filters.className === null || c.classes.some((k) => k.name === filters.className)) &&
+      (filters.level === null || totalLevel(c.classes) === filters.level),
+  );
+  const order = (a: CharacterCard, b: CharacterCard) =>
+    sort === "campaign" ? collator.compare(campaignOf(a), campaignOf(b)) : sort === "level" ? totalLevel(a.classes) - totalLevel(b.classes) : 0;
+  return kept.sort((a, b) => order(a, b) || collator.compare(a.name, b.name));
+}
 
 /** "Fighter (Champion)" for one class, "Fighter 3 (Champion) / Wizard 2" for several. */
 export function classLine(classes: ClassLevel[]): string {

@@ -145,6 +145,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 ### 04 · Characters
 - **Characters overview** (no wireframe), opened from the Start screen's **Characters** button. It replaces the screen; **Back** returns to the Start screen.
   - Every character from every campaign (active and archived), and those without a campaign, as a card sorted by name. A character belongs to at most one campaign and is stored in that campaign's folder; one without a campaign is stored app-wide and its card says "No campaign".
+  - Above the cards: a **search** field (matches the name or the class line, subclass included), **filters** for Campaign, Class (a multiclassed character matches each of its classes) and Level (total level), each offering only values some character has, and **Sort by** Name, Campaign or Level (ties go by name). When nothing matches, a message with a **Clear search and filters** button.
   - A card shows the avatar, name, class with subclass ("Fighter (Champion)", or "Fighter 3 (Champion) / Wizard 2" when multiclassed), total level, and the campaign (tagged "Archived" when it is).
   - Avatar: the character's own picture once Create character exists; until then, and when none was added, the imported art for the subclass, else the class, else a neutral person icon.
   - The card's "…" menu copies the character into another active campaign (as a new, separate character).

@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.9] - 2026-10-21
+
+### Added
+
+- Characters overview: search by name or class, filter on campaign, class and level, and sort by name, campaign or level.
+
 ## [0.4.8] - 2026-10-21
 
 ### Changed
