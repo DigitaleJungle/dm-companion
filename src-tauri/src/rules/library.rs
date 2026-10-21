@@ -93,6 +93,14 @@ impl Writer {
         Ok(())
     }
 
+    /// Names a source that books.json and adventures.json don't list; never overwrites one they do.
+    pub fn source_name(&self, id: &str, name: &str) -> Result<(), StorageError> {
+        self.conn
+            .execute("INSERT INTO sources (id, name, grp) VALUES (?1, ?2, 'other') ON CONFLICT (id) DO NOTHING", params![id, name])
+            .map_err(db_err)?;
+        Ok(())
+    }
+
     pub fn chapter(&self, book: &str, idx: usize, name: &str, json: &Value) -> Result<(), StorageError> {
         self.conn
             .execute("INSERT OR REPLACE INTO chapters VALUES (?1, ?2, ?3, ?4)", params![book, idx as i64, name, json.to_string()])

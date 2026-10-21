@@ -386,6 +386,12 @@ export function sortName(name: string): string {
 /** Alphabetical by `sortName`, falling back to the raw names. */
 export const compareNames = (a: string, b: string) => collator.compare(sortName(a), sortName(b)) || collator.compare(a, b);
 
+/** A book matches a typed filter when its name or abbreviation contains it. */
+export function bookMatches(book: { id: string; name: string }, filter: string): boolean {
+  const needle = filter.trim().toLowerCase();
+  return !needle || book.name.toLowerCase().includes(needle) || book.id.toLowerCase().includes(needle);
+}
+
 /** Sorts by a column (or name), keeping name order between equal values. */
 export function sortRows(rows: Row[], column: Column | null, descending: boolean): Row[] {
   // Keys are cleaned once per row, not per comparison: the All tab can hold thousands of rows.

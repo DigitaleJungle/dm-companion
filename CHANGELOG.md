@@ -3,6 +3,18 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.7] - 2026-10-21
+
+### Changed
+
+- Library catalog: the Source column shows the book's full name instead of its abbreviation, and sorts by it.
+- Entry pages and previews show the book's full name with its abbreviation in brackets, e.g. "Elemental Evil Player's Companion (EEPC), page 12".
+- Library and Catalog: a filter box above the book list finds books by name or abbreviation. In the Catalog, Select all / Deselect all act on the books the filter shows.
+
+### Fixed
+
+- Sources that aren't in the archive's book or adventure lists (such as EEPC, the Plane Shift series and Unearthed Arcana) now get their full name on import. They also appear in the Catalog's book list and in Campaign settings → Sourcebooks. Re-import your rules data to pick this up.
+
 ## [0.4.6] - 2026-10-21
 
 ### Changed

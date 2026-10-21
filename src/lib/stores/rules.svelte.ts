@@ -30,6 +30,11 @@ export async function refreshRules() {
   }
 }
 
+/** A source's full name from the library, or its abbreviation when the library has none. */
+export function sourceName(id: string): string {
+  return rules.status?.library?.sources.find((s) => s.id.toLowerCase() === id.toLowerCase())?.name ?? id;
+}
+
 /** Runs one import/change and keeps the status in sync. Rejects with a StorageError for the caller to show. */
 async function change(task: ImportProgress["task"] | null, action: () => Promise<RulesStatus>) {
   if (task) {

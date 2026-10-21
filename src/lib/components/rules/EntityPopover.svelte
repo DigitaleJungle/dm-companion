@@ -7,7 +7,7 @@
   import EntityView from "./EntityView.svelte";
   import type { Campaign } from "$lib/api/campaigns";
   import { setCampaignSources } from "$lib/stores/campaigns.svelte";
-  import { rules } from "$lib/stores/rules.svelte";
+  import { sourceName } from "$lib/stores/rules.svelte";
 
   /** In a campaign library, entries from books the campaign doesn't use get a banner with a one-click fix. */
   let { campaign = null }: { campaign?: Campaign | null } = $props();
@@ -24,7 +24,7 @@
   const outsideCampaign = $derived(
     !!campaign && !!entity && !campaign.sources.some((s) => s.toLowerCase() === entity!.source.toLowerCase()),
   );
-  const bookName = $derived(rules.status?.library?.sources.find((s) => s.id.toLowerCase() === entity?.source.toLowerCase())?.name ?? entity?.source ?? "");
+  const bookName = $derived(entity ? sourceName(entity.source) : "");
   let adding = $state(false);
   let addError = $state<string | null>(null);
 

@@ -24,13 +24,13 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 - Opened from a **Library** button at the top right of the Start screen. It replaces the screen (same window); **Back** returns to the Start screen. Where you are is kept in the address, so back/forward work inside the Library.
 - **Reading** tab, three columns:
-  - **Library**: the imported books, alphabetical (ignoring punctuation and a leading "the", "a" or "an").
+  - **Library**: the imported books, alphabetical (ignoring punctuation and a leading "the", "a" or "an"), with a filter field that narrows them by name or abbreviation.
   - **Contents**: the book's chapters ("Chapter 1: …", "Appendix A: …") with their sections nested and collapsible. Clicking a chapter opens it; clicking a section opens its chapter and scrolls to it.
   - **Reading pane**: the chapter text with headings, lists, tables, insets, quotes and the stat blocks books embed (loaded as they scroll into view). Images show when they were imported in Settings; nothing is fetched from the internet.
 - **Catalog** tab:
-  - **Books** column: every source with entries, each with a checkbox, plus Select all / Deselect all and a shown/total count. Unticked books are hidden from the Catalog only and remembered app-wide.
+  - **Books** column: every source with entries, each with a checkbox, plus a filter field (by name or abbreviation), Select all / Deselect all (acting on the books the filter shows) and a shown/total count. Unticked books are hidden from the Catalog only and remembered app-wide.
   - **Tabs**: All, Rules (rules glossary, actions), Player (spells, classes, subclasses, species, backgrounds, feats, optional features), Reference (items, item properties, item masteries, conditions, diseases, languages, skills, senses) and DM Tools (creatures, hazards, traps). Each tab has its categories as sub-tabs; All lists everything with a Category column.
-  - Each category is a **table** with its own columns (e.g. spells: Level, School, Cast Time, Range, Components, Tags; creatures: CR, Type, Size, AC, HP; items: Type, Rarity, Attunement, Weight, Value), always starting with Name and ending with Source. Every column sorts both ways; text sorts ignore punctuation and a leading "the", "a" or "an".
+  - Each category is a **table** with its own columns (e.g. spells: Level, School, Cast Time, Range, Components, Tags; creatures: CR, Type, Size, AC, HP; items: Type, Rarity, Attunement, Weight, Value), always starting with Name and ending with Source (the book's full name). Every column sorts both ways; text sorts ignore punctuation and a leading "the", "a" or "an".
   - A **search** box with a result count, and **filters** as checkbox groups per category (e.g. spell Level, School, Concentration/Ritual; creature CR range, Type, Size; item Category, Rarity, Attunement). Options within a filter combine with OR, filters with AND. Filters with a single option are hidden.
   - 50 rows per page with Previous / Next and "Showing 1–50 of N".
   - Clicking a row opens the entry on its own page with "Back to <category>"; the table keeps its search, filters, sort and page.

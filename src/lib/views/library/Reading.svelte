@@ -3,7 +3,7 @@
   import { SvelteSet } from "svelte/reactivity";
   import { getBook, getChapter, type Book } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { compareNames } from "$lib/rules/catalog";
+  import { bookMatches, compareNames } from "$lib/rules/catalog";
   import { contentsTree, headingId, type HeaderNode } from "$lib/rules/contents";
   import { rules } from "$lib/stores/rules.svelte";
   import { reduceMotion } from "$lib/stores/theme.svelte";
@@ -33,6 +33,8 @@
       .sort((a, b) => compareNames(a.name, b.name)),
   );
   const current = $derived(bookId ?? books[0]?.id ?? null);
+  let bookFilter = $state("");
+  const listedBooks = $derived(books.filter((b) => bookMatches(b, bookFilter)));
 
   let book = $state<Book | null>(null);
   let bookError = $state<string | null>(null);
@@ -178,8 +180,11 @@
     {#if books.length === 0}
       <p class="muted">{t.noBooks}</p>
     {:else}
+      <label for="reading-books-filter" class="sr-only">{strings.settings.rules.filterLabel}</label>
+      <input id="reading-books-filter" class="filter" type="search" bind:value={bookFilter} placeholder={strings.settings.rules.filterPlaceholder} autocomplete="off" />
+      {#if !listedBooks.length}<p class="muted">{strings.settings.rules.noMatches}</p>{/if}
       <ul>
-        {#each books as b (b.id)}
+        {#each listedBooks as b (b.id)}
           <li>
             <button class="book" aria-current={b.id === current ? "page" : undefined} onclick={() => onnavigate(b.id, 0)}>{b.name}</button>
           </li>
@@ -242,6 +247,22 @@
     grid-template-columns: var(--library-books-width) var(--library-contents-width) 1fr;
     min-height: 0;
     height: 100%;
+  }
+
+  /* Same look as the sourcebook filter in Campaign settings. */
+  .filter {
+    width: 100%;
+    min-height: var(--control-height-sm);
+    margin-bottom: var(--space-3);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+
+  .filter::placeholder {
+    color: var(--color-text-placeholder);
   }
 
   .column {

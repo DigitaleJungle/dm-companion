@@ -8,6 +8,7 @@ import {
   featName,
   itemGroup,
   ordinal,
+  bookMatches,
   sortName,
   sortRows,
   spellLevelText,
@@ -82,6 +83,14 @@ describe("filtering and sorting", () => {
     expect(sortRows(spells, level, false).map((r) => r.name)).toEqual(["Fire Bolt", "Bless", "Detect Magic", "Shield"]);
     expect(sortRows(spells, level, true).map((r) => r.name)[0]).toBe("Shield");
     expect(sortRows(spells, null, false).map((r) => r.name)).toEqual(["Bless", "Detect Magic", "Fire Bolt", "Shield"]);
+  });
+
+  it("matches books by name or abbreviation, ignoring case", () => {
+    const eepc = { id: "EEPC", name: "Elemental Evil Player's Companion" };
+    expect(bookMatches(eepc, "")).toBe(true);
+    expect(bookMatches(eepc, " eepc ")).toBe(true);
+    expect(bookMatches(eepc, "player's")).toBe(true);
+    expect(bookMatches(eepc, "xanathar")).toBe(false);
   });
 
   it("sorts names without punctuation or a leading article", () => {

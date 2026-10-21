@@ -2,6 +2,7 @@
   import { setContext, type Snippet } from "svelte";
   import type { Entity } from "$lib/api/rules";
   import { strings } from "$lib/strings";
+  import { sourceName } from "$lib/stores/rules.svelte";
   import {
     abilityScores,
     classFacts,
@@ -75,7 +76,7 @@
 <article class="entity" class:compact>
   <header>
     <svelte:element this={compact ? "h3" : "h2"} class="name">{entity.name}</svelte:element>
-    <p class="meta">{t.kinds[kind] ?? kind}, {t.page(entity.source, entity.page)}</p>
+    <p class="meta">{t.kinds[kind] ?? kind}, {t.page(sourceName(entity.source), entity.source, entity.page)}</p>
     {#if subtitle}<p class="subtitle"><Inline text={subtitle} /></p>{/if}
   </header>
 

@@ -204,7 +204,8 @@ export const strings = {
     noEntries: "Nothing matches.",
     showMore: "Show more",
     chooseEntry: "Choose an entry to read it.",
-    page: (source: string, page: number | null) => (page ? `${source} page ${page}` : source),
+    /** "Book name (ABBR), page 12"; just the abbreviation when the library has no name for it. */
+    page: (name: string, source: string, page: number | null) => `${name === source ? source : `${name} (${source})`}${page ? `, page ${page}` : ""}`,
     basedOn: (name: string, source: string) => `Based on ${name} (${source})`,
     closePreview: "Close preview",
     previewBack: "Back",

@@ -6,6 +6,7 @@ use crate::storage::StorageError;
 use flate2::read::GzDecoder;
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Component, Path};
@@ -109,6 +110,46 @@ fn entity_keys(path: &str) -> &'static [(&'static str, &'static str)] {
         "trapshazards.json" => &[("trap", "trap"), ("hazard", "hazard")],
         _ => &[],
     }
+}
+
+/// Full source names from `js/parser.js` (`Parser.SOURCE_JSON_TO_FULL[Parser.SRC_X] = …;` lines), for sources that
+/// books.json and adventures.json don't list. It's code, not data: only plain `Parser.X = "…"` or template constants
+/// are understood, and any other line is skipped, so a changed format means abbreviations, never a failed import.
+fn parser_source_names(js: &str) -> Vec<(String, String)> {
+    let mut consts: HashMap<String, String> = HashMap::new();
+    let mut names = Vec::new();
+    for line in js.lines() {
+        let Some((lhs, rhs)) = line.strip_prefix("Parser.").and_then(|l| l.split_once(" = ")) else { continue };
+        let Some(value) = rhs.trim_end().strip_suffix(';').and_then(|v| resolve_js(v, &consts)) else { continue };
+        if let Some(key) = lhs.strip_prefix("SOURCE_JSON_TO_FULL[Parser.").and_then(|k| k.strip_suffix(']')) {
+            if let Some(id) = consts.get(key) {
+                names.push((id.clone(), value));
+            }
+        } else if lhs.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            consts.insert(lhs.to_string(), value);
+        }
+    }
+    names
+}
+
+/// A `"…"` string, a `Parser.X` constant, or a template made of text and `${Parser.X}`.
+fn resolve_js(expr: &str, consts: &HashMap<String, String>) -> Option<String> {
+    if let Some(name) = expr.strip_prefix("Parser.") {
+        return consts.get(name).cloned();
+    }
+    if let Some(s) = expr.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+        return (!s.contains(['"', '\\'])).then(|| s.to_string());
+    }
+    let mut rest = expr.strip_prefix('`')?.strip_suffix('`')?;
+    let mut out = String::new();
+    while let Some(start) = rest.find("${Parser.") {
+        out.push_str(&rest[..start]);
+        let end = start + rest[start..].find('}')?;
+        out.push_str(consts.get(&rest[start + "${Parser.".len()..end])?);
+        rest = &rest[end + 1..];
+    }
+    out.push_str(rest);
+    (!out.contains(['`', '\\', '$'])).then_some(out)
 }
 
 fn str_of<'a>(v: &'a Value, key: &str) -> &'a str {
@@ -266,7 +307,15 @@ fn build(archive: &Path, tmp: &Path, removed: &[String], now: u64, progress: &mu
             }
         }
         let wanted = rel == "package.json" || rel == "data/books.json" || rel == "data/adventures.json" || rel.starts_with("data/book/book-") || !entity_keys(&rel).is_empty();
-        if wanted && rel.ends_with(".json") {
+        if rel == "js/parser.js" {
+            let mut text = String::new();
+            entry.read_to_string(&mut text).map_err(not_archive)?;
+            for (id, name) in parser_source_names(&text) {
+                if !import.is_removed(&id) {
+                    import.writer.source_name(&id, &name)?;
+                }
+            }
+        } else if wanted && rel.ends_with(".json") {
             let mut bytes = Vec::with_capacity(entry.size() as usize);
             entry.read_to_end(&mut bytes).map_err(not_archive)?;
             let json: Value = serde_json::from_slice(&bytes).map_err(|e| StorageError::Corrupt(format!("{rel}: {e}")))?;
@@ -338,10 +387,14 @@ pub mod tests {
             ("data/items-base.json", json!({ "itemProperty": [{ "abbreviation": "F", "source": "XPHB", "entries": [{ "name": "Finesse", "entries": ["Use Dex."] }] }] })),
             ("data/unrelated.json", json!({ "ignored": true })),
         ];
+        // Comes after books.json, so its XPHB name must not replace the book's.
+        let parser_js = "Parser.SRC_XPHB = \"XPHB\";\nParser.SRC_EEPC = \"EEPC\";\n\
+            Parser.SOURCE_JSON_TO_FULL[Parser.SRC_XPHB] = \"Other name\";\n\
+            Parser.SOURCE_JSON_TO_FULL[Parser.SRC_EEPC] = \"Elemental Evil Player's Companion\";\n";
         let file = dir.join("data.tar.gz");
         let mut tar = tar::Builder::new(GzEncoder::new(File::create(&file).unwrap(), Compression::fast()));
-        for (path, value) in files {
-            let bytes = serde_json::to_vec(&value).unwrap();
+        let raw = files.into_iter().map(|(path, value)| (path, serde_json::to_vec(&value).unwrap()));
+        for (path, bytes) in raw.chain([("js/parser.js", parser_js.as_bytes().to_vec())]) {
             let mut header = tar::Header::new_gnu();
             header.set_size(bytes.len() as u64);
             header.set_mode(0o644);
@@ -379,7 +432,33 @@ pub mod tests {
         let hiding: String = conn.query_row("SELECT body FROM search WHERE title = 'Hiding'", [], |r| r.get(0)).unwrap();
         assert_eq!(hiding, "Make a Stealth check to hide.");
         assert_eq!(count(&conn, "SELECT count(*) FROM search WHERE kind = 'section'"), 2);
+        // parser.js names sources the book lists don't, without renaming the ones they do.
+        let name = |id: &str| -> String { conn.query_row("SELECT name FROM sources WHERE id = ?1", [id], |r| r.get(0)).unwrap() };
+        assert_eq!(name("eepc"), "Elemental Evil Player's Companion");
+        assert_eq!(name("XPHB"), "Player's Handbook (2024)");
         assert!(!rules.join("library.sqlite.tmp").exists());
+    }
+
+    #[test]
+    fn reads_full_source_names_from_parser_js() {
+        let js = r#"
+Parser.SRC_PS_PREFIX = "PS";
+Parser.SRC_PSX = `${Parser.SRC_PS_PREFIX}X`;
+Parser.SRC_TftYP = "TftYP";
+Parser.SRC_ODD = "ODD"; // trailing comment: skipped
+Parser.PS_PREFIX = "Plane Shift: ";
+Parser.TftYP_NAME = "Tales from the Yawning Portal";
+Parser.SOURCE_JSON_TO_FULL = {};
+Parser.SOURCE_JSON_TO_FULL[Parser.SRC_PSX] = `${Parser.PS_PREFIX}Ixalan`;
+Parser.SOURCE_JSON_TO_FULL[Parser.SRC_TftYP] = Parser.TftYP_NAME;
+Parser.SOURCE_JSON_TO_FULL[Parser.SRC_ODD] = "Odd";
+Parser.SOURCE_JSON_TO_FULL[Parser.SRC_UNKNOWN] = "Unknown";
+Parser.SOURCE_JSON_TO_FULL[Parser.SRC_TftYP] = `${Parser.MISSING}x`;
+"#;
+        assert_eq!(
+            parser_source_names(js),
+            vec![("PSX".to_string(), "Plane Shift: Ixalan".to_string()), ("TftYP".to_string(), "Tales from the Yawning Portal".to_string())]
+        );
     }
 
     #[test]

@@ -6,7 +6,7 @@
   import { errorMessage } from "$lib/api/storage";
   import { rules } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
-  import { SOURCE_COLUMN, TABS, applyFilters, category, compareNames, sortRows, type FilterOption } from "$lib/rules/catalog";
+  import { SOURCE_COLUMN, TABS, applyFilters, category, bookMatches, compareNames, sortRows, type Column, type FilterOption } from "$lib/rules/catalog";
   import EntityView from "$lib/components/rules/EntityView.svelte";
 
   let {
@@ -65,9 +65,12 @@
     saveHidden();
   }
 
-  // Only touches the books listed here (a campaign's), leaving any others as they were.
+  let bookFilter = $state("");
+  const listedSources = $derived(sources.filter((s) => bookMatches(s, bookFilter)));
+
+  // Only touches the books listed here (a campaign's, narrowed by the filter), leaving any others as they were.
   function setAll(shown: boolean) {
-    for (const s of sources) {
+    for (const s of listedSources) {
       if (shown) hidden.delete(s.id);
       else hidden.add(s.id);
     }
@@ -110,6 +113,10 @@
   const inBooks = $derived(
     (rows ?? []).filter((r) => !hidden.has(r.source) && (!allowedSources || allowedSources.has(r.source.toLowerCase()))),
   );
+  // The Source column shows (and sorts by) the book's full name; the abbreviation is the fallback.
+  const bookNames = $derived(new Map((rules.status?.library?.sources ?? []).map((s) => [s.id.toLowerCase(), s.name])));
+  const bookName = (source: string) => bookNames.get(source.toLowerCase()) ?? source;
+  const sourceColumn = $derived<Column>({ ...SOURCE_COLUMN, value: (r) => bookName(r.source) });
   const options = $derived(
     Object.fromEntries(config.filters.map((f) => [f.id, f.options ?? f.optionsFrom?.(inBooks) ?? []])) as Record<string, FilterOption[]>,
   );
@@ -117,7 +124,7 @@
     const needle = search.trim().toLowerCase();
     const searched = needle ? inBooks.filter((r) => r.name.toLowerCase().includes(needle)) : inBooks;
     const filtered = applyFilters(searched, config.filters, ticked, options);
-    return sortRows(filtered, [...config.columns, SOURCE_COLUMN].find((c) => c.id === sortColumn) ?? null, descending);
+    return sortRows(filtered, [...config.columns, sourceColumn].find((c) => c.id === sortColumn) ?? null, descending);
   });
   const pageCount = $derived(Math.max(1, Math.ceil(matching.length / PAGE)));
   const pageRows = $derived(matching.slice(page * PAGE, page * PAGE + PAGE));
@@ -178,14 +185,17 @@
 <div class="catalog">
   <aside class="books" aria-labelledby="catalog-books">
     <h2 id="catalog-books" class="column-title">{t.booksLabel}</h2>
+    <label for="catalog-books-filter" class="sr-only">{strings.settings.rules.filterLabel}</label>
+    <input id="catalog-books-filter" class="book-filter" type="search" bind:value={bookFilter} placeholder={strings.settings.rules.filterPlaceholder} autocomplete="off" />
     <div class="book-tools">
-      <button class="btn small" disabled={shownCount === sources.length} onclick={() => setAll(true)}>{t.selectAll}</button>
-      <button class="btn small" disabled={shownCount === 0} onclick={() => setAll(false)}>{t.deselectAll}</button>
+      <button class="btn small" disabled={listedSources.every((s) => !hidden.has(s.id))} onclick={() => setAll(true)}>{t.selectAll}</button>
+      <button class="btn small" disabled={listedSources.every((s) => hidden.has(s.id))} onclick={() => setAll(false)}>{t.deselectAll}</button>
       <span class="count">{t.booksCount(shownCount, sources.length)}</span>
     </div>
     {#if settingsError}<p class="error" role="alert">{settingsError}</p>{/if}
+    {#if sources.length && !listedSources.length}<p class="muted">{strings.settings.rules.noMatches}</p>{/if}
     <ul>
-      {#each sources as source (source.id)}
+      {#each listedSources as source (source.id)}
         <li>
           <label class="book">
             <input type="checkbox" checked={!hidden.has(source.id)} onchange={(e) => toggleSource(source.id, e.currentTarget.checked)} />
@@ -304,7 +314,7 @@
                     {#each config.columns as column (column.id)}
                       <td class:numeric={column.numeric}>{column.value(row)}</td>
                     {/each}
-                    <td class="source">{row.source}</td>
+                    <td class="source">{bookName(row.source)}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -345,6 +355,22 @@
     padding: 0 var(--space-3) var(--space-3);
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);
+  }
+
+  /* Same look as the sourcebook filter in Campaign settings; lined up with the tools below. */
+  .book-filter {
+    width: calc(100% - 2 * var(--space-3));
+    min-height: var(--control-height-sm);
+    margin: 0 var(--space-3) var(--space-3);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+
+  .book-filter::placeholder {
+    color: var(--color-text-placeholder);
   }
 
   .book-tools {
