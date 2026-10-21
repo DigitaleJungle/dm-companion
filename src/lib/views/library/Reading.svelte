@@ -3,6 +3,7 @@
   import { SvelteSet } from "svelte/reactivity";
   import { getBook, getChapter, type Book } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
+  import { compareNames } from "$lib/rules/catalog";
   import { contentsTree, headingId, type HeaderNode } from "$lib/rules/contents";
   import { rules } from "$lib/stores/rules.svelte";
   import { reduceMotion } from "$lib/stores/theme.svelte";
@@ -29,7 +30,7 @@
   const books = $derived(
     (rules.status?.library?.sources ?? [])
       .filter((s) => s.isBook && (!allowedSources || allowedSources.has(s.id.toLowerCase())))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => compareNames(a.name, b.name)),
   );
   const current = $derived(bookId ?? books[0]?.id ?? null);
 

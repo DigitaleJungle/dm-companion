@@ -8,6 +8,7 @@ import {
   featName,
   itemGroup,
   ordinal,
+  sortName,
   sortRows,
   spellLevelText,
   TABS,
@@ -81,5 +82,14 @@ describe("filtering and sorting", () => {
     expect(sortRows(spells, level, false).map((r) => r.name)).toEqual(["Fire Bolt", "Bless", "Detect Magic", "Shield"]);
     expect(sortRows(spells, level, true).map((r) => r.name)[0]).toBe("Shield");
     expect(sortRows(spells, null, false).map((r) => r.name)).toEqual(["Bless", "Detect Magic", "Fire Bolt", "Shield"]);
+  });
+
+  it("sorts names without punctuation or a leading article", () => {
+    expect(sortName("The Book of Many Things")).toBe("Book of Many Things");
+    expect(sortName('"Lucky" Coin')).toBe("Lucky Coin");
+    expect(sortName("Bigby's Hand")).toBe("Bigbys Hand");
+    expect(sortName("A")).toBe("A");
+    const rows = ["The Zombie", '"Apple"', "a Bat", "Cat"].map((name) => row(name, {}));
+    expect(sortRows(rows, null, false).map((r) => r.name)).toEqual(['"Apple"', "a Bat", "Cat", "The Zombie"]);
   });
 });

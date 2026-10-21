@@ -372,14 +372,31 @@ export function applyFilters(rows: Row[], filters: Filter[], ticked: Record<stri
   return rows.filter((row) => active.every((f) => (options[f.id] ?? []).some((o) => ticked[f.id].has(o.label) && o.match(row))));
 }
 
+const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+
+/** The name as it sorts: no punctuation, no leading "the", "a" or "an". */
+export function sortName(name: string): string {
+  return name
+    .replace(/['’]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/^(the|an?) /i, "");
+}
+
+/** Alphabetical by `sortName`, falling back to the raw names. */
+export const compareNames = (a: string, b: string) => collator.compare(sortName(a), sortName(b)) || collator.compare(a, b);
+
 /** Sorts by a column (or name), keeping name order between equal values. */
 export function sortRows(rows: Row[], column: Column | null, descending: boolean): Row[] {
-  const key = (row: Row): number | string => (column ? (column.sort ?? column.value)(row) : row.name);
-  const sorted = [...rows].sort((a, b) => {
-    const ka = key(a);
-    const kb = key(b);
-    const diff = typeof ka === "number" && typeof kb === "number" ? ka - kb : String(ka).localeCompare(String(kb));
-    return diff || a.name.localeCompare(b.name);
+  // Keys are cleaned once per row, not per comparison: the All tab can hold thousands of rows.
+  const keyed = rows.map((row) => {
+    const key = column ? (column.sort ?? column.value)(row) : row.name;
+    return { row, key: typeof key === "number" ? key : sortName(key), name: sortName(row.name) };
   });
+  keyed.sort((a, b) => {
+    const diff = typeof a.key === "number" && typeof b.key === "number" ? a.key - b.key : collator.compare(String(a.key), String(b.key));
+    return diff || collator.compare(a.name, b.name) || collator.compare(a.row.name, b.row.name);
+  });
+  const sorted = keyed.map((k) => k.row);
   return descending ? sorted.reverse() : sorted;
 }

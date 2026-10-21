@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.5] - 2026-10-21
+
+### Changed
+
+- Library: alphabetical order ignores punctuation and a leading "the", "a" or "an", in the catalog table and the book lists.
+
 ## [0.4.4] - 2026-10-21
 
 ### Changed

@@ -6,7 +6,7 @@
   import { errorMessage } from "$lib/api/storage";
   import { rules } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
-  import { SOURCE_COLUMN, TABS, applyFilters, category, sortRows, type FilterOption } from "$lib/rules/catalog";
+  import { SOURCE_COLUMN, TABS, applyFilters, category, compareNames, sortRows, type FilterOption } from "$lib/rules/catalog";
   import EntityView from "$lib/components/rules/EntityView.svelte";
 
   let {
@@ -35,7 +35,7 @@
   const sources = $derived(
     (rules.status?.library?.sources ?? [])
       .filter((s) => s.entities > 0 && (!allowedSources || allowedSources.has(s.id.toLowerCase())))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .sort((a, b) => compareNames(a.name, b.name)),
   );
   const hidden = new SvelteSet<string>();
   const shownCount = $derived(sources.filter((s) => !hidden.has(s.id)).length);
