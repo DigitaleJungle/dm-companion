@@ -562,9 +562,12 @@
     vertical-align: top;
   }
 
+  /* Header reads as a label row, apart from the data: tinted, stronger rule, small caps. */
   th {
     padding: 0;
     white-space: nowrap;
+    background: var(--color-surface-sunken);
+    border-bottom: calc(2 * var(--border-width)) solid var(--color-border-strong);
   }
 
   .sort {
@@ -574,7 +577,11 @@
     padding: var(--space-3) var(--space-4);
     border: none;
     background: none;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
     text-align: inherit;
     cursor: pointer;
   }

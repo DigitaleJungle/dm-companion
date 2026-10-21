@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.4.6] - 2026-10-21
+
+### Changed
+
+- Library: the catalog table's header row stands apart from the rows, with a tinted background, a stronger divider and small uppercase labels.
+
 ## [0.4.5] - 2026-10-21
 
 ### Changed
