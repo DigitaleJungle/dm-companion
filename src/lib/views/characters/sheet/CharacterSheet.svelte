@@ -60,6 +60,14 @@
   });
 
   const c = $derived(sheet.character);
+  // Until the party loads, the switcher offers just this character.
+  const switchItems = $derived(
+    (party.length ? party : c ? [{ campaignId: campaign, id, name: c.name }] : []).map((x) => ({
+      label: x.name,
+      current: x.id === id,
+      onselect: () => x.id !== id && goto(sheetHref(x)),
+    })),
+  );
   const campaignInfo = $derived(
     campaign === null ? null : [...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].find((x) => x.id === campaign) ?? null,
   );
@@ -151,19 +159,15 @@
       {t.back}
     </a>
     {#if c}
-      <select
-        class="switcher"
-        aria-label={t.switcher}
-        value={id}
-        onchange={(e) => {
-          const next = party.find((x) => x.id === e.currentTarget.value);
-          if (next) goto(sheetHref(next));
-        }}
-      >
-        {#each party.length ? party : [{ id, name: c.name }] as other (other.id)}
-          <option value={other.id}>{other.name}</option>
-        {/each}
-      </select>
+      <!-- Same dropdown as the campaign switcher: the name with up/down arrows, a check on this character. -->
+      <div class="switcher">
+        <Menu id="character-switcher" label={t.switchCharacter(c.name)} align="start" triggerClass="btn switcher-btn" items={switchItems}>
+          {#snippet trigger()}
+            <span class="switcher-name">{c.name}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          {/snippet}
+        </Menu>
+      </div>
     {/if}
     {#if c && !sheet.archived}
       <span class="save-state" role="status">
@@ -348,15 +352,35 @@
     flex: 1;
   }
 
+  /* Styled like the campaign switcher in the campaign sidebar. */
   .switcher {
-    min-height: var(--control-height);
+    min-width: 0;
     max-width: var(--select-width);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
+  }
+
+  .switcher :global(.switcher-btn) {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--space-2);
     color: var(--color-text);
-    font-size: var(--text-md);
+  }
+
+  .switcher :global(.switcher-btn:hover) {
+    background: var(--color-surface-sunken);
+  }
+
+  .switcher :global(.switcher-btn svg) {
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    color: var(--color-text-muted);
+  }
+
+  .switcher-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .corner {

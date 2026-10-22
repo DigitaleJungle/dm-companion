@@ -162,12 +162,12 @@
 
   {#if open}
     <ul bind:this={list} id="{id}-list" class="menu {align}" role="menu" aria-labelledby={id} tabindex="-1" onkeydown={onMenuKeydown}>
-      {#each items as item (item.label)}
+      {#each items as item, i (i)}
         <li role="none" class:has-sub={!!item.items} onpointerenter={() => (sub = item.items && !item.disabled ? item.label : null)}>
           {@render entry(item)}
           {#if item.items && sub === item.label}
             <ul id={subId(item.label)} class="menu sub {align}" role="menu" aria-label={item.label} tabindex="-1" onkeydown={onSubKeydown}>
-              {#each item.items as child (child.label)}
+              {#each item.items as child, j (j)}
                 <li role="none">{@render entry(child)}</li>
               {/each}
             </ul>

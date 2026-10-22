@@ -394,7 +394,7 @@ export const strings = {
       retry: "Retry",
       playedBy: (player: string) => `Played by ${player}`,
       unknown: "—",
-      switcher: "Character",
+      switchCharacter: (name: string) => `Character: ${name}. Switch character`,
       edit: "Edit sheet",
       edited: (name: string) => `Saved the changes to ${name}.`,
       tabsLabel: "Character sheet sections",
