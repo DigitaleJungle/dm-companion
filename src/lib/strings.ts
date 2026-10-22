@@ -458,6 +458,7 @@ export const strings = {
         label: (label: string) => `${label}:`,
       },
       skills: "Skills",
+      defenses: { advantage: "Advantage", resist: "Resistances", immune: "Immunities", conditionImmune: "Condition immunities", vulnerable: "Vulnerabilities" },
       actions: {
         empty: "Equip a weapon in the Inventory to see its attack here.",
         name: "Name",

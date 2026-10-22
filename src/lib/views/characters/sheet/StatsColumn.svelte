@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ABILITIES, checkBonus, modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { proficiencyLists } from "$lib/characters/sheet";
+  import { proficiencyLists, speciesDefenses } from "$lib/characters/sheet";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
@@ -25,6 +25,17 @@
     return bonus === null ? t.unknown : plain.format(10 + bonus);
   };
   const lists = $derived(proficiencyLists(sheet.cls, sheet.background, sheet.species));
+  // From the species (or its chosen lineage): save advantages, then resistances and the like, only the ones it has.
+  const defenses = $derived(speciesDefenses(sheet.species, sheet.character?.species?.lineage));
+  const defenseRows = $derived(
+    ([
+      [t.defenses.advantage, defenses.advantages],
+      [t.defenses.resist, defenses.resist],
+      [t.defenses.immune, defenses.immune],
+      [t.defenses.conditionImmune, defenses.conditionImmune],
+      [t.defenses.vulnerable, defenses.vulnerable],
+    ] as const).filter(([, items]) => items.length > 0),
+  );
   // Only the categories the character has something in.
   const profRows = $derived(
     ([
@@ -63,6 +74,16 @@
             </li>
           {/each}
         </ul>
+        {#if defenseRows.length || defenses.advantageNotes.length}
+          <div class="defenses">
+            {#each defenses.advantageNotes as text, i (i)}
+              <p class="prof">{text}</p>
+            {/each}
+            {#each defenseRows as [label, items] (label)}
+              <p class="prof"><b class="prof-label">{t.senses.label(label)}</b> {list.format(items)}</p>
+            {/each}
+          </div>
+        {/if}
       </section>
 
       <section class="box" aria-labelledby="sheet-senses">
@@ -257,6 +278,16 @@
 
   .prof-label {
     color: var(--color-text);
+  }
+
+  /* Below the six saves: save advantages, then resistances, immunities and vulnerabilities. */
+  .defenses {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: var(--border-width) solid var(--color-border);
   }
 
   .prof.first {

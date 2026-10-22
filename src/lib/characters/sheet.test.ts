@@ -6,11 +6,14 @@ import {
   deathStatus,
   hitDieRoll,
   hpOf,
+  lineageFields,
   longRest,
   pactSlots,
   proficiencyLists,
   setTemp,
+  shortAdvantage,
   shortRest,
+  speciesDefenses,
   spellSlots,
   takeDamage,
   takeHealing,
@@ -156,6 +159,57 @@ describe("proficiencies and carrying", () => {
     expect(carryingCapacity(10)).toBe(150);
     expect(carryingCapacity(10, "S")).toBe(150);
     expect(carryingCapacity(10, "L")).toBe(300);
+  });
+});
+
+describe("species defenses", () => {
+  const dwarf = {
+    resist: ["poison"],
+    entries: [
+      { type: "entries", name: "Dwarven Resilience", entries: ["You have {@variantrule Resistance|XPHB} to Poison damage. You also have {@variantrule Advantage|XPHB} on saving throws you make to avoid or end the {@condition Poisoned|XPHB} condition."] },
+      { type: "entries", name: "Stonecunning", entries: ["You can use Tremorsense."] },
+    ],
+  };
+
+  it("reads resistances and finds save advantages in the trait text", () => {
+    expect(speciesDefenses(dwarf)).toEqual({
+      advantages: ["Poisoned condition"],
+      advantageNotes: [],
+      resist: ["Poison"],
+      immune: [],
+      conditionImmune: [],
+      vulnerable: [],
+    });
+    expect(speciesDefenses({ entries: ["You have {@variantrule Advantage|XPHB} on Intelligence, Wisdom, and Charisma saving throws."] }).advantages).toEqual([
+      "INT, WIS, CHA saves",
+    ]);
+    expect(speciesDefenses(null)).toEqual({ advantages: [], advantageNotes: [], resist: [], immune: [], conditionImmune: [], vulnerable: [] });
+  });
+
+  it("shortens save advantages, keeping sentences that carry a condition", () => {
+    expect(shortAdvantage("You have advantage on saving throws you make to avoid or end the charmed condition on yourself.")).toEqual({ what: "Charmed condition" });
+    expect(shortAdvantage("You have advantage on saving throws you make to avoid or end the charmed or stunned condition on yourself.")).toEqual({ what: "Charmed or Stunned condition" });
+    expect(shortAdvantage("Your innate psychic defenses grant you advantage on saving throws you make to avoid or end the charmed and frightened conditions on yourself.")).toEqual({
+      what: "Charmed and Frightened conditions",
+    });
+    expect(shortAdvantage("You have advantage on Intelligence, Wisdom, and Charisma saving throws against spells.")).toEqual({ what: "INT, WIS, CHA saves vs spells" });
+    expect(shortAdvantage("You have advantage on saving throws against spells.")).toEqual({ what: "Saves vs spells" });
+    expect(shortAdvantage("Until you emerge, you gain a +4 bonus to your AC, and you have advantage on Strength and Constitution saving throws.")).toEqual({
+      sentence: "Until you emerge, you gain a +4 bonus to your AC, and you have advantage on Strength and Constitution saving throws",
+    });
+    expect(shortAdvantage("You have advantage on saving throws made in the dark.")).toEqual({ sentence: "Advantage on saving throws made in the dark" });
+  });
+
+  it("settles a resistance choice through the chosen lineage", () => {
+    const dragonborn = {
+      resist: [{ choose: { from: ["acid", "fire"] } }],
+      _versions: [{ _abstract: { name: "Dragonborn ({{color}})" }, _implementations: [{ _variables: { color: "Black" }, resist: ["acid"] }, { _variables: { color: "Red" }, resist: ["fire"] }] }],
+    };
+    const tiefling = { resist: [{ choose: { from: ["poison", "fire"] } }], _versions: [{ name: "Tiefling; Infernal Legacy", resist: ["fire"], darkvision: 60 }] };
+    expect(speciesDefenses(dragonborn, "Dragonborn (Red)").resist).toEqual(["Fire"]);
+    expect(speciesDefenses(dragonborn).resist).toEqual([]); // no lineage chosen: the choice stays open
+    expect(speciesDefenses(tiefling, "Infernal Legacy").resist).toEqual(["Fire"]);
+    expect(lineageFields(tiefling._versions, "Abyssal Legacy")).toEqual({});
   });
 });
 

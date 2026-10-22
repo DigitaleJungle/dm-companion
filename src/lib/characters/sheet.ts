@@ -1,7 +1,7 @@
 // Character sheet rules for play: hit points, death saves, hit dice, spell slots, rests and armor class.
 // Class numbers (hit die, slots) come from the class entry in the rules data, never from tables in code.
 
-import { capital } from "$lib/rules/format";
+import { ABILITY_NAMES, capital } from "$lib/rules/format";
 import { plainText } from "$lib/rules/tags";
 import { modifier, type Ability, type Scores } from "./rules";
 
@@ -172,6 +172,83 @@ export function proficiencyLists(cls: Data | null, background: Data | null, spec
     tools: unique([...text(cls?.tools), ...fixed(background?.toolProficiencies)]),
     languages: unique(fixed(species?.languageProficiencies, background?.languageProficiencies)),
   };
+}
+
+// --- Defenses: resistances, immunities and save advantages from the species -------------------
+
+/** The fields a chosen lineage sets over its species (a Dragonborn color's resistance, a Tiefling legacy's). */
+export function lineageFields(versions: unknown, lineage: string | null | undefined): Data {
+  if (!lineage) return {};
+  const shortName = (name: string) => name.split("; ").slice(1).join("; ") || name;
+  const own = (v: Data) => Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith("_") && k !== "name" && k !== "source"));
+  for (const entry of list(versions)) {
+    const version = obj(entry);
+    const template = obj(version._abstract);
+    if (Array.isArray(version._implementations)) {
+      for (const impl of version._implementations.map(obj)) {
+        const vars = obj(impl._variables);
+        const name = String(template.name ?? "").replace(/\{\{(\w+)\}\}/g, (_, key: string) => String(vars[key] ?? key));
+        if (shortName(name) === lineage) return own(impl);
+      }
+    } else if (typeof version.name === "string" && shortName(version.name) === lineage) return own(version);
+  }
+  return {};
+}
+
+/** `advantages`: what save advantages apply to ("Charmed condition"); `advantageNotes`: ones kept as whole sentences. */
+export type Defenses = { advantages: string[]; advantageNotes: string[]; resist: string[]; immune: string[]; conditionImmune: string[]; vulnerable: string[] };
+
+/** Every string in nested `entries`, in order. */
+function texts(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(texts);
+  return texts(obj(value).entries ?? []);
+}
+
+/**
+ * Resistances, immunities and vulnerabilities from the species (or its chosen lineage), and the save advantages
+ * its traits give, e.g. "Advantage on saving throws you make to avoid or end the Charmed condition".
+ */
+export function speciesDefenses(species: Data | null, lineage?: string | null): Defenses {
+  const own = { ...species, ...lineageFields(species?._versions, lineage) };
+  // Choices ({ choose: … }) are settled by the lineage; anything still unsettled is left out.
+  const names = (key: string) => [...new Set(list(own[key]).filter((v): v is string => typeof v === "string").map((v) => capital(v)))];
+  // shortcut: save advantages exist only in the trait text, so they're found by wording; a structured field in the data would replace this.
+  const found = texts(species?.entries)
+    .flatMap((text) => plainText(text).split(/(?<=\.)\s+/))
+    .filter((sentence) => /\badvantage\b/i.test(sentence) && /saving throw/i.test(sentence))
+    .map(shortAdvantage);
+  const unique = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => x !== null))];
+  return {
+    advantages: unique(found.map((f) => ("what" in f ? f.what : null))),
+    advantageNotes: unique(found.map((f) => ("sentence" in f ? f.sentence : null))),
+    resist: names("resist"),
+    immune: names("immune"),
+    conditionImmune: names("conditionImmune"),
+    vulnerable: names("vulnerable"),
+  };
+}
+
+const ABILITY_ABBR = Object.fromEntries(Object.entries(ABILITY_NAMES).map(([key, name]) => [name.toLowerCase(), key.toUpperCase()]));
+
+/**
+ * What a save-advantage sentence applies to, in short form: "Poisoned condition", "INT, WIS, CHA saves vs spells".
+ * A sentence with a condition attached ("Until you emerge, …"), or one that isn't recognized, is kept whole instead.
+ */
+export function shortAdvantage(sentence: string): { what: string } | { sentence: string } {
+  const text = sentence.trim().replace(/\.$/, "");
+  const at = text.search(/\badvantage\b/i);
+  const whole = { sentence: capital(text.replace(/^you (also )?have /i, "")) };
+  if (/\b(until|while|when|if)\b/i.test(text.slice(0, at))) return whole;
+  const rest = text.slice(at);
+  const abilityWords = /\bon ([\w ,]+?) saving throws/i.exec(rest)?.[1].split(/,\s*(?:and |or )?|\s+(?:and|or)\s+/) ?? [];
+  const abilities = abilityWords.length && abilityWords.every((w) => ABILITY_ABBR[w.toLowerCase()]) ? abilityWords.map((w) => ABILITY_ABBR[w.toLowerCase()]) : [];
+  const condition = /avoid or end the (.+?) (conditions?)\b/i.exec(rest);
+  const spells = /against spells/i.test(rest);
+  if (condition) return { what: `${condition[1].replace(/\b(?!and\b|or\b)\w/g, (c) => c.toUpperCase())} ${condition[2].toLowerCase()}` };
+  if (abilities.length) return { what: `${abilities.join(", ")} saves${spells ? " vs spells" : ""}` };
+  if (spells) return { what: "Saves vs spells" };
+  return whole;
 }
 
 /** Strength × 15 pounds, doubled per size above Medium and halved for Tiny. */
