@@ -4,6 +4,7 @@
   import InfoTip from "$lib/components/InfoTip.svelte";
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import { createCharacter, saveCharacter, type Character, type CharacterCard } from "$lib/api/characters";
+  import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { inSources, lineageTarget } from "$lib/characters/rules";
@@ -40,9 +41,12 @@
     oncreated,
     edit = null,
     onsaved,
+    startCampaign = null,
   }: {
     open?: boolean;
     oncreated?: (card: CharacterCard) => void;
+    /** Creating from inside a campaign: the new character starts in it. */
+    startCampaign?: Campaign | null;
     /** Set to edit a saved character instead of creating one: the wizard opens filled in and saves over it. */
     edit?: { campaign: string | null; character: Character } | null;
     onsaved?: () => void;
@@ -124,7 +128,10 @@
       refreshCampaigns();
       if (!rules.status) refreshRules();
       if (edit) fillFromCharacter(edit);
-      else if (!options) load();
+      else {
+        if (startCampaign) chooseCampaign(startCampaign.id, startCampaign.sources);
+        if (!options) load();
+      }
       dialog.showModal();
     } else if (!open && dialog?.open) {
       dialog.close();

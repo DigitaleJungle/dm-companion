@@ -3,6 +3,16 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.5] - 2026-10-22
+
+### Added
+
+- Campaign sidebar: **Characters** opens the characters of that campaign, with search, filters, sorting, copy, delete and Create character (starting in this campaign).
+
+### Changed
+
+- Character sheet: **Back** returns to the characters list it was opened from.
+
 ## [0.5.4] - 2026-10-22
 
 ### Added

@@ -4,6 +4,7 @@
   import SettingsButton from "$lib/components/SettingsButton.svelte";
   import CharacterAvatar from "./CharacterAvatar.svelte";
   import { copyCharacter, deleteCharacter, listCharacters, type CharacterCard, type CharacterList } from "$lib/api/characters";
+  import type { Campaign } from "$lib/api/campaigns";
   import { errorMessage } from "$lib/api/storage";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { notify } from "$lib/stores/notifications.svelte";
@@ -11,6 +12,9 @@
   import { goto } from "$app/navigation";
   import { avatarCandidates, classLine, selectCharacters, sheetHref, totalLevel, type CharacterSort } from "./format";
   import CreateCharacterDialog from "./create/CreateCharacterDialog.svelte";
+
+  /** Inside a campaign: only its characters, in the campaign shell (which has its own navigation and Settings). */
+  let { campaign = null }: { campaign?: Campaign | null } = $props();
 
   const t = strings.characters;
   const formatNumber = new Intl.NumberFormat();
@@ -35,7 +39,7 @@
   const SORTS: CharacterSort[] = ["name", "campaign", "level"];
 
   // Options come from the characters themselves, so every choice finds someone.
-  const characters = $derived(list?.characters ?? []);
+  const characters = $derived((list?.characters ?? []).filter((c) => !campaign || c.campaignId === campaign.id));
   const uniqueSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
   const campaignOptions = $derived(uniqueSorted(characters.map(campaignOf)));
   const classOptions = $derived(uniqueSorted(characters.flatMap((c) => c.classes.map((k) => k.name))));
@@ -119,13 +123,15 @@
   }
 </script>
 
-<div class="characters">
-  <header class="top">
-    <a class="btn back" href="/">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      {t.back}
-    </a>
-  </header>
+<div class="characters" class:embedded={!!campaign}>
+  {#if !campaign}
+    <header class="top">
+      <a class="btn back" href="/">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        {t.back}
+      </a>
+    </header>
+  {/if}
 
   <main>
     <div class="heading">
@@ -143,19 +149,21 @@
     {:else if list === null}
       <p class="muted" role="status">{t.loading}</p>
     {:else}
-      {#if list.characters.length === 0}
-        <p class="muted">{t.empty}</p>
+      {#if characters.length === 0}
+        <p class="muted">{campaign ? t.emptyCampaign : t.empty}</p>
       {:else}
         <div class="tools" role="search" aria-label={t.toolsLabel}>
           <label for="characters-search" class="sr-only">{t.searchLabel}</label>
           <input id="characters-search" class="search" type="search" bind:value={search} placeholder={t.searchPlaceholder} autocomplete="off" />
-          <label class="field">
-            <span>{t.campaignFilter}</span>
-            <select bind:value={campaignFilter}>
-              <option value="">{t.allCampaigns}</option>
-              {#each campaignOptions as option (option)}<option value={option}>{option}</option>{/each}
-            </select>
-          </label>
+          {#if !campaign}
+            <label class="field">
+              <span>{t.campaignFilter}</span>
+              <select bind:value={campaignFilter}>
+                <option value="">{t.allCampaigns}</option>
+                {#each campaignOptions as option (option)}<option value={option}>{option}</option>{/each}
+              </select>
+            </label>
+          {/if}
           <label class="field">
             <span>{t.classFilter}</span>
             <select bind:value={classFilter}>
@@ -173,7 +181,7 @@
           <label class="field sort">
             <span>{t.sortLabel}</span>
             <select bind:value={sort}>
-              {#each SORTS as option (option)}<option value={option}>{t.sorts[option]}</option>{/each}
+              {#each SORTS.filter((s) => !campaign || s !== "campaign") as option (option)}<option value={option}>{t.sorts[option]}</option>{/each}
             </select>
           </label>
         </div>
@@ -225,16 +233,22 @@
     {/if}
   </main>
 
-  <div class="corner"><SettingsButton /></div>
+  {#if !campaign}<div class="corner"><SettingsButton /></div>{/if}
 </div>
 
-<CreateCharacterDialog bind:open={creating} oncreated={onCreated} />
+<CreateCharacterDialog bind:open={creating} oncreated={onCreated} startCampaign={campaign} />
 
 <style>
   .characters {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+  }
+
+  /* Inside the campaign shell, below its search bar; the shell's sidebar holds the Settings gear. */
+  .characters.embedded {
+    min-height: 0;
+    --corner-clearance: var(--space-6);
   }
 
   .top {

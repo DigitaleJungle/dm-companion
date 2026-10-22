@@ -54,7 +54,7 @@
     { label: nav.campaignLibrary, href: `/campaign/${campaign.id}/library` },
     { label: nav.runEncounter, href: null },
     { label: nav.encounterBuilder, href: null },
-    { label: nav.characters, href: null },
+    { label: nav.characters, href: `/campaign/${campaign.id}/characters` },
     { label: nav.legendKeeper, href: null },
   ]);
 </script>

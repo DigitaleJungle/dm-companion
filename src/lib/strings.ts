@@ -346,6 +346,7 @@ export const strings = {
     loadError: (message: string) => `Couldn't load the characters: ${message}`,
     retry: "Retry",
     empty: "No characters yet.",
+    emptyCampaign: "No characters in this campaign yet.",
     unreadable: (files: string) => `These character files couldn't be read and were left alone: ${files}`,
     noClass: "No class yet",
     level: (level: string) => `Level ${level}`,

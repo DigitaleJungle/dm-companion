@@ -1,6 +1,11 @@
+<script lang="ts" module>
+  /** The character list the sheet was opened from (the app-wide one or a campaign's); kept while switching characters. */
+  let backTo = $state("/characters");
+</script>
+
 <script lang="ts">
   import { onMount } from "svelte";
-  import { beforeNavigate, goto } from "$app/navigation";
+  import { afterNavigate, beforeNavigate, goto } from "$app/navigation";
   import Menu from "$lib/components/Menu.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
   import { listCharacters, type Character, type CharacterCard } from "$lib/api/characters";
@@ -49,6 +54,10 @@
     return () => void sheet.flush();
   });
   beforeNavigate(() => void sheet.flush());
+  afterNavigate(({ from }) => {
+    const path = from?.url.pathname;
+    if (path && /^(\/campaign\/[^/]+)?\/characters$/.test(path)) backTo = path;
+  });
 
   const c = $derived(sheet.character);
   const campaignInfo = $derived(
@@ -137,7 +146,7 @@
 
 <div class="sheet">
   <header class="top">
-    <a class="btn back" href="/characters">
+    <a class="btn back" href={backTo}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
       {t.back}
     </a>
@@ -185,7 +194,7 @@
     {#if sheet.notFound}
       <div class="empty">
         <p>{t.notFound}</p>
-        <a class="btn" href="/characters">{t.backToList}</a>
+        <a class="btn" href={backTo}>{t.backToList}</a>
       </div>
     {:else if sheet.loadError}
       <div class="error" role="alert">
