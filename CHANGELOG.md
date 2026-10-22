@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.3] - 2026-10-22
+
+### Changed
+
+- Character sheet top bar: the character switcher and the save status sit on the left, next to Back. The save status shows a green dot when saved, a grey dot for unsaved changes and a spinner while saving.
+
 ## [0.5.2] - 2026-10-22
 
 ### Changed

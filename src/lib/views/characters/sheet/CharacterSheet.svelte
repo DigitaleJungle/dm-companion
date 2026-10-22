@@ -124,31 +124,38 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
       {t.back}
     </a>
+    {#if c}
+      <select
+        class="switcher"
+        aria-label={t.switcher}
+        value={id}
+        onchange={(e) => {
+          const next = party.find((x) => x.id === e.currentTarget.value);
+          if (next) goto(sheetHref(next));
+        }}
+      >
+        {#each party.length ? party : [{ id, name: c.name }] as other (other.id)}
+          <option value={other.id}>{other.name}</option>
+        {/each}
+      </select>
+    {/if}
     {#if c && !sheet.archived}
       <span class="save-state" role="status">
         {#if sheet.save.status === "error"}
           <span class="error-text">{sheet.save.error}</span>
           <button class="btn small" onclick={() => sheet.retry()}>{t.retry}</button>
         {:else}
+          {#if sheet.save.status === "saving"}
+            <span class="spinner" aria-hidden="true"></span>
+          {:else}
+            <span class="dot {sheet.save.status}" aria-hidden="true"></span>
+          {/if}
           {t.status[sheet.save.status]}
         {/if}
       </span>
     {/if}
     {#if c}
-      <label class="switcher">
-        <span>{t.switcher}</span>
-        <select
-          value={id}
-          onchange={(e) => {
-            const next = party.find((x) => x.id === e.currentTarget.value);
-            if (next) goto(sheetHref(next));
-          }}
-        >
-          {#each party.length ? party : [{ id, name: c.name }] as other (other.id)}
-            <option value={other.id}>{other.name}</option>
-          {/each}
-        </select>
-      </label>
+      <span class="spacer"></span>
       <Menu id="short-rest" label={t.rest.short} triggerClass="btn" items={shortRestItems}>
         {#snippet trigger()}{t.rest.short}{/snippet}
       </Menu>
@@ -269,25 +276,50 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin-left: auto;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+  }
+
+  /* Green when saved, grey while changes wait, a spinner while saving. */
+  .dot,
+  .spinner {
+    flex: none;
+    width: var(--space-2);
+    height: var(--space-2);
+    border-radius: 50%;
+  }
+
+  .dot.saved {
+    background: var(--color-success);
+  }
+
+  .dot.pending {
+    background: var(--color-text-muted);
+  }
+
+  .spinner {
+    width: var(--space-3);
+    height: var(--space-3);
+    border: calc(2 * var(--border-width)) solid var(--color-border-strong);
+    border-top-color: var(--color-text-muted);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  :global([data-motion="reduce"]) .spinner {
+    animation: none;
+  }
+
+  .spacer {
+    flex: 1;
   }
 
   .switcher {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-  }
-
-  /* Without a save status (archived), the controls still sit on the right. */
-  .back + .switcher {
-    margin-left: auto;
-  }
-
-  .switcher select {
     min-height: var(--control-height);
     max-width: var(--select-width);
     padding: 0 var(--space-3);
