@@ -33,6 +33,10 @@ export function classLine(classes: ClassLevel[]): string {
     .join(" / ");
 }
 
+/** The character sheet's address. */
+export const sheetHref = (c: { campaignId: string | null; id: string }) =>
+  `/characters/${encodeURIComponent(c.id)}${c.campaignId === null ? "" : `?campaign=${encodeURIComponent(c.campaignId)}`}`;
+
 export function totalLevel(classes: ClassLevel[]): number {
   return classes.reduce((sum, c) => sum + c.level, 0);
 }

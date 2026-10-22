@@ -156,6 +156,9 @@ export function lineageNames(versions: unknown): string[] {
 /** Proficiency bonus by total character level: +2 at levels 1–4, rising by 1 every 4 levels. */
 export const proficiencyBonus = (level: number) => 2 + Math.floor((Math.max(1, level) - 1) / 4);
 
+/** A skill check or saving throw bonus: the ability modifier, plus the proficiency bonus when proficient. */
+export const checkBonus = (score: number, proficient: boolean, proficiency: number) => modifier(score) + (proficient ? proficiency : 0);
+
 /** The species entry a lineage choice belongs under: the one its `_versions` replace or remove ("Elven Lineage"). */
 export function lineageTarget(versions: unknown, entries: unknown): string | null {
   const names = new Set(

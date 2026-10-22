@@ -7,7 +7,8 @@
   import { errorMessage } from "$lib/api/storage";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { strings } from "$lib/strings";
-  import { avatarCandidates, classLine, selectCharacters, totalLevel, type CharacterSort } from "./format";
+  import { goto } from "$app/navigation";
+  import { avatarCandidates, classLine, selectCharacters, sheetHref, totalLevel, type CharacterSort } from "./format";
   import CreateCharacterDialog from "./create/CreateCharacterDialog.svelte";
 
   const t = strings.characters;
@@ -19,10 +20,8 @@
   let copyError = $state<string | null>(null);
   let creating = $state(false);
 
-  async function onCreated(card: CharacterCard) {
-    await load();
-    status = t.created(card.name);
-  }
+  // A new character opens straight on its sheet.
+  const onCreated = (card: CharacterCard) => goto(sheetHref(card));
 
   const campaignNames = $derived(new Map([...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].map((c) => [c.id, c.name])));
   const campaignOf = (c: CharacterCard) => (c.campaignId === null ? t.noCampaign : (campaignNames.get(c.campaignId) ?? t.unknownCampaign));
@@ -160,7 +159,7 @@
             <li class="card">
               <CharacterAvatar candidates={avatarCandidates(character.classes)} alt={character.name} />
               <div class="info">
-                <h2 class="name">{character.name}</h2>
+                <h2 class="name"><a class="card-link" href={sheetHref(character)} aria-label={t.open(character.name)}>{character.name}</a></h2>
                 <p>{character.classes.length ? classLine(character.classes) : t.noClass}</p>
                 {#if character.classes.length}<p class="muted">{t.level(formatNumber.format(totalLevel(character.classes)))}</p>{/if}
                 <p class="campaign">
@@ -311,6 +310,7 @@
   }
 
   .card {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: var(--space-4);
@@ -353,7 +353,36 @@
     font-size: var(--text-xs);
   }
 
+  /* The whole card opens the sheet; the name link stays the keyboard target. */
+  .card-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+  }
+
+  .card-link:focus-visible {
+    outline: none;
+  }
+
+  .card:has(.card-link:focus-visible) {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
+  }
+
+  .card:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  /* Above the card-wide link, so the menu still opens. */
   .menu {
+    position: relative;
+    z-index: 1;
     flex: none;
     margin: calc(-1 * var(--space-1));
   }

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Character Sheet – Header B</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1f1f1f}a:hover{color:#000}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f6f6; color: #1f1f1f; font-family: system-ui, -apple-system, sans-serif">
+
+  <header style="background: #ffffff; border-bottom: 1.5px solid #8a8a8a">
+    <div style="max-width: 1440px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+      <div style="font-size: 16px; font-weight: 800; letter-spacing: 0.04em; flex-grow: 1"><br></div>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5c5c5c">
+        <span>Character</span>
+        <select style="height: 40px; border: 1.5px solid #8a8a8a; border-radius: 8px; padding: 0 10px; font-family: inherit; font-size: 14px; background: #fff"><option>[Character Name]</option></select>
+      </label>
+      <button style="height: 40px; padding: 0 14px; border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; font-family: inherit; font-size: 14px; color: #1f1f1f">Short rest</button>
+      <button style="height: 40px; padding: 0 14px; border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; font-family: inherit; font-size: 14px; color: #1f1f1f">Long rest</button>
+      <button style="height: 40px; padding: 0 14px; border: 1.5px solid #1f1f1f; border-radius: 8px; background: #1f1f1f; font-family: inherit; font-size: 14px; font-weight: 600; color: #fff">Edit sheet</button>
+    </div>
+  </header>
+
+  <main style="max-width: 1440px; margin: 0 auto; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+
+    <section style="background: #fff; border: 1.5px solid {{headerBorder}}; border-radius: 10px; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; box-shadow: {{headerGlow}}; transition: box-shadow 0.4s ease, border-color 0.4s ease">
+      <div style="width: 88px; height: 88px; border: 1.5px solid {{avatarBorder}}; border-radius: 10px; background: #ededed; flex-shrink: 0; overflow: hidden; box-shadow: {{avatarGlow}}; transition: box-shadow 0.4s ease, border-color 0.4s ease">
+        <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true"><line x1="0" y1="0" x2="88" y2="88" stroke="#b5b5b5"></line><line x1="88" y1="0" x2="0" y2="88" stroke="#b5b5b5"></line></svg>
+      </div>
+      <div style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div style="font-size: 28px; font-weight: 700">[Character Name]</div>
+        <div style="font-size: 14px; color: #5c5c5c">[Race] · [Class] [Level] · [Background] · [Alignment]</div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px">
+          
+          <span style="padding: 4px 10px; border: 1.5px solid #1f1f1f; border-radius: 14px; background: #ededed">[Condition] ✕</span>
+          <span style="padding: 4px 10px; border: 1.5px solid #1f1f1f; border-radius: 14px; background: #ededed">[Condition] ✕</span>
+          <button style="padding: 4px 10px; border: 1.5px dashed #8a8a8a; border-radius: 14px; background: #fff; font-family: inherit; font-size: 13px; color: #5c5c5c">+ Add Condition</button>
+        </div>
+      </div>
+      <div style="flex: 0 0 auto; margin-left: auto; display: flex; gap: 12px; align-items: stretch">
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 10px; padding-right: 4px; font-size: 13px; color: #5c5c5c">
+        <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em">Speed</span><b style="font-size: 16px; color: #1f1f1f">[NN] ft</b></div>
+        <button aria-pressed="{{inspPressed}}" onClick="{{toggleInspired}}" style="align-self: flex-end; height: 30px; padding: 0 12px; border: 1.5px solid {{inspBorder}}; border-radius: 15px; background: {{inspBg}}; font-family: inherit; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: {{inspColor}}; white-space: nowrap; transition: background 0.3s ease, color 0.3s ease">Heroic Inspiration</button>
+      </div>
+      <button style="width: 104px; border: 1.5px solid #1f1f1f; border-radius: 10px 10px 40px 40px; background: #fff; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: inherit; color: #1f1f1f">
+        <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Armor class</span>
+        <span style="font-size: 40px; font-weight: 700; line-height: 1.1">[NN]</span>
+        <span style="font-size: 12px; color: #5c5c5c">[Armor]</span>
+      </button>
+      <button style="width: 104px; border: 1.5px solid #1f1f1f; border-radius: 10px; background: #fff; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: inherit; color: #1f1f1f">
+        <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Initiative</span>
+        <span style="font-size: 40px; font-weight: 700; line-height: 1.1">[+N]</span>
+        <span style="font-size: 12px; color: #5c5c5c">Click to roll</span>
+      </button>
+      <div style="width: 104px; box-sizing: border-box; border: 1.5px solid #1f1f1f; border-radius: 10px; background: #fff; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+        <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Proficiency</span>
+        <span style="font-size: 40px; font-weight: 700; line-height: 1.1">[+N]</span>
+        <span style="font-size: 12px; color: #5c5c5c">Bonus</span>
+      </div>
+      <div style="flex: 0 0 300px; min-width: 0; border: 1.5px solid #1f1f1f; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 16px; height: 86px">
+          <sc-if value="{{alive}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <div style="display: flex; gap: 12px; align-items: baseline">
+                <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Hit points</span>
+                <span style="font-size: 13px; color: #5c5c5c">Temp: [N]</span>
+              </div>
+              <div style="font-size: 40px; font-weight: 700; line-height: 1.1">[NN]<span style="font-size: 20px; color: #5c5c5c"> / [NN]</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{down}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 5px; min-width: 0">
+              <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #c62828; white-space: nowrap">Death saves</span>
+              <div style="display: flex; gap: 6px; align-items: center; font-size: 12px; color: #5c5c5c"><span style="width: 30px">Pass</span><span style="width: 14px; height: 14px; border: 1.5px solid #2e7d32; border-radius: 50%"></span><span style="width: 14px; height: 14px; border: 1.5px solid #2e7d32; border-radius: 50%"></span><span style="width: 14px; height: 14px; border: 1.5px solid #2e7d32; border-radius: 50%"></span></div>
+              <div style="display: flex; gap: 6px; align-items: center; font-size: 12px; color: #5c5c5c"><span style="width: 30px">Fail</span><span style="width: 14px; height: 14px; border: 1.5px solid #c62828; border-radius: 50%"></span><span style="width: 14px; height: 14px; border: 1.5px solid #c62828; border-radius: 50%"></span><span style="width: 14px; height: 14px; border: 1.5px solid #c62828; border-radius: 50%"></span></div>
+              <button style="height: 24px; padding: 0 8px; border: 1.5px solid #1f1f1f; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; color: #1f1f1f; align-self: flex-start">Roll save</button>
+            </div>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 6px; width: 120px; margin-left: auto">
+            <input type="number" placeholder="Amount" aria-label="Amount" style="width: 100%; height: 40px; box-sizing: border-box; border: 1.5px solid #8a8a8a; border-radius: 8px; padding: 0 10px; font-family: inherit; font-size: 14px">
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+              <button aria-label="Damage" onClick="{{hurt}}" style="height: 40px; border: 0; border-radius: 8px; background: #c62828; font-family: inherit; font-size: 24px; font-weight: 700; color: #fff">−</button>
+              <button aria-label="Heal" onClick="{{heal}}" style="height: 40px; border: 0; border-radius: 8px; background: #2e7d32; font-family: inherit; font-size: 24px; font-weight: 700; color: #fff">+</button>
+            </div>
+          </div>
+        </div>
+        <div style="height: 10px; border: 1px solid #8a8a8a; border-radius: 6px; overflow: hidden"><div style="width: {{hpBar}}; height: 100%; background: #8a8a8a"></div></div>
+      </div>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+      <div style="flex: 2 1 600px; min-width: 0; max-width: 720px; display: flex; flex-direction: column; gap: 20px">
+          <div role="group" aria-label="Ability scores" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{abilities}}" as="a" hint-placeholder-count="6">
+              <button style="border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: inherit; color: #1f1f1f; text-align: left; height: 64px">
+                <span style="display: flex; flex-direction: column; line-height: 1.1">
+                  <span style="font-size: 12px; color: #1f1f1f; white-space: nowrap">{{a.full}} <span style="color: #5c5c5c; letter-spacing: 0.06em">{{a.abbr}}</span></span>
+                  <span style="font-size: 15px; color: #5c5c5c">[NN]</span>
+                </span>
+                <span style="font-size: 28px; font-weight: 700">[+N]</span>
+              </button>
+            </sc-for>
+          </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start">
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 20px">
+        <section style="background: #fff; border: 1.5px solid #8a8a8a; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+          <h2 style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Saving throws</h2>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 2px">
+            <sc-for list="{{saves}}" as="s" hint-placeholder-count="6">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 4px 0; min-width: 0">
+                <div style="width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #5c5c5c; background: {{s.dot}}; flex-shrink: 0"></div>
+                <div style="flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{s.name}}</div>
+                <div style="font-weight: 700">[+N]</div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <section style="background: #fff; border: 1.5px solid #8a8a8a; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px; font-size: 14px">
+          <h2 style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Senses &amp; proficiencies</h2>
+          <div style="display: flex; justify-content: space-between"><span>Passive Perception</span><b>[NN]</b></div>
+          <div style="display: flex; justify-content: space-between"><span>Passive Insight</span><b>[NN]</b></div>
+          <div style="display: flex; justify-content: space-between"><span>Passive Investigation</span><b>[NN]</b></div>
+          <div style="color: #5c5c5c; font-size: 13px; padding-top: 6px">Armor: [list]</div>
+          <div style="color: #5c5c5c; font-size: 13px">Weapons: [list]</div>
+          <div style="color: #5c5c5c; font-size: 13px">Tools: [list]</div>
+          <div style="color: #5c5c5c; font-size: 13px">Languages: [list]</div>
+        </section>
+      </div>
+
+      <section style="flex: 1 1 260px; min-width: 0; background: #fff; border: 1.5px solid #8a8a8a; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 2px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px">
+          <h2 style="margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Skills</h2>
+          <span style="font-size: 12px; color: #5c5c5c">Click to roll</span>
+        </div>
+        <sc-for list="{{skills}}" as="s" hint-placeholder-count="18">
+          <button style="display: flex; align-items: center; gap: 10px; padding: 7px 4px; border: 0; border-bottom: 1px solid #e3e3e3; background: #fff; font-family: inherit; font-size: 14px; color: #1f1f1f; text-align: left">
+            <span style="width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #5c5c5c; background: {{s.dot}}; flex-shrink: 0"></span>
+            <span style="flex-grow: 1">{{s.name}}</span>
+            <span style="font-size: 12px; color: #5c5c5c">{{s.ab}}</span>
+            <span style="width: 34px; text-align: right; font-weight: 700">[+N]</span>
+          </button>
+        </sc-for>
+      </section>
+        </div>
+      </div>
+
+      <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+        <section style="background: #fff; border: 1.5px solid #8a8a8a; border-radius: 10px; display: flex; flex-direction: column">
+          <div role="tablist" style="display: flex; flex-wrap: wrap; border-bottom: 1.5px solid #8a8a8a; padding: 0 8px">
+            <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+              <button role="tab" onClick="{{t.pick}}" style="height: 48px; padding: 0 16px; border: 0; border-bottom: 3px solid {{t.line}}; background: #fff; font-family: inherit; font-size: 14px; font-weight: {{t.weight}}; color: {{t.color}}">{{t.label}}</button>
+            </sc-for>
+          </div>
+
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px">
+            <sc-if value="{{isActions}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                <span style="padding: 6px 12px; border: 1.5px solid #1f1f1f; border-radius: 16px; background: #ededed; font-size: 13px">All</span>
+                <span style="padding: 6px 12px; border: 1.5px solid #8a8a8a; border-radius: 16px; font-size: 13px">Attack</span>
+                <span style="padding: 6px 12px; border: 1.5px solid #8a8a8a; border-radius: 16px; font-size: 13px">Bonus action</span>
+                <span style="padding: 6px 12px; border: 1.5px solid #8a8a8a; border-radius: 16px; font-size: 13px">Reaction</span>
+              </div>
+              <div style="overflow-x: auto">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px">
+                  <thead><tr style="text-align: left; color: #5c5c5c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">
+                    <th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Name</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Range</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Hit / DC</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Damage</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Notes</th>
+                  </tr></thead>
+                  <tbody>
+                    <sc-for list="{{attacks}}" as="a" hint-placeholder-count="4">
+                      <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; font-weight: 600">{{a}}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">[NN] ft</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3"><button style="height: 36px; min-width: 52px; border: 1.5px solid #1f1f1f; border-radius: 8px; background: #fff; font-family: inherit; font-weight: 700; color: #1f1f1f">[+N]</button></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3"><button style="height: 36px; padding: 0 10px; border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; font-family: inherit; color: #1f1f1f">[NdN+N]</button></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">[Properties]</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{isSpells}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: #5c5c5c">
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center">
+                  <span>Ability: <b style="color: #1f1f1f">[ABL]</b></span>
+                  <span>Save DC: <b style="color: #1f1f1f">[NN]</b></span>
+                  <span>Attack: <b style="color: #1f1f1f">[+N]</b></span>
+                  <button aria-pressed="{{concPressed}}" onClick="{{toggleConc}}" style="margin-left: auto; height: 36px; padding: 0 14px; border: 1.5px solid {{concBorder}}; border-radius: 18px; background: {{concBg}}; font-family: inherit; font-size: 13px; font-weight: 600; color: {{concColor}}; transition: background 0.3s ease, color 0.3s ease">Concentrating</button>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 14px">
+                  <sc-for list="{{slots}}" as="s" hint-placeholder-count="3">
+                    <div style="display: flex; gap: 4px; align-items: center">
+                      <span style="margin-right: 4px">{{s.lvl}}</span>
+                      <sc-for list="{{s.boxes}}" as="b" hint-placeholder-count="3">
+                        <span style="width: 16px; height: 16px; border: 1.5px solid #5c5c5c; border-radius: 3px; background: {{b.fill}}"></span>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="overflow-x: auto">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px">
+                  <thead><tr style="text-align: left; color: #5c5c5c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">
+                    <th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Prep</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Spell</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Level</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Time</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Range</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Hit / DC</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Notes</th>
+                  </tr></thead>
+                  <tbody>
+                    <sc-for list="{{spells}}" as="sp" hint-placeholder-count="5">
+                      <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3"><input type="checkbox" aria-label="Prepared" style="width: 18px; height: 18px"></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; font-weight: 600">{{sp.name}}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">{{sp.lvl}}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">[1 action]</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">[NN] ft</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3">[+N / DC]</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">{{sp.note}}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{isGear}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center">
+                <div style="display: flex; gap: 6px">
+                  <sc-for list="{{coins}}" as="c" hint-placeholder-count="5">
+                    <div style="width: 60px; border: 1.5px solid #8a8a8a; border-radius: 8px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center">
+                      <span style="font-size: 11px; color: #5c5c5c">{{c}}</span><b style="font-size: 15px">[N]</b>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5c5c5c">
+                  <span>Carrying [NN] / [NNN] lb · Attuned [N]/3</span>
+                  <div style="height: 8px; border: 1px solid #8a8a8a; border-radius: 6px; overflow: hidden"><div style="width: 40%; height: 100%; background: #8a8a8a"></div></div>
+                </div>
+                <button style="height: 40px; padding: 0 14px; border: 1.5px solid #1f1f1f; border-radius: 8px; background: #1f1f1f; font-family: inherit; font-size: 14px; font-weight: 600; color: #fff">+ Add item</button>
+              </div>
+              <div style="overflow-x: auto">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px">
+                  <thead><tr style="text-align: left; color: #5c5c5c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em">
+                    <th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Equip</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Item</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Qty</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Weight</th><th style="padding: 8px; border-bottom: 1px solid #d6d6d6">Notes</th>
+                  </tr></thead>
+                  <tbody>
+                    <sc-for list="{{items}}" as="it" hint-placeholder-count="5">
+                      <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3"><input type="checkbox" aria-label="Equipped" style="width: 18px; height: 18px"></td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; font-weight: 600">{{it.name}}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3">[N]</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">[N] lb</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #e3e3e3; color: #5c5c5c">{{it.note}}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{isFeatures}}" hint-placeholder-val="{{ false }}">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px">
+                <sc-for list="{{features}}" as="f" hint-placeholder-count="4">
+                  <div style="border: 1.5px solid #8a8a8a; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+                    <div style="display: flex; justify-content: space-between; gap: 8px"><b style="font-size: 14px">{{f.name}}</b><span style="font-size: 12px; color: #5c5c5c">{{f.src}}</span></div>
+                    <div style="font-size: 13px; color: #5c5c5c">[Short description of what this feature does.]</div>
+                    <div style="font-size: 12px; color: #5c5c5c">Uses: [N] / [N] · per [rest]</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{isNotes}}" hint-placeholder-val="{{ false }}">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px">
+                <sc-for list="{{notes}}" as="n" hint-placeholder-count="5">
+                  <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #5c5c5c">
+                    <span>{{n}}</span>
+                    <textarea rows="4" placeholder="[Write here]" style="border: 1.5px solid #8a8a8a; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; resize: vertical"></textarea>
+                  </label>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'actions', down: false, inspired: false, concentrating: false };
+  }
+  renderVals() {
+    var self = this;
+    var tab = this.state.tab;
+    var tabDefs = [
+      ['actions', 'Actions'], ['spells', 'Spells'], ['gear', 'Inventory'], ['features', 'Features & traits'], ['notes', 'Notes & backstory']
+    ];
+    function boxes(total, used) {
+      var out = [];
+      for (var i = 0; i < total; i++) out.push({ fill: i < used ? '#8a8a8a' : '#ffffff' });
+      return out;
+    }
+    var filled = '#1f1f1f', empty = '#ffffff';
+    return {
+      tabs: tabDefs.map(function (d) {
+        var on = d[0] === tab;
+        return {
+          label: d[1],
+          line: on ? '#1f1f1f' : 'transparent',
+          weight: on ? 700 : 400,
+          color: on ? '#1f1f1f' : '#5c5c5c',
+          pick: function () { self.setState({ tab: d[0] }); }
+        };
+      }),
+      alive: !this.state.down,
+      down: this.state.down,
+      hpBar: this.state.down ? '0%' : '70%',
+      inspPressed: this.state.inspired ? 'true' : 'false',
+      inspBg: this.state.inspired ? '#eab308' : '#ffffff',
+      inspColor: this.state.inspired ? '#1f1f1f' : '#5c5c5c',
+      inspBorder: this.state.inspired ? '#ca8a04' : '#8a8a8a',
+      toggleInspired: function () { self.setState({ inspired: !self.state.inspired }); },
+      avatarGlow: this.state.inspired ? '0 0 18px 4px rgba(234, 179, 8, 0.6), inset 0 0 16px 4px rgba(234, 179, 8, 0.6)' : 'none',
+      avatarBorder: this.state.inspired ? '#ca8a04' : '#8a8a8a',
+      concPressed: this.state.concentrating ? 'true' : 'false',
+      concBg: this.state.concentrating ? '#6d28d9' : '#ffffff',
+      concColor: this.state.concentrating ? '#ffffff' : '#1f1f1f',
+      concBorder: this.state.concentrating ? '#6d28d9' : '#8a8a8a',
+      toggleConc: function () { self.setState({ concentrating: !self.state.concentrating }); },
+      headerGlow: this.state.concentrating ? 'inset 0 0 32px 6px rgba(109, 40, 217, 0.45), inset 0 0 12px 2px rgba(59, 130, 246, 0.5)' : 'none',
+      headerBorder: this.state.concentrating ? '#6d28d9' : '#8a8a8a',
+      hurt: function () { self.setState({ down: true }); },
+      heal: function () { self.setState({ down: false }); },
+      isActions: tab === 'actions',
+      isSpells: tab === 'spells',
+      isGear: tab === 'gear',
+      isFeatures: tab === 'features',
+      isNotes: tab === 'notes',
+      abilities: [
+        { full: 'Strength', abbr: 'STR' }, { full: 'Dexterity', abbr: 'DEX' }, { full: 'Constitution', abbr: 'CON' },
+        { full: 'Intelligence', abbr: 'INT' }, { full: 'Wisdom', abbr: 'WIS' }, { full: 'Charisma', abbr: 'CHA' }
+      ],
+      saves: [
+        { name: 'STR', dot: empty }, { name: 'DEX', dot: filled }, { name: 'CON', dot: empty },
+        { name: 'INT', dot: filled }, { name: 'WIS', dot: empty }, { name: 'CHA', dot: empty }
+      ],
+      skills: [
+        ['Acrobatics', 'DEX', 1], ['Animal Handling', 'WIS', 0], ['Arcana', 'INT', 1], ['Athletics', 'STR', 0],
+        ['Deception', 'CHA', 0], ['History', 'INT', 1], ['Insight', 'WIS', 0], ['Intimidation', 'CHA', 0],
+        ['Investigation', 'INT', 0], ['Medicine', 'WIS', 0], ['Nature', 'INT', 0], ['Perception', 'WIS', 1],
+        ['Performance', 'CHA', 0], ['Persuasion', 'CHA', 0], ['Religion', 'INT', 0], ['Sleight of Hand', 'DEX', 0],
+        ['Stealth', 'DEX', 1], ['Survival', 'WIS', 0]
+      ].map(function (s) { return { name: s[0], ab: s[1], dot: s[2] ? filled : empty }; }),
+      attacks: ['[Weapon 1]', '[Weapon 2]', '[Cantrip attack]', '[Class action]'],
+      slots: [{ lvl: '1st', boxes: boxes(4, 1) }, { lvl: '2nd', boxes: boxes(3, 0) }, { lvl: '3rd', boxes: boxes(2, 2) }],
+      spells: [
+        { name: '[Cantrip]', lvl: 'Cantrip', note: '[V, S]' },
+        { name: '[Spell A]', lvl: '1st', note: 'Concentration' },
+        { name: '[Spell B]', lvl: '1st', note: 'Ritual' },
+        { name: '[Spell C]', lvl: '2nd', note: '[V, S, M]' },
+        { name: '[Spell D]', lvl: '3rd', note: 'Concentration' }
+      ],
+      coins: ['CP', 'SP', 'EP', 'GP', 'PP'],
+      items: [
+        { name: '[Armor]', note: 'AC [NN]' }, { name: '[Weapon]', note: '[Damage]' }, { name: '[Magic item]', note: 'Attuned · [Rarity]' },
+        { name: '[Adventuring gear]', note: '' }, { name: '[Consumable]', note: '' }
+      ],
+      features: [
+        { name: '[Class feature]', src: '[Class] [N]' }, { name: '[Subclass feature]', src: '[Subclass] [N]' },
+        { name: '[Racial trait]', src: '[Race]' }, { name: '[Feat]', src: 'Feat' }
+      ],
+      notes: ['Personality traits', 'Ideals', 'Bonds', 'Flaws', 'Backstory']
+    };
+  }
+}
+</script>
+</body>
+</html>

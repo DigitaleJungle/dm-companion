@@ -149,28 +149,35 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
   - A card shows the avatar, name, class with subclass ("Fighter (Champion)", or "Fighter 3 (Champion) / Wizard 2" when multiclassed), total level, and the campaign (tagged "Archived" when it is).
   - Avatar: the character's own picture once Create character exists; until then, and when none was added, the imported art for the subclass, else the class, else a neutral person icon.
   - The card's "…" menu copies the character into another active campaign (as a new, separate character).
+  - Clicking a card (or its name, from the keyboard) opens the character's **sheet**.
 - **Create character** (no wireframe): a seven-step wizard in a large modal over the overview. A stepper shows the steps; **Back** and **Next** sit at the top right of each step, Next is enabled once the step is complete, steps already reached can be revisited, and changing an earlier choice clears the choices that depend on it. Closing (Escape or the close button) with unsaved input asks first ("Discard this character?"). Required fields are marked with *.
   1. **Basic info**: name (required, at most 100 characters), player and campaign. An (i) next to Campaign explains that it limits steps 2–4 to its sourcebooks; "No campaign" offers every imported book.
   2. **Species**: a filterable list with each entry's book, and the entry next to it in a compact view. Choices sit where they belong in the entry: the lineage select under the trait it changes ("Elven Lineage", "Draconic Ancestry"); size and subspecies (older books) under the title.
   3. **Class** and 4. **Background**: the same list and entry view. Sidekick classes aren't offered.
   5. **Abilities**: a Method dropdown: Standard array (15, 14, 13, 12, 10, 8), Manual (3–18) or Roll (4d6, drop the lowest, six times, through the dice parser; the dropped die is shown struck through). The six abilities are cards in one row: the score large, bonuses included (a number field for Manual, a value select underneath for array and rolls, one value per ability), and the modifier and saving throw as soon as that ability has a value. Then the bonuses: from the background (2024: +2/+1 or +1/+1/+1 among its abilities) and from the species (older books), each bonus to a different ability; scores can't go above 20.
   6. **Skills**: skills from the background and species are listed as already proficient; then the class's choice and any species or background choice, as toggle chips. A skill can't be picked twice.
-  7. **Review**: every choice (the species named by its chosen version, e.g. "Dragonborn (Black)" or "Elf (Drow Lineage)"), the same ability cards, plus saving throws, proficiency bonus, level 1 hit points, skill bonuses, passive Perception and the background's feat. **Create character** saves it and returns to the overview ("Created <name>.").
+  7. **Review**: every choice (the species named by its chosen version, e.g. "Dragonborn (Black)" or "Elf (Drow Lineage)"), the same ability cards, plus saving throws, proficiency bonus, level 1 hit points, skill bonuses, passive Perception and the background's feat. **Create character** saves it and opens the new character's sheet.
   - Characters start at level 1. Equipment, spells, languages, tools, feat choices, subclass, avatar and alignment come later.
   - States: no rules data imported, a campaign without sourcebooks (with a Choose sourcebooks button), empty filter results, and save errors.
   - States: loading, "No characters yet.", a load error with Retry, and a warning listing character files that couldn't be read (left untouched).
-- **Character list**
-  - New character, Import… and a filter.
-  - Groups: active party, and retired characters / NPC allies.
-- **Sheet header**
-  - Portrait, name, class and level, species, background, player.
-  - Buttons: Save, Add to encounter, Export PDF.
-- **Tabs**: Overview, Features, Spells, Inventory, Backstory & notes.
-- **Overview tab**
-  - The six ability scores with modifiers.
-  - AC, HP, speed, initiative, proficiency, passive Perception.
-  - Attacks.
-  - Saving throws (proficiency dot) and skills (● proficient, ◆ expertise).
+- **Character sheet** (`/characters/<id>`, with `?campaign=<id>` for a character in a campaign). It replaces the screen; **Back** returns to Characters, and the Settings gear sits in the bottom-left corner.
+  - **Header**: portrait, name, class and level, species, background, campaign and player.
+  - **Saving**: every change is saved on its own about half a second after it's made, and right away when leaving the sheet. There is no Save button; the top bar shows Unsaved changes / Saving… / Saved, or the error with **Retry**. A save only replaces the file once it's valid; the id and creation time never change.
+  - **Read-only**: a character in an archived campaign opens with a banner and every control disabled until the campaign is restored.
+  - **Tabs**: Overview, Features, Spells, Inventory, Backstory & notes. Features and Spells say "Coming soon" for now; arrow keys move between the other tabs.
+  - **Overview tab**: armor class, initiative, speed (the species' walking speed), proficiency and passive Perception; the six ability score cards with modifiers and saving throws (proficient ones marked); all skills with their bonus, proficient ones marked.
+    - **Armor class**: 10 + DEX without armor; light armor adds DEX, medium adds DEX up to +2, heavy adds none; an equipped shield adds its bonus. An **Override** field replaces the result (Unarmored Defense, magic armor); empty means computed.
+  - **In play panel** (next to the tabs; above them on narrow windows):
+    - **Hit points**: current / max and temporary. One amount field with **Damage** (temporary hit points first; never below 0; damage at 0 is a failed death save), **Heal** (up to max) and **Set temp HP** (replaces, doesn't stack).
+    - **Death saves** at 0 hit points: three success and three failure boxes, with the status Dying, Stable (3 successes) or Dead (3 failures). Healing above 0 clears them.
+    - **Hit dice**: how many are left of the total (one per level, the class's die). **Spend hit die** rolls it plus the CON modifier through the dice parser and heals that much.
+    - **Spell slots**: one box per slot per spell level, from the class table; pact magic slots on their own row with their level. Ticked means used.
+    - **Conditions**: toggle chips for the conditions in the rules data.
+    - **Short rest** brings pact slots back. **Long rest** restores hit points, clears temporary hit points and death saves, brings every slot back and regains half the hit dice (at least one).
+  - **Inventory tab**: a table of items with quantity, weight, Equipped and (for items that need it) Attuned, at most 3 attuned at once; total weight. **Add item** searches the item catalog (limited to the campaign's sourcebooks) or adds a custom item by name; adding the same catalog item again raises its quantity. **Coins**: copper, silver, electrum, gold and platinum.
+  - **Backstory & notes tab**: one free text field.
+  - States: loading, not found (with Back to Characters), a load error with Retry, no rules data (tracking works; numbers from the class and species show "—").
+  - Later: Add to encounter, Export PDF.
 
 ### 05 · LegendKeeper reader
 - **Header bar**: world name, connection and sync status, Refresh, Connection settings.

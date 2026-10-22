@@ -44,6 +44,8 @@ pub fn run() {
             commands::characters::list_characters,
             commands::characters::copy_character,
             commands::characters::create_character,
+            commands::characters::get_character,
+            commands::characters::save_character,
             commands::dice::roll_dice,
             commands::home_layout::get_home_cards,
             commands::home_layout::set_home_cards,

@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
-  import { ABILITIES, modifier, type Ability } from "$lib/characters/rules";
+  import { ABILITIES, checkBonus, modifier, type Ability } from "$lib/characters/rules";
 
   // The six abilities side by side: score (or a control to set it), then modifier and saving throw.
   let {
@@ -40,7 +40,7 @@
       {/if}
       <span class="mod"><span class="sr-only">{t.modifier} </span>{score === null ? t.unassigned : signed.format(modifier(score))}</span>
       <span class="save" class:on={saves.has(ability)}>
-        {t.save(score === null ? t.unassigned : signed.format(modifier(score) + (saves.has(ability) ? proficiency : 0)))}
+        {t.save(score === null ? t.unassigned : signed.format(checkBonus(score, saves.has(ability), proficiency)))}
         {#if saves.has(ability)}<span class="sr-only">({t.proficientSave})</span>{/if}
       </span>
       </div>

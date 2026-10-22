@@ -143,8 +143,8 @@ fn write_new(folder: &Path, campaign: Option<&str>, mut value: Value, now: u64) 
     Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id, name: summary.name, classes: summary.classes })
 }
 
-/// Saves a new character in an active campaign, or without a campaign. Its id and creation time are set here.
-pub fn create(places: &Places, campaign: Option<&str>, mut character: Value, now: u64) -> Result<CharacterCard, StorageError> {
+/// The character's fields with a trimmed, valid name, or why it can't be saved.
+fn checked_fields(character: &mut Value) -> Result<&mut serde_json::Map<String, Value>, StorageError> {
     let Some(fields) = character.as_object_mut() else {
         return Err(StorageError::Invalid("The character is incomplete.".into()));
     };
@@ -156,9 +156,67 @@ pub fn create(places: &Places, campaign: Option<&str>, mut character: Value, now
         return Err(StorageError::Invalid(format!("Keep the name under {MAX_NAME_LEN} characters.")));
     }
     fields.insert("name".into(), Value::String(name));
-    fields.insert("createdAt".into(), Value::from(now));
+    Ok(fields)
+}
+
+/// Saves a new character in an active campaign, or without a campaign. Its id and creation time are set here.
+pub fn create(places: &Places, campaign: Option<&str>, mut character: Value, now: u64) -> Result<CharacterCard, StorageError> {
+    checked_fields(&mut character)?.insert("createdAt".into(), Value::from(now));
     let folder = target_folder(places, campaign)?;
     write_new(&folder, campaign, character, now)
+}
+
+/// An existing character's file, and whether it sits in an archived campaign.
+fn existing_file(places: &Places, campaign: Option<&str>, id: &str) -> Result<(PathBuf, bool), StorageError> {
+    check_id(id)?;
+    let file = format!("{id}.json");
+    let found = match campaign {
+        Some(campaign) => {
+            check_id(campaign)?;
+            let dirs = &places.campaigns;
+            [(&dirs.active, false), (&dirs.archived, true)]
+                .into_iter()
+                .map(|(root, archived)| (root.join(campaign).join(FOLDER).join(&file), archived))
+                .find(|(path, _)| path.exists())
+        }
+        None => Some((places.loose.join(&file), false)).filter(|(path, _)| path.exists()),
+    };
+    found.ok_or_else(|| StorageError::NotFound("That character doesn't exist.".into()))
+}
+
+fn read_value(path: &Path) -> Result<Value, StorageError> {
+    serde_json::from_str(&fs::read_to_string(path)?).map_err(|e| StorageError::Corrupt(e.to_string()))
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterFile {
+    /// In an archived campaign: shown, but not saved until the campaign is restored.
+    pub archived: bool,
+    pub character: Value,
+}
+
+pub fn get(places: &Places, campaign: Option<&str>, id: &str) -> Result<CharacterFile, StorageError> {
+    let (path, archived) = existing_file(places, campaign, id)?;
+    Ok(CharacterFile { archived, character: read_value(&path)? })
+}
+
+/// Replaces an existing character. Its id and creation time always come from the file on disk.
+pub fn save(places: &Places, campaign: Option<&str>, id: &str, mut character: Value) -> Result<CharacterCard, StorageError> {
+    let (path, archived) = existing_file(places, campaign, id)?;
+    if archived {
+        return Err(StorageError::Invalid("This character's campaign is archived. Restore the campaign to change the character.".into()));
+    }
+    let on_disk = read_value(&path)?;
+    let fields = checked_fields(&mut character)?;
+    fields.insert("id".into(), Value::String(id.to_string()));
+    match on_disk.get("createdAt") {
+        Some(created) => fields.insert("createdAt".into(), created.clone()),
+        None => fields.remove("createdAt"),
+    };
+    let summary: Summary = serde_json::from_value(character.clone()).map_err(|e| StorageError::Invalid(format!("The character is incomplete: {e}")))?;
+    write_atomic(&path, &to_json(&character)?)?;
+    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id: summary.id, name: summary.name, classes: summary.classes })
 }
 
 /// Copies a character (from an active or archived campaign, or from no campaign) into another active campaign, under a new id.
@@ -168,19 +226,8 @@ pub fn copy(places: &Places, from_campaign: Option<&str>, id: &str, to_campaign:
         return Err(StorageError::Invalid("The character is already in that campaign.".into()));
     }
     let folder = target_folder(places, Some(to_campaign))?;
-    let file = format!("{id}.json");
-    let source = match from_campaign {
-        Some(from) => {
-            check_id(from)?;
-            let dirs = &places.campaigns;
-            [&dirs.active, &dirs.archived].into_iter().map(|root| root.join(from).join(FOLDER).join(&file)).find(|path| path.exists())
-        }
-        None => Some(places.loose.join(&file)).filter(|path| path.exists()),
-    }
-    .ok_or_else(|| StorageError::NotFound("That character doesn't exist.".into()))?;
-    let text = fs::read_to_string(source)?;
-    let value: Value = serde_json::from_str(&text).map_err(|e| StorageError::Corrupt(e.to_string()))?;
-    write_new(&folder, Some(to_campaign), value, now)
+    let (source, _) = existing_file(places, from_campaign, id)?;
+    write_new(&folder, Some(to_campaign), read_value(&source)?, now)
 }
 
 fn places(app: &AppHandle) -> Result<Places, StorageError> {
@@ -196,6 +243,16 @@ pub async fn list_characters(app: AppHandle) -> Result<CharacterList, StorageErr
 #[tauri::command]
 pub async fn create_character(app: AppHandle, campaign: Option<String>, character: Value) -> Result<CharacterCard, StorageError> {
     create(&places(&app)?, campaign.as_deref(), character, now_ms())
+}
+
+#[tauri::command]
+pub async fn get_character(app: AppHandle, campaign: Option<String>, id: String) -> Result<CharacterFile, StorageError> {
+    get(&places(&app)?, campaign.as_deref(), &id)
+}
+
+#[tauri::command]
+pub async fn save_character(app: AppHandle, campaign: Option<String>, id: String, character: Value) -> Result<CharacterCard, StorageError> {
+    save(&places(&app)?, campaign.as_deref(), &id, character)
 }
 
 #[tauri::command]
@@ -306,6 +363,48 @@ mod tests {
         character(&p.loose, "m", json!({ "id": "m", "name": "Mira" }));
         assert_eq!(copy(&p, None, "m", "new", 16).unwrap().id, "10");
         assert!(p.loose.join("m.json").exists());
+    }
+
+    #[test]
+    fn get_and_save_round_trip_keeping_id_and_creation_time() {
+        let p = temp_places("save");
+        campaign(&p.campaigns.active, "a");
+        let card = create(&p, Some("a"), json!({ "name": "Thalia", "hp": { "max": 12 } }), 255).unwrap();
+        let mut file = get(&p, Some("a"), &card.id).unwrap();
+        assert!(!file.archived);
+        file.character["hp"]["current"] = json!(7);
+        file.character["id"] = json!("hijack"); // ignored: the id comes from the file on disk
+        file.character["createdAt"] = json!(1);
+        file.character["name"] = json!(" Thalia the Bold ");
+        let saved = save(&p, Some("a"), &card.id, file.character).unwrap();
+        assert_eq!((saved.id.as_str(), saved.name.as_str()), ("ff", "Thalia the Bold"));
+        let value = read(p.campaigns.active.join("a").join(FOLDER).join("ff.json"));
+        assert_eq!((value["id"].as_str(), value["createdAt"].as_u64(), value["hp"]["current"].as_u64()), (Some("ff"), Some(255), Some(7)));
+        assert!(!p.campaigns.active.join("a").join(FOLDER).join("hijack.json").exists());
+
+        let loose = create(&p, None, json!({ "name": "Mira" }), 16).unwrap();
+        assert_eq!(get(&p, None, &loose.id).unwrap().character["name"], "Mira");
+        save(&p, None, &loose.id, json!({ "name": "Mira", "notes": "hi" })).unwrap();
+        assert_eq!(read(p.loose.join("10.json"))["notes"], "hi");
+    }
+
+    #[test]
+    fn save_refuses_archived_unknown_and_invalid_characters() {
+        let p = temp_places("save-bad");
+        campaign(&p.campaigns.active, "a");
+        campaign(&p.campaigns.archived, "old");
+        character(&p.campaigns.archived.join("old").join(FOLDER), "c1", json!({ "id": "c1", "name": "Brom" }));
+        character(&p.campaigns.active.join("a").join(FOLDER), "c2", json!({ "id": "c2", "name": "Thalia" }));
+        // Archived characters can be read but not changed.
+        assert!(get(&p, Some("old"), "c1").unwrap().archived);
+        assert!(matches!(save(&p, Some("old"), "c1", json!({ "name": "B" })), Err(StorageError::Invalid(_))));
+        assert!(matches!(get(&p, Some("a"), "missing"), Err(StorageError::NotFound(_))));
+        assert!(matches!(save(&p, None, "c2", json!({ "name": "T" })), Err(StorageError::NotFound(_))));
+        assert!(matches!(get(&p, Some("a"), "../c2"), Err(StorageError::Invalid(_))));
+        // A bad payload leaves the file as it was.
+        assert!(matches!(save(&p, Some("a"), "c2", json!({ "name": " " })), Err(StorageError::Invalid(_))));
+        assert!(matches!(save(&p, Some("a"), "c2", json!({ "name": "T", "classes": "Fighter" })), Err(StorageError::Invalid(_))));
+        assert_eq!(read(p.campaigns.active.join("a").join(FOLDER).join("c2.json"))["name"], "Thalia");
     }
 
     #[test]

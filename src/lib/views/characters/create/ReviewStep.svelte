@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ABILITY_NAMES, SIZES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
-  import { level1Hp, modifier, proficiencyBonus, speciesLabel, type Ability } from "$lib/characters/rules";
+  import { checkBonus, level1Hp, modifier, proficiencyBonus, speciesLabel, type Ability } from "$lib/characters/rules";
   import AbilityCards from "./AbilityCards.svelte";
   import { allSkills, backgroundFeats, draft, hitDie, savingThrows, scores } from "./draft.svelte";
 
@@ -18,7 +18,7 @@
   const proficient = $derived(new Set(allSkills()));
   const saves = $derived(new Set(savingThrows()));
   const skillRows = $derived(
-    skills.map((s) => ({ ...s, proficient: proficient.has(s.key), bonus: final ? modifier(final[s.ability as keyof typeof final] ?? 10) + (proficient.has(s.key) ? pb : 0) : 0 })),
+    skills.map((s) => ({ ...s, proficient: proficient.has(s.key), bonus: final ? checkBonus(final[s.ability as keyof typeof final] ?? 10, proficient.has(s.key), pb) : 0 })),
   );
   const perception = $derived(skillRows.find((s) => s.key === "perception")?.bonus ?? (final ? modifier(final.wis) : 0));
   const species = $derived(speciesLabel(draft.species?.name ?? "", draft.lineage ?? draft.subspecies?.name));
