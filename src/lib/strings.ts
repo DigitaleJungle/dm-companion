@@ -394,6 +394,8 @@ export const strings = {
       playedBy: (player: string) => `Played by ${player}`,
       unknown: "—",
       switcher: "Character",
+      edit: "Edit sheet",
+      edited: (name: string) => `Saved the changes to ${name}.`,
       tabsLabel: "Character sheet sections",
       tabs: { actions: "Actions", spells: "Spells", inventory: "Inventory", features: "Features & traits", notes: "Notes & backstory" },
       header: {
@@ -532,6 +534,24 @@ export const strings = {
       finish: "Create character",
       saving: "Creating…",
       saveError: (message: string) => `Couldn't create the character: ${message}`,
+      edit: {
+        title: "Edit character",
+        finish: "Save changes",
+        saving: "Saving…",
+        saveError: (message: string) => `Couldn't save the changes: ${message}`,
+        campaignFixed: "The campaign can't be changed here. Use Copy to on the Characters page to move a character.",
+        warnings: {
+          species:
+            "Changing the species asks for its skill choices again, and for its ability bonuses where the species gives them. Size, lineage and subspecies are chosen again; speed, languages and traits update by themselves.",
+          class:
+            "Changing the class changes the saving throws, the class's skill choices and the maximum hit points (damage already taken is kept), and resets spent spell slots. Proficiencies, spellcasting and features update by themselves. Check a hand-set armor class afterwards.",
+          background:
+            "Changing the background asks for its ability bonuses and skill choices again and replaces its feat. Tools and languages update by themselves.",
+        },
+        keptBonuses: (bonuses: string) => `Your saved ability bonuses are kept: ${bonuses}.`,
+        noKeptBonuses: "Your saved scores have no ability bonuses.",
+        chooseAgain: "Choose again",
+      },
       loading: "Loading rules data…",
       loadError: (message: string) => `Couldn't load the rules data: ${message}`,
       noRules: "Import rules data first, in Settings → Rules data.",

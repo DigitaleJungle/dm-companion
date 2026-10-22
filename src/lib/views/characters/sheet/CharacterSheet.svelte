@@ -3,7 +3,8 @@
   import { beforeNavigate, goto } from "$app/navigation";
   import Menu from "$lib/components/Menu.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
-  import { listCharacters, type CharacterCard } from "$lib/api/characters";
+  import { listCharacters, type Character, type CharacterCard } from "$lib/api/characters";
+  import CreateCharacterDialog from "../create/CreateCharacterDialog.svelte";
   import { rollDice } from "$lib/api/dice";
   import { errorMessage } from "$lib/api/storage";
   import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing } from "$lib/characters/sheet";
@@ -100,6 +101,22 @@
     },
   ]);
 
+  // ---- Edit sheet: the creation wizard, filled in with this character ----
+  let editing = $state(false);
+  let editTarget = $state<{ campaign: string | null; character: Character } | null>(null);
+
+  async function startEdit() {
+    await sheet.flush(); // the wizard starts from what's saved
+    if (!sheet.character) return;
+    editTarget = { campaign, character: $state.snapshot(sheet.character) as Character };
+    editing = true;
+  }
+
+  async function onEdited() {
+    await sheet.load();
+    notify(t.edited(sheet.character?.name ?? ""));
+  }
+
   function takeLongRest() {
     const rested = longRest(sheet.vitals, sheet.resources, sheet.level);
     applyRest(rested.vitals, rested.resources);
@@ -160,6 +177,7 @@
         {#snippet trigger()}{t.rest.short}{/snippet}
       </Menu>
       <button class="btn" disabled={sheet.readOnly} onclick={takeLongRest}>{t.rest.long}</button>
+      <button class="btn btn-primary" disabled={sheet.readOnly} onclick={startEdit}>{t.edit}</button>
     {/if}
   </header>
 
@@ -242,6 +260,8 @@
 
   <div class="corner"><SettingsButton /></div>
 </div>
+
+<CreateCharacterDialog bind:open={editing} edit={editTarget} onsaved={onEdited} />
 
 <style>
   .sheet {

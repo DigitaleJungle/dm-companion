@@ -1,3 +1,4 @@
+import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
 import type { Roll } from "$lib/api/dice";
 import {
@@ -62,6 +63,11 @@ function blank() {
     manual: manualDefault(),
     speciesPick: emptyPick(undefined) as BonusPick,
     backgroundPick: emptyPick(undefined) as BonusPick,
+    /**
+     * Editing: the saved ability bonuses, kept as totals because the file doesn't record which came from the
+     * species and which from the background. Cleared (so the picks are made again) when either changes.
+     */
+    keptBonuses: null as Partial<Scores> | null,
     /** Picked skills per choice group (see `skillGroups`). */
     skillPicks: {} as Record<string, string[]>,
   };
@@ -90,12 +96,14 @@ export function chooseSpecies(row: CatalogRow | null) {
   draft.size = sizes.length === 1 ? sizes[0] : null;
   draft.skillPicks = {};
   draft.speciesPick = emptyPick(undefined);
+  draft.keptBonuses = null;
 }
 
 export function chooseSubspecies(row: CatalogRow | null) {
   draft.subspecies = row;
   draft.skillPicks = {};
   draft.speciesPick = emptyPick(undefined);
+  draft.keptBonuses = null;
 }
 
 export function chooseClass(row: CatalogRow | null) {
@@ -107,6 +115,7 @@ export function chooseBackground(row: CatalogRow | null) {
   draft.background = row;
   draft.skillPicks = {};
   draft.backgroundPick = emptyPick(undefined);
+  draft.keptBonuses = null;
 }
 
 export function chooseMethod(method: Method) {
@@ -191,13 +200,16 @@ export function abilityTotal(ability: Ability): number | null {
   const index = draft.assignment[ability];
   const base = draft.method === "manual" ? draft.manual[ability] : index === null ? null : (values[index] ?? null);
   if (base === null) return null;
-  const bonus = (bonusTotals(speciesBonuses(), draft.speciesPick)[ability] ?? 0) + (bonusTotals(backgroundBonuses(), draft.backgroundPick)[ability] ?? 0);
-  return Math.min(SCORE_CAP, base + bonus);
+  return Math.min(SCORE_CAP, base + bonusesNow().reduce((sum, b) => sum + (b[ability] ?? 0), 0));
 }
+
+/** The ability bonuses in force: the saved totals while editing kept them, otherwise the picks. */
+const bonusesNow = (): Partial<Scores>[] =>
+  draft.keptBonuses ? [draft.keptBonuses] : [bonusTotals(speciesBonuses(), draft.speciesPick), bonusTotals(backgroundBonuses(), draft.backgroundPick)];
 
 export function scores(): Scores | null {
   const base = baseScores();
-  return base && finalScores(base, [bonusTotals(speciesBonuses(), draft.speciesPick), bonusTotals(backgroundBonuses(), draft.backgroundPick)]);
+  return base && finalScores(base, bonusesNow());
 }
 
 // --- Step completeness ------------------------------------------------------------------------
@@ -221,8 +233,7 @@ export function stepComplete(step: Step, options: Options | null): boolean {
       return (
         baseScores() !== null &&
         (draft.method !== "roll" || draft.rolls.length === ABILITIES.length) &&
-        bonusComplete(speciesBonuses(), draft.speciesPick) &&
-        bonusComplete(backgroundBonuses(), draft.backgroundPick)
+        (!!draft.keptBonuses || (bonusComplete(speciesBonuses(), draft.speciesPick) && bonusComplete(backgroundBonuses(), draft.backgroundPick)))
       );
     case "skills":
       return skillGroups().every((g) => (draft.skillPicks[g.id] ?? []).length === g.choice.count);
@@ -256,5 +267,93 @@ export function toCharacter() {
     savingThrows: savingThrows(),
     hp: { max: level1Hp(hitDie(), final.con) },
     feats: backgroundFeats(),
+  };
+}
+
+// --- Editing a saved character ------------------------------------------------------------------
+
+type Ref = { name: string; source: string };
+const same = (row: CatalogRow, ref: Ref | undefined) => !!ref && row.name.toLowerCase() === ref.name.toLowerCase() && row.source.toLowerCase() === ref.source.toLowerCase();
+
+/** Which value of `values` (by index) each ability has, using each value once; null when the scores aren't those values. */
+function assignmentFor(values: number[], base: Scores): Assignment | null {
+  const used = new Set<number>();
+  const assignment = emptyAssignment();
+  for (const a of ABILITIES) {
+    const i = values.findIndex((v, j) => v === base[a] && !used.has(j));
+    if (i < 0) return null;
+    used.add(i);
+    assignment[a] = i;
+  }
+  return assignment;
+}
+
+/**
+ * Fills the wizard from a saved character. The file keeps results, not where they came from, so:
+ * ability bonuses are kept as saved totals (`keptBonuses`), rolled scores come back without their dice,
+ * and skill picks are rebuilt by giving each choice group the saved skills it allows.
+ */
+export function loadCharacter(c: Character, campaignId: string | null, options: Options) {
+  resetDraft();
+  draft.name = c.name;
+  draft.player = c.player ?? "";
+  draft.campaignId = campaignId;
+  draft.species = options.species.find((r) => same(r, c.species)) ?? null;
+  draft.lineage = c.species?.lineage ?? null;
+  draft.subspecies = subspeciesOf(options, draft.species).find((r) => same(r, c.species?.subspecies)) ?? null;
+  const sizes = sizesOf(draft.species);
+  draft.size = c.species?.size ?? (sizes.length === 1 ? sizes[0] : null);
+  draft.cls = options.classes.find((r) => same(r, c.classes[0])) ?? null;
+  draft.background = options.backgrounds.find((r) => same(r, c.background)) ?? null;
+
+  const saved = c.abilities;
+  const base = saved?.base && ABILITIES.every((a) => typeof saved.base[a] === "number") ? (saved.base as Scores) : null;
+  if (base) {
+    const standard = saved?.method === "standard" ? assignmentFor(STANDARD_ARRAY, base) : null;
+    if (standard) {
+      draft.method = "standard";
+      draft.assignment = standard;
+    } else if (saved?.method === "roll") {
+      draft.method = "roll";
+      draft.rolls = ABILITIES.map((a) => ({ notation: "", total: base[a], dice: [] }));
+      draft.assignment = Object.fromEntries(ABILITIES.map((a, i) => [a, i])) as Assignment;
+    } else {
+      draft.method = "manual";
+      draft.manual = { ...base };
+    }
+    draft.keptBonuses = { ...(saved?.bonuses ?? {}) } as Partial<Scores>;
+  }
+
+  const granted = new Set(grantedSkills());
+  const left = (c.skills ?? []).filter((s) => !granted.has(s));
+  for (const group of skillGroups()) {
+    const picks = left.filter((s) => group.choice.from === null || group.choice.from.includes(s)).slice(0, group.choice.count);
+    for (const s of picks) left.splice(left.indexOf(s), 1);
+    draft.skillPicks[group.id] = picks;
+  }
+  draft.reached = STEPS.length - 1;
+}
+
+/**
+ * The saved character with the wizard's choices applied. Everything from play (hit point damage, temporary
+ * hit points, conditions, inventory, notes…) stays; a new class resets spent spell slots, a new background
+ * replaces the feats, and damage taken carries over to a changed maximum.
+ */
+export function editedCharacter(existing: Character): Character {
+  const next = toCharacter();
+  const sameClass = same(draft.cls!, existing.classes[0]);
+  const sameBackground = same(draft.background!, existing.background);
+  // shortcut: max HP is the level 1 value, which is right while every character is level 1; level up will record HP per level.
+  const max = next.hp.max;
+  const oldMax = existing.hp?.max ?? max;
+  const damage = Math.max(0, oldMax - (existing.hp?.current ?? oldMax));
+  return {
+    ...existing,
+    ...next,
+    // Keeping the class keeps its level and subclass.
+    classes: sameClass ? existing.classes : next.classes,
+    hp: { ...existing.hp, max, current: Math.max(0, max - damage) },
+    feats: sameBackground ? (existing.feats ?? next.feats) : next.feats,
+    ...(sameClass ? {} : { slotsUsed: [], pactSlotsUsed: 0 }),
   };
 }

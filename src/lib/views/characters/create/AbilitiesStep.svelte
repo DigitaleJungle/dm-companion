@@ -122,6 +122,13 @@
   {/if}
 {/if}
 
+{#if draft.keptBonuses}
+  {@const kept = ABILITIES.filter((a) => draft.keptBonuses?.[a]).map((a) => `${ABILITY_NAMES[a]} ${signed.format(draft.keptBonuses![a]!)}`)}
+  <div class="kept">
+    <p>{kept.length ? strings.characters.wizard.edit.keptBonuses(list.format(kept)) : strings.characters.wizard.edit.noKeptBonuses}</p>
+    {#if sections.length}<button class="btn small" onclick={() => (draft.keptBonuses = null)}>{strings.characters.wizard.edit.chooseAgain}</button>{/if}
+  </div>
+{:else}
 {#each sections as section (section.key)}
   {@const option = section.options[pickFor(section.key).option]}
   <fieldset class="bonuses">
@@ -158,6 +165,7 @@
     {/each}
   </fieldset>
 {/each}
+{/if}
 
 <AbilityCards scores={totals} {saves} proficiency={proficiencyBonus(1)} required>
   {#snippet control(ability: Ability)}
@@ -191,6 +199,17 @@
 <p class="muted small">{t.cap(SCORE_CAP)}</p>
 
 <style>
+  .kept {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+    font-size: var(--text-sm);
+  }
+
   .method,
   .bonus-row {
     display: flex;

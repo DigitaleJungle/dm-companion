@@ -3,7 +3,7 @@
   import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
   import InfoTip from "$lib/components/InfoTip.svelte";
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
-  import { createCharacter, type CharacterCard } from "$lib/api/characters";
+  import { createCharacter, saveCharacter, type Character, type CharacterCard } from "$lib/api/characters";
   import { catalogRows } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { inSources, lineageTarget } from "$lib/characters/rules";
@@ -24,7 +24,9 @@
     chooseSpecies,
     chooseSubspecies,
     draft,
+    editedCharacter,
     lineagesOf,
+    loadCharacter,
     resetDraft,
     sizesOf,
     stepComplete,
@@ -33,9 +35,21 @@
     type Options,
   } from "./draft.svelte";
 
-  let { open = $bindable(false), oncreated }: { open?: boolean; oncreated: (card: CharacterCard) => void } = $props();
+  let {
+    open = $bindable(false),
+    oncreated,
+    edit = null,
+    onsaved,
+  }: {
+    open?: boolean;
+    oncreated?: (card: CharacterCard) => void;
+    /** Set to edit a saved character instead of creating one: the wizard opens filled in and saves over it. */
+    edit?: { campaign: string | null; character: Character } | null;
+    onsaved?: () => void;
+  } = $props();
 
   const t = strings.characters.wizard;
+  const e = t.edit;
   const plain = new Intl.NumberFormat();
 
   let dialog: HTMLDialogElement | undefined = $state();
@@ -62,7 +76,12 @@
     return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
   const complete = $derived(stepComplete(step, options));
-  const dirty = $derived(draft.reached > 0 || draft.name.trim() !== "" || draft.player.trim() !== "");
+  // While editing, "dirty" means the choices differ from the character as it was loaded.
+  let loaded = $state<string | null>(null);
+  const snapshot = () => JSON.stringify({ ...draft, step: 0, reached: 0 });
+  const dirty = $derived(
+    edit ? loaded !== null && snapshot() !== loaded : draft.reached > 0 || draft.name.trim() !== "" || draft.player.trim() !== "",
+  );
 
   const lineages = $derived(lineagesOf(draft.species));
   const lineageKey = $derived(lineageTarget(draft.species?.data._versions, draft.species?.data.entries)?.toLowerCase() ?? null);
@@ -87,15 +106,25 @@
     }
   }
 
-  // Each opening starts a fresh character; the rules data is loaded once.
+  /** Editing: fill the wizard from the character once the rules data is in. */
+  async function fillFromCharacter(target: { campaign: string | null; character: Character }) {
+    if (!options) await load();
+    if (!options) return;
+    loadCharacter(target.character, target.campaign, options);
+    loaded = snapshot();
+  }
+
+  // Each opening starts a fresh character (or the one being edited); the rules data is loaded once.
   $effect(() => {
     if (open && dialog && !dialog.open) {
       resetDraft();
+      loaded = null;
       saveError = null;
       saving = false;
       refreshCampaigns();
       if (!rules.status) refreshRules();
-      if (!options) load();
+      if (edit) fillFromCharacter(edit);
+      else if (!options) load();
       dialog.showModal();
     } else if (!open && dialog?.open) {
       dialog.close();
@@ -124,11 +153,17 @@
     saving = true;
     saveError = null;
     try {
-      const card = await createCharacter(draft.campaignId, toCharacter());
-      open = false;
-      oncreated(card);
-    } catch (e) {
-      saveError = t.saveError(errorMessage(e));
+      if (edit) {
+        await saveCharacter(edit.campaign, edit.character.id, editedCharacter(edit.character));
+        open = false;
+        onsaved?.();
+      } else {
+        const card = await createCharacter(draft.campaignId, toCharacter());
+        open = false;
+        oncreated?.(card);
+      }
+    } catch (err) {
+      saveError = (edit ? e.saveError : t.saveError)(errorMessage(err));
     } finally {
       saving = false;
     }
@@ -178,7 +213,7 @@
 >
   {#if open}
     <header class="top">
-      <h1 id="wizard-title">{t.title}</h1>
+      <h1 id="wizard-title">{edit ? e.title : t.title}</h1>
       <button class="icon-btn close" aria-label={t.close} onclick={requestClose}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
       </button>
@@ -214,7 +249,9 @@
             <div class="actions">
               {#if draft.step > 0}<button class="btn" onclick={() => goToStep(draft.step - 1)}>{t.back}</button>{/if}
               {#if step === "review"}
-                <button class="btn btn-primary" disabled={!complete || saving} onclick={save}>{saving ? t.saving : t.finish}</button>
+                <button class="btn btn-primary" disabled={!complete || saving} onclick={save}>
+                  {saving ? (edit ? e.saving : t.saving) : edit ? e.finish : t.finish}
+                </button>
               {:else}
                 <button class="btn btn-primary" disabled={!complete} onclick={() => goToStep(draft.step + 1)}>{t.next}</button>
               {/if}
@@ -238,6 +275,10 @@
             </div>
           {/if}
 
+          {#if edit && (step === "species" || step === "class" || step === "background")}
+            <p class="note warning" role="note">{e.warnings[step]}</p>
+          {/if}
+
           <div class="body">
             {#if step === "basics"}
               <div class="fields">
@@ -256,6 +297,8 @@
                   </span>
                   <select
                     id="wizard-campaign"
+                    disabled={!!edit}
+                    aria-describedby={edit ? "wizard-campaign-fixed" : undefined}
                     value={draft.campaignId ?? ""}
                     onchange={(e) => {
                       const id = e.currentTarget.value || null;
@@ -265,6 +308,7 @@
                     <option value="">{t.basics.noCampaign}</option>
                     {#each activeCampaigns as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
                   </select>
+                  {#if edit}<p id="wizard-campaign-fixed" class="muted hint">{e.campaignFixed}</p>{/if}
                 </div>
               </div>
             {:else if step === "species"}
@@ -533,6 +577,15 @@
 
   .note {
     background: var(--color-surface-sunken);
+  }
+
+  /* Editing: what changing this step does to the rest of the character. */
+  .note.warning {
+    border-left: calc(3 * var(--border-width)) solid var(--color-inspiration-strong);
+  }
+
+  .hint {
+    font-size: var(--text-xs);
   }
 
   .error {

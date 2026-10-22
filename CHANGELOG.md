@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.4] - 2026-10-22
+
+### Added
+
+- Character sheet: **Edit sheet** opens the character wizard filled in, to change name, player, species, class, background, abilities and skills. The species, class and background steps say what changing them affects; saved skill picks and ability bonuses are kept where possible, and everything from play (damage taken, conditions, inventory, notes) stays.
+
 ## [0.5.3] - 2026-10-22
 
 ### Changed
