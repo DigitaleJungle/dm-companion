@@ -73,9 +73,13 @@
 
   function menuItems(character: CharacterCard) {
     const targets = (campaigns.list?.campaigns ?? []).filter((c) => c.id !== character.campaignId);
-    const copies = targets.length
-      ? targets.map((target) => ({ label: t.copyTo(target.name), onselect: () => copy(character, target.id, target.name) }))
-      : [{ label: t.noOtherCampaign, disabled: true, onselect: () => {} }];
+    // Nowhere to copy to: no copy item. One campaign: one item. Several: a "Copy to" submenu.
+    const copies =
+      targets.length === 0
+        ? []
+        : targets.length === 1
+          ? [{ label: t.copyTo(targets[0].name), onselect: () => copy(character, targets[0].id, targets[0].name) }]
+          : [{ label: t.copyToMenu, items: targets.map((target) => ({ label: target.name, onselect: () => copy(character, target.id, target.name) })) }];
     // Archived campaigns are read-only until restored.
     const remove = character.archived
       ? { label: t.deleteArchived, disabled: true, onselect: () => {} }

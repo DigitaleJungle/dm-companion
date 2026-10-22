@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.7] - 2026-10-23
+
+### Changed
+
+- Characters overview: the card menu shows no copy item when there's no other campaign, and puts several campaigns in a Copy to submenu.
+
 ## [0.5.6] - 2026-10-23
 
 ### Changed

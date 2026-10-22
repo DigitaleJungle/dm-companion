@@ -354,7 +354,7 @@ export const strings = {
     unknownCampaign: "Unknown campaign",
     options: (name: string) => `Options for ${name}`,
     copyTo: (campaign: string) => `Copy to ${campaign}`,
-    noOtherCampaign: "No other active campaign to copy to",
+    copyToMenu: "Copy to",
     delete: "Delete…",
     deleteArchived: "Delete (restore the campaign first)",
     confirmDelete: (name: string) => `Delete ${name}? This can't be undone.`,
