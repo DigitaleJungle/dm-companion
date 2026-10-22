@@ -213,6 +213,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 - **Pins**: anything can be pinned to the current session.
 - **Keyboard**: no global shortcuts for search or for switching screens. Space advances to the next turn.
 - **Storage**: characters, encounters, notes and settings are stored locally, per campaign. A character without a campaign is stored app-wide.
+- **Notifications**: short confirmations (a character copied or deleted, a rest taken, a hit die spent) pop up in the bottom-right corner of the DM window. Only one shows at a time; a new one replaces it. It goes away after 5 seconds, or when clicked. Errors stay next to the control that failed.
 - **Window size**: the main window opens at the size it had when it was last closed (and maximized if it was), fitted to the current screen. It appears only once it is ready, so the resize is never visible.
 
 ## Open questions before building

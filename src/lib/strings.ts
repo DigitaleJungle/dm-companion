@@ -2,6 +2,7 @@
 export const strings = {
   appName: "DM Companion",
   comingSoon: "Coming soon",
+  notification: { dismiss: "Close notification" },
 
   shell: {
     mainNav: "Main",

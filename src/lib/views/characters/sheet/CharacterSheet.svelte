@@ -9,6 +9,7 @@
   import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing } from "$lib/characters/sheet";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
+  import { notify } from "$lib/stores/notifications.svelte";
   import { strings } from "$lib/strings";
   import { sheetHref } from "../format";
   import ActionsTab from "./ActionsTab.svelte";
@@ -33,7 +34,6 @@
   const sheet = new Sheet(campaign, id);
   let tab = $state<Tab>("actions");
   let party = $state<CharacterCard[]>([]);
-  let note = $state<string | null>(null);
   let rolling = $state(false);
 
   onMount(() => {
@@ -72,14 +72,13 @@
   async function spendHitDie() {
     const notation = hitDieRoll(faces, sheet.scores?.con ?? 10);
     rolling = true;
-    note = null;
     try {
       const roll = await rollDice(notation);
       const healed = Math.max(0, roll.total);
       applyRest(takeHealing(sheet.vitals, healed), { ...sheet.resources, hitDiceSpent: sheet.resources.hitDiceSpent + 1 });
-      note = t.rest.spentHitDie(notation, plain.format(healed));
+      notify(t.rest.spentHitDie(notation, plain.format(healed)));
     } catch (e) {
-      note = t.rest.rollError(errorMessage(e));
+      notify(t.rest.rollError(errorMessage(e)));
     } finally {
       rolling = false;
     }
@@ -96,7 +95,7 @@
       disabled: sheet.readOnly,
       onselect: () => {
         applyRest(sheet.vitals, shortRest(sheet.resources));
-        note = t.rest.rested.short;
+        notify(t.rest.rested.short);
       },
     },
   ]);
@@ -104,7 +103,7 @@
   function takeLongRest() {
     const rested = longRest(sheet.vitals, sheet.resources, sheet.level);
     applyRest(rested.vitals, rested.resources);
-    note = t.rest.rested.long;
+    notify(t.rest.rested.long);
   }
 
   function onTabKeydown(event: KeyboardEvent) {
@@ -177,7 +176,6 @@
       {:else if rules.status && !rules.status.library}
         <p class="banner" role="note">{t.noRules}</p>
       {/if}
-      <p class="note" role="status">{note ?? ""}</p>
 
       <SheetHeader {sheet} />
 
@@ -407,15 +405,6 @@
 
   .note-field textarea::placeholder {
     color: var(--color-text-placeholder);
-  }
-
-  .note {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-  }
-
-  .note:empty {
-    display: none;
   }
 
   .banner {

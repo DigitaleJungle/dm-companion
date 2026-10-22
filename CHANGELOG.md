@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.1] - 2026-10-22
+
+### Added
+
+- Notifications: short confirmations (a character copied or deleted, a rest taken, a hit die spent) pop up in the bottom-right corner, one at a time. They go away after 5 seconds or when clicked.
+
 ## [0.5.0] - 2026-10-22
 
 ### Added

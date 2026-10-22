@@ -101,6 +101,8 @@
   --ability-card-height: 64px;
   --coin-box-width: 64px;
   --z-drawer: 100;
+  --z-notification: 200;
+  --notification-width: 360px;
   --z-menu: 50;
   --menu-min-width: 160px;
   /* Room at the bottom of a scrolling list so the corner Settings gear never covers its last item. */

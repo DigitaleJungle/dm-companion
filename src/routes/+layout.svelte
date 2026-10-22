@@ -4,6 +4,7 @@
   import type { Snippet } from "svelte";
   import { onMount } from "svelte";
   import { loadTheme } from "$lib/stores/theme.svelte";
+  import Notification from "$lib/components/Notification.svelte";
 
   let { children }: { children: Snippet } = $props();
 
@@ -11,3 +12,4 @@
 </script>
 
 {@render children()}
+<Notification />

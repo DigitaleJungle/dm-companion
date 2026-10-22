@@ -6,6 +6,7 @@
   import { copyCharacter, deleteCharacter, listCharacters, type CharacterCard, type CharacterList } from "$lib/api/characters";
   import { errorMessage } from "$lib/api/storage";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
+  import { notify } from "$lib/stores/notifications.svelte";
   import { strings } from "$lib/strings";
   import { goto } from "$app/navigation";
   import { avatarCandidates, classLine, selectCharacters, sheetHref, totalLevel, type CharacterSort } from "./format";
@@ -16,7 +17,6 @@
 
   let list = $state<CharacterList | null>(null);
   let loadError = $state<string | null>(null);
-  let status = $state<string | null>(null);
   let copyError = $state<string | null>(null);
   let creating = $state(false);
 
@@ -85,7 +85,7 @@
   const keyOf = (c: CharacterCard) => `${c.campaignId}/${c.id}`;
 
   async function askDelete(character: CharacterCard) {
-    status = copyError = null;
+    copyError = null;
     deleting = character;
     await tick();
     document.getElementById("cancel-character-delete")?.focus();
@@ -99,7 +99,7 @@
       await deleteCharacter(character.campaignId, character.id);
       deleting = null;
       await load();
-      status = t.deleted(character.name);
+      notify(t.deleted(character.name));
     } catch (e) {
       copyError = t.deleteError(errorMessage(e));
     } finally {
@@ -108,11 +108,11 @@
   }
 
   async function copy(character: CharacterCard, to: string, toName: string) {
-    status = copyError = null;
+    copyError = null;
     try {
       await copyCharacter(character.campaignId, character.id, to);
       await load();
-      status = t.copied(character.name, toName);
+      notify(t.copied(character.name, toName));
     } catch (e) {
       copyError = t.copyError(errorMessage(e));
     }
@@ -130,13 +130,9 @@
   <main>
     <div class="heading">
       <h1>{t.title}</h1>
-      <button class="btn btn-primary" onclick={() => {
-          status = null;
-          creating = true;
-        }}>{t.create}</button>
+      <button class="btn btn-primary" onclick={() => (creating = true)}>{t.create}</button>
     </div>
 
-    <p class="note" role="status">{status ?? ""}</p>
     {#if copyError}<p class="error" role="alert">{copyError}</p>{/if}
 
     {#if loadError}
@@ -455,14 +451,6 @@
     color: var(--color-text-muted);
   }
 
-  .note:empty {
-    display: none;
-  }
-
-  .note {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-  }
 
   .error {
     display: flex;
