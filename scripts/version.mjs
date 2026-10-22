@@ -1,5 +1,6 @@
 // Keeps the app version identical in every file that carries it.
-//   node scripts/version.mjs bump <patch|minor|major>   writes and prints the new version, adds an empty CHANGELOG section
+//   node scripts/version.mjs bump <patch|minor|major> [--added "…"] [--changed "…"] [--fixed "…"]
+//       writes and prints the new version and adds its CHANGELOG section, with the given entries (each flag repeatable)
 //   node scripts/version.mjs check                     used by the pre-commit hook
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -26,10 +27,35 @@ export function compareVersions(a, b) {
 
 const CHANGELOG = "CHANGELOG.md";
 
-export function addChangelogSection(text, version, date) {
-  const heading = `## [${version}] - ${date}\n`;
+// Changelog groups in the order they appear, and the bump flag for each.
+const KINDS = { "--added": "Added", "--changed": "Changed", "--fixed": "Fixed" };
+
+/** `["--added", "Search", "--fixed", "Crash"]` → `{ Added: ["Search"], Changed: [], Fixed: ["Crash"] }`. */
+export function parseEntries(args) {
+  const entries = Object.fromEntries(Object.values(KINDS).map((k) => [k, []]));
+  for (let i = 0; i < args.length; i += 2) {
+    const kind = KINDS[args[i]];
+    const entry = args[i + 1]?.trim();
+    if (!kind) throw new Error(`unknown option "${args[i]}"; use --added, --changed or --fixed`);
+    if (!entry) throw new Error(`${args[i]} needs the entry text`);
+    entries[kind].push(entry);
+  }
+  return entries;
+}
+
+/** The new version's section, filled with `entries` when given, inserted above the newest one. */
+export function addChangelogSection(text, version, date, entries = {}) {
+  const groups = Object.entries(entries)
+    .filter(([, items]) => items.length)
+    .map(([kind, items]) => `### ${kind}\n\n${items.map((item) => `- ${item}`).join("\n")}\n`);
+  const section = `## [${version}] - ${date}\n${groups.length ? `\n${groups.join("\n")}` : ""}`;
   const at = text.search(/^## \[/m);
-  return at === -1 ? `${text.trimEnd()}\n\n${heading}` : `${text.slice(0, at)}${heading}\n${text.slice(at)}`;
+  return at === -1 ? `${text.trimEnd()}\n\n${section}` : `${text.slice(0, at)}${section}\n${text.slice(at)}`;
+}
+
+/** YYYY-MM-DD in local time (the changelog convention, not UI text); UTC would date late-evening commits a day off. */
+export function localDate(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function changelogHasEntries(text, version) {
@@ -112,21 +138,21 @@ function check() {
   console.log(`version: ${current} ok`);
 }
 
-function bump(level) {
+function bump(level, entries) {
   const files = readAll();
   const next = bumpVersion(files[0].version, level);
   for (const f of files) writeFileSync(f.path, f.write(readFileSync(f.path, "utf8"), next));
-  const today = new Date().toISOString().slice(0, 10); // ISO date is the changelog convention, not UI text
-  writeFileSync(CHANGELOG, addChangelogSection(readFileSync(CHANGELOG, "utf8"), next, today));
+  writeFileSync(CHANGELOG, addChangelogSection(readFileSync(CHANGELOG, "utf8"), next, localDate(), entries));
   console.log(next);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [command, level] = process.argv.slice(2);
+  const [command, level, ...rest] = process.argv.slice(2);
   try {
     if (command === "check") check();
-    else if (command === "bump") bump(level);
-    else fail("usage: node scripts/version.mjs bump <patch|minor|major> | check");
+    // Entries are parsed before anything is written, so a bad option leaves every file as it was.
+    else if (command === "bump") bump(level, parseEntries(rest));
+    else fail('usage: node scripts/version.mjs bump <patch|minor|major> [--added "…"] [--changed "…"] [--fixed "…"] | check');
   } catch (e) {
     fail(e.message);
   }

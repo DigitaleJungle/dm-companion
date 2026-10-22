@@ -28,7 +28,7 @@ A desktop app for a Dungeon Master running in-person D&D sessions. It covers sea
 - Backend tests: `cargo test` (run in `src-tauri/`). One test or module: `cargo test dice::` or `cargo test <test_name>`.
 - Rust lint: `cargo clippy -- -D warnings` (run in `src-tauri/`)
 - All checks (what the pre-commit hook runs): `npm run verify`
-- Version: `node scripts/version.mjs bump <patch|minor|major>` (also adds the CHANGELOG section) / `check`
+- Version: `node scripts/version.mjs bump <patch|minor|major> [--added "…"] [--changed "…"] [--fixed "…"]` (also writes the CHANGELOG section with those entries) / `check`
 
 ## Structure
 - `docs/wireframes/` — spec and wireframes (read-only reference)

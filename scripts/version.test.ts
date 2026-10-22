@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs script without type declarations
-import { addChangelogSection, bumpVersion, changelogHasEntries, compareVersions } from "./version.mjs";
+import { addChangelogSection, bumpVersion, changelogHasEntries, compareVersions, localDate, parseEntries } from "./version.mjs";
 
 describe("bumpVersion", () => {
   it("bumps each level and resets the lower parts", () => {
@@ -40,5 +40,25 @@ describe("changelog", () => {
     expect(changelogHasEntries(empty, "0.2.0")).toBe(false); // the 0.1.0 entry must not count
     expect(changelogHasEntries(log, "9.9.9")).toBe(false);
     expect(changelogHasEntries(log.replace(/\n/g, "\r\n"), "0.1.0")).toBe(true);
+  });
+
+  it("fills the new section from --added, --changed and --fixed, in that order", () => {
+    const entries = parseEntries(["--fixed", "A crash", "--added", "Search", "--added", "Filters"]);
+    const out = addChangelogSection(log, "0.2.0", "2026-02-02", entries);
+    expect(out).toContain("## [0.2.0] - 2026-02-02\n\n### Added\n\n- Search\n- Filters\n\n### Fixed\n\n- A crash\n\n## [0.1.0]");
+    expect(out).not.toContain("### Changed");
+    expect(changelogHasEntries(out, "0.2.0")).toBe(true);
+  });
+
+  it("rejects unknown options and empty entries", () => {
+    expect(() => parseEntries(["--removed", "x"])).toThrow();
+    expect(() => parseEntries(["--added"])).toThrow();
+    expect(() => parseEntries(["--added", "  "])).toThrow();
+    expect(parseEntries([])).toEqual({ Added: [], Changed: [], Fixed: [] });
+  });
+
+  it("dates the section in local time", () => {
+    expect(localDate(new Date(2026, 9, 23, 0, 30))).toBe("2026-10-23");
+    expect(localDate(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
   });
 });
