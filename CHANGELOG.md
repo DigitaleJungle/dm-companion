@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.2] - 2026-10-22
+
+### Changed
+
+- Character sheet inventory: matching items show in a list floating below the search field instead of pushing the page down. It closes on Escape or when you click away.
+
 ## [0.5.1] - 2026-10-22
 
 ### Added

@@ -36,6 +36,7 @@
   // ---- Adding items: the item catalog is loaded the first time the add panel opens ----
   let adding = $state(false);
   let search = $state("");
+  let resultsOpen = $state(false);
   let custom = $state("");
   let catalog = $state<CatalogRow[] | null>(null);
   let catalogError = $state<string | null>(null);
@@ -157,27 +158,60 @@
 
   {#if adding && !sheet.readOnly}
     <div id="inventory-add" class="add">
-      <label for="item-search" class="sr-only">{t.searchLabel}</label>
-      <input id="item-search" class="field" type="search" bind:value={search} placeholder={t.searchPlaceholder} autocomplete="off" />
-      {#if catalogError}
-        <p class="error" role="alert">{catalogError}</p>
-      {:else if search.trim() && !catalog}
-        <p class="muted small" role="status">{t.loadingItems}</p>
-      {:else if search.trim() && matches.length === 0}
-        <p class="muted small">{t.noResults}</p>
-      {:else if matches.length}
-        <ul class="results">
-          {#each matches.slice(0, MAX_RESULTS) as row (row.id)}
-            <li>
-              <button class="result" aria-label={t.addOne(row.name)} onclick={() => addFromCatalog(row)}>
-                <span>{row.name}</span>
-                <span class="source">{row.source}</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-        {#if matches.length > MAX_RESULTS}<p class="muted small">{t.moreResults(plain.format(MAX_RESULTS))}</p>{/if}
-      {/if}
+      <!-- The results float over the page below the field instead of pushing it down. -->
+      <div
+        class="search-wrap"
+        role="presentation"
+        onfocusout={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) resultsOpen = false;
+        }}
+        onkeydown={(e) => {
+          if (e.key === "Escape" && resultsOpen) {
+            e.preventDefault();
+            resultsOpen = false;
+            document.getElementById("item-search")?.focus();
+          }
+        }}
+      >
+        <label for="item-search" class="sr-only">{t.searchLabel}</label>
+        <input
+          id="item-search"
+          class="field"
+          type="search"
+          bind:value={search}
+          oninput={() => (resultsOpen = true)}
+          onfocus={() => (resultsOpen = true)}
+          placeholder={t.searchPlaceholder}
+          autocomplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={resultsOpen && !!search.trim()}
+          aria-controls="item-results"
+        />
+        {#if catalogError}
+          <p class="error" role="alert">{catalogError}</p>
+        {:else if resultsOpen && search.trim()}
+          <div id="item-results" class="dropdown">
+            {#if !catalog}
+              <p class="muted small" role="status">{t.loadingItems}</p>
+            {:else if matches.length === 0}
+              <p class="muted small">{t.noResults}</p>
+            {:else}
+              <ul class="results">
+                {#each matches.slice(0, MAX_RESULTS) as row (row.id)}
+                  <li>
+                    <button class="result" aria-label={t.addOne(row.name)} onclick={() => addFromCatalog(row)}>
+                      <span>{row.name}</span>
+                      <span class="source">{row.source}</span>
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+              {#if matches.length > MAX_RESULTS}<p class="muted small">{t.moreResults(plain.format(MAX_RESULTS))}</p>{/if}
+            {/if}
+          </div>
+        {/if}
+      </div>
 
       <form class="custom" onsubmit={addCustom}>
         <label for="custom-item" class="sr-only">{t.customLabel}</label>
@@ -422,15 +456,38 @@
     color: var(--color-text-placeholder);
   }
 
-  .results {
-    list-style: none;
-    margin: 0;
+  .search-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    right: 0;
+    z-index: var(--z-menu);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
     padding: var(--space-1);
-    max-height: var(--campaign-books-height);
-    overflow-y: auto;
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
+    box-shadow: var(--shadow-drawer);
+  }
+
+  .dropdown > p {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: var(--campaign-books-height);
+    overflow-y: auto;
   }
 
   .result {
