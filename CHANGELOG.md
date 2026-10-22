@@ -3,6 +3,12 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.8] - 2026-10-23
+
+### Changed
+
+- Campaign sidebar: the campaign switcher lists only campaigns; clicking DM Companion at the top left goes to the Start screen.
+
 ## [0.5.7] - 2026-10-23
 
 ### Changed

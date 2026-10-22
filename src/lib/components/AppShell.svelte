@@ -37,15 +37,14 @@
     if (!campaigns.list) refreshCampaigns();
   });
 
-  // Until the list loads, the switcher offers just Home and the open campaign.
-  const switchItems = $derived([
-    { label: strings.shell.startScreen, onselect: () => goto("/") },
-    ...(campaigns.list?.campaigns ?? [campaign]).map((c) => ({
+  // Until the list loads, the switcher offers just the open campaign. The app name leads to the Start screen.
+  const switchItems = $derived(
+    (campaigns.list?.campaigns ?? [campaign]).map((c) => ({
       label: c.name,
       current: c.id === campaign.id,
       onselect: () => goto(`/campaign/${c.id}`),
     })),
-  ]);
+  );
 
   const nav = strings.shell.nav;
   // href is null until the screen is built; those items render disabled with "Coming soon".
@@ -67,7 +66,7 @@
   {/if}
 
   <nav id="sidebar" class="sidebar" class:open={menuOpen} aria-label={strings.shell.mainNav}>
-    <div class="app-name">{strings.appName}</div>
+    <a class="app-name" href="/" title={strings.shell.toStart}>{strings.appName}<span class="sr-only">, {strings.shell.toStart}</span></a>
 
     <div class="group">
       <span class="label" id="campaign-label">{strings.shell.campaign}</span>
@@ -137,7 +136,7 @@
             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           </svg>
         </button>
-        <span class="app-name">{strings.appName}</span>
+        <a class="app-name" href="/" title={strings.shell.toStart}>{strings.appName}<span class="sr-only">, {strings.shell.toStart}</span></a>
       </div>
 
       <div class="search">
@@ -170,9 +169,17 @@
   }
 
   .app-name {
+    align-self: flex-start;
     padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);
+    text-decoration: none;
+  }
+
+  .app-name:hover {
+    color: var(--color-link);
   }
 
   .group {

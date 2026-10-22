@@ -10,7 +10,7 @@ export const strings = {
     closeMenu: "Close menu",
     campaign: "Campaign",
     switchCampaign: (name: string) => `Campaign: ${name}. Switch campaign`,
-    startScreen: "Home",
+    toStart: "Go to the Start screen",
     nav: {
       home: "Home",
       campaignLibrary: "Campaign library",
