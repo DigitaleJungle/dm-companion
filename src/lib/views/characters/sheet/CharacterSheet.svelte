@@ -1,37 +1,50 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { beforeNavigate } from "$app/navigation";
+  import { beforeNavigate, goto } from "$app/navigation";
+  import Menu from "$lib/components/Menu.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
+  import { listCharacters, type CharacterCard } from "$lib/api/characters";
+  import { rollDice } from "$lib/api/dice";
+  import { errorMessage } from "$lib/api/storage";
+  import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing } from "$lib/characters/sheet";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
-  import { speciesLabel } from "$lib/characters/rules";
   import { strings } from "$lib/strings";
-  import CharacterAvatar from "../CharacterAvatar.svelte";
-  import { avatarCandidates, classLine } from "../format";
+  import { sheetHref } from "../format";
+  import ActionsTab from "./ActionsTab.svelte";
+  import FeaturesTab from "./FeaturesTab.svelte";
   import InventoryTab from "./InventoryTab.svelte";
-  import OverviewTab from "./OverviewTab.svelte";
-  import PlayPanel from "./PlayPanel.svelte";
+  import SheetHeader from "./SheetHeader.svelte";
+  import SpellsTab from "./SpellsTab.svelte";
+  import StatsColumn from "./StatsColumn.svelte";
   import { Sheet } from "./sheet.svelte";
 
   let { campaign, id }: { campaign: string | null; id: string } = $props();
 
   const t = strings.characters.sheet;
-  const ct = strings.characters;
   const plain = new Intl.NumberFormat();
-  const TABS = ["overview", "features", "spells", "inventory", "notes"] as const;
+  const TABS = ["actions", "spells", "inventory", "features", "notes"] as const;
   type Tab = (typeof TABS)[number];
-  // Built in later phases; shown so the sheet's shape is clear.
-  const SOON = new Set<Tab>(["features", "spells"]);
+  const NOTES = ["personality", "ideals", "bonds", "flaws", "notes"] as const;
+  const noteLabel = { personality: t.notes.personality, ideals: t.notes.ideals, bonds: t.notes.bonds, flaws: t.notes.flaws, notes: t.notes.backstory };
 
   // The route is keyed on campaign and id, so a different character gets a fresh component.
   // svelte-ignore state_referenced_locally
   const sheet = new Sheet(campaign, id);
-  let tab = $state<Tab>("overview");
+  let tab = $state<Tab>("actions");
+  let party = $state<CharacterCard[]>([]);
+  let note = $state<string | null>(null);
+  let rolling = $state(false);
 
   onMount(() => {
     if (!campaigns.list) refreshCampaigns();
     if (!rules.status) refreshRules();
     sheet.load();
+    // The switcher lists the party: this character's campaign, or every character without one.
+    listCharacters().then(
+      (list) => (party = list.characters.filter((x) => x.campaignId === campaign)),
+      () => (party = []), // the switcher is a convenience; the sheet works without it
+    );
     return () => void sheet.flush();
   });
   beforeNavigate(() => void sheet.flush());
@@ -40,14 +53,63 @@
   const campaignInfo = $derived(
     campaign === null ? null : [...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].find((x) => x.id === campaign) ?? null,
   );
-  const campaignName = $derived(campaign === null ? ct.noCampaign : (campaignInfo?.name ?? ct.unknownCampaign));
   const sources = $derived(campaign === null ? null : (campaignInfo?.sources ?? []));
-  const species = $derived(c?.species ? speciesLabel(c.species.name, c.species.lineage ?? c.species.subspecies?.name) : null);
+
+  // ---- Rests ----
+  const faces = $derived(hitDieFaces(sheet.cls));
+  const hitDiceLeft = $derived(Math.max(0, sheet.level - sheet.resources.hitDiceSpent));
+
+  function applyRest(vitals = sheet.vitals, resources = sheet.resources) {
+    sheet.change((x) => {
+      x.hp = { max: vitals.hp.max, current: vitals.hp.current, temp: vitals.hp.temp };
+      x.deathSaves = vitals.deathSaves;
+      x.hitDiceSpent = resources.hitDiceSpent;
+      x.slotsUsed = resources.slotsUsed;
+      x.pactSlotsUsed = resources.pactSlotsUsed;
+    });
+  }
+
+  async function spendHitDie() {
+    const notation = hitDieRoll(faces, sheet.scores?.con ?? 10);
+    rolling = true;
+    note = null;
+    try {
+      const roll = await rollDice(notation);
+      const healed = Math.max(0, roll.total);
+      applyRest(takeHealing(sheet.vitals, healed), { ...sheet.resources, hitDiceSpent: sheet.resources.hitDiceSpent + 1 });
+      note = t.rest.spentHitDie(notation, plain.format(healed));
+    } catch (e) {
+      note = t.rest.rollError(errorMessage(e));
+    } finally {
+      rolling = false;
+    }
+  }
+
+  const shortRestItems = $derived([
+    {
+      label: faces && hitDiceLeft ? t.rest.spendHitDie(plain.format(hitDiceLeft), plain.format(faces)) : t.rest.noHitDice,
+      disabled: sheet.readOnly || !faces || !hitDiceLeft || rolling || sheet.vitals.hp.current >= sheet.vitals.hp.max,
+      onselect: spendHitDie,
+    },
+    {
+      label: t.rest.finishShort,
+      disabled: sheet.readOnly,
+      onselect: () => {
+        applyRest(sheet.vitals, shortRest(sheet.resources));
+        note = t.rest.rested.short;
+      },
+    },
+  ]);
+
+  function takeLongRest() {
+    const rested = longRest(sheet.vitals, sheet.resources, sheet.level);
+    applyRest(rested.vitals, rested.resources);
+    note = t.rest.rested.long;
+  }
 
   function onTabKeydown(event: KeyboardEvent) {
-    const open = TABS.filter((x) => !SOON.has(x));
-    const at = open.indexOf(tab);
-    const next = event.key === "ArrowRight" ? open[(at + 1) % open.length] : event.key === "ArrowLeft" ? open[(at - 1 + open.length) % open.length] : null;
+    const at = TABS.indexOf(tab);
+    const next = event.key === "ArrowRight" ? TABS[(at + 1) % TABS.length] : event.key === "ArrowLeft" ? TABS[(at - 1 + TABS.length) % TABS.length] : null;
     if (!next) return;
     event.preventDefault();
     tab = next;
@@ -73,6 +135,26 @@
         {/if}
       </span>
     {/if}
+    {#if c}
+      <label class="switcher">
+        <span>{t.switcher}</span>
+        <select
+          value={id}
+          onchange={(e) => {
+            const next = party.find((x) => x.id === e.currentTarget.value);
+            if (next) goto(sheetHref(next));
+          }}
+        >
+          {#each party.length ? party : [{ id, name: c.name }] as other (other.id)}
+            <option value={other.id}>{other.name}</option>
+          {/each}
+        </select>
+      </label>
+      <Menu id="short-rest" label={t.rest.short} triggerClass="btn" items={shortRestItems}>
+        {#snippet trigger()}{t.rest.short}{/snippet}
+      </Menu>
+      <button class="btn" disabled={sheet.readOnly} onclick={takeLongRest}>{t.rest.long}</button>
+    {/if}
   </header>
 
   <main>
@@ -89,72 +171,66 @@
     {:else if !c}
       <p class="muted" role="status">{t.loading}</p>
     {:else}
-      <div class="identity">
-        <CharacterAvatar candidates={avatarCandidates(c.classes)} alt={c.name} />
-        <div class="who">
-          <h1>{c.name}</h1>
-          <p>
-            {c.classes.length ? classLine(c.classes) : ct.noClass}
-            {#if c.classes.length}<span class="muted"> · {ct.level(plain.format(sheet.level))}</span>{/if}
-          </p>
-          <p class="muted">
-            {[species, c.background?.name, campaignName, c.player ? t.playedBy(c.player) : null].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-      </div>
-
       {#if sheet.archived}<p class="banner" role="note">{t.archived}</p>{/if}
       {#if sheet.rulesError}
         <p class="banner error-text" role="alert">{sheet.rulesError}</p>
       {:else if rules.status && !rules.status.library}
         <p class="banner" role="note">{t.noRules}</p>
       {/if}
+      <p class="note" role="status">{note ?? ""}</p>
 
-      <div class="layout">
-        <div class="tabs-area">
+      <SheetHeader {sheet} />
+
+      <div class="body">
+        <div class="left"><StatsColumn {sheet} /></div>
+
+        <section class="tabs-card">
           <div class="tabs" role="tablist" aria-label={t.tabsLabel} tabindex="-1" onkeydown={onTabKeydown}>
             {#each TABS as name (name)}
-              {#if SOON.has(name)}
-                <span class="tab soon" aria-disabled="true">{t.tabs[name]} <span class="tag">{strings.comingSoon}</span></span>
-              {:else}
-                <button
-                  id="sheet-tab-{name}"
-                  class="tab"
-                  role="tab"
-                  aria-selected={tab === name}
-                  aria-controls="sheet-panel"
-                  tabindex={tab === name ? 0 : -1}
-                  onclick={() => (tab = name)}
-                >
-                  {t.tabs[name]}
-                </button>
-              {/if}
+              <button
+                id="sheet-tab-{name}"
+                class="tab"
+                role="tab"
+                aria-selected={tab === name}
+                aria-controls="sheet-panel"
+                tabindex={tab === name ? 0 : -1}
+                onclick={() => (tab = name)}
+              >
+                {t.tabs[name]}
+              </button>
             {/each}
           </div>
 
           <div id="sheet-panel" class="panel" role="tabpanel" aria-labelledby="sheet-tab-{tab}">
-            {#if tab === "overview"}
-              <OverviewTab {sheet} />
+            {#if tab === "actions"}
+              <ActionsTab {sheet} />
+            {:else if tab === "spells"}
+              <SpellsTab {sheet} />
             {:else if tab === "inventory"}
               <InventoryTab {sheet} {sources} />
-            {:else if tab === "notes"}
-              <label for="sheet-notes" class="sr-only">{t.notesLabel}</label>
-              <textarea
-                id="sheet-notes"
-                class="notes"
-                placeholder={t.notesPlaceholder}
-                value={c.notes ?? ""}
-                disabled={sheet.readOnly}
-                oninput={(e) => {
-                  const value = e.currentTarget.value;
-                  sheet.change((x) => (x.notes = value));
-                }}
-              ></textarea>
+            {:else if tab === "features"}
+              <FeaturesTab {sheet} />
+            {:else}
+              <div class="notes">
+                {#each NOTES as key (key)}
+                  <label class="note-field">
+                    <span>{noteLabel[key]}</span>
+                    <textarea
+                      rows="4"
+                      placeholder={t.notes.placeholder}
+                      value={c[key] ?? ""}
+                      disabled={sheet.readOnly}
+                      oninput={(e) => {
+                        const value = e.currentTarget.value;
+                        sheet.change((x) => (x[key] = value));
+                      }}
+                    ></textarea>
+                  </label>
+                {/each}
+              </div>
             {/if}
           </div>
-        </div>
-
-        <div class="play"><PlayPanel {sheet} /></div>
+        </section>
       </div>
     {/if}
   </main>
@@ -171,10 +247,11 @@
 
   .top {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-3);
     padding: var(--space-3) var(--space-5);
-    border-bottom: var(--border-width) solid var(--color-border);
+    border-bottom: var(--border-width) solid var(--color-border-strong);
     background: var(--color-surface);
   }
 
@@ -199,6 +276,30 @@
     font-size: var(--text-sm);
   }
 
+  .switcher {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  /* Without a save status (archived), the controls still sit on the right. */
+  .back + .switcher {
+    margin-left: auto;
+  }
+
+  .switcher select {
+    min-height: var(--control-height);
+    max-width: var(--select-width);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-md);
+  }
+
   .corner {
     position: fixed;
     left: var(--space-4);
@@ -208,100 +309,113 @@
   main {
     width: min(100%, var(--content-max-width));
     margin: 0 auto;
-    padding: var(--space-6) var(--space-5) var(--corner-clearance);
+    padding: var(--space-4) var(--space-5) var(--corner-clearance);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
   }
 
-  .identity {
+  .body {
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
-  .who {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--play-panel-width);
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: var(--space-5);
-    align-items: start;
   }
 
-  .tabs-area {
+  .left {
+    flex: 2 1 calc(25 * var(--space-6));
+    min-width: 0;
+    max-width: var(--sheet-left-max);
+  }
+
+  .tabs-card {
+    flex: 999 1 calc(21 * var(--space-6));
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   .tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1);
-    padding: var(--space-1);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-sunken);
+    padding: 0 var(--space-2);
+    border-bottom: var(--border-width) solid var(--color-border-strong);
   }
 
   .tab {
-    padding: var(--space-1) var(--space-4);
+    min-height: var(--control-height-lg);
+    padding: 0 var(--space-4);
     border: none;
-    border-radius: var(--radius-sm);
+    border-bottom: calc(3 * var(--border-width)) solid transparent;
     background: transparent;
     color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
     cursor: pointer;
   }
 
+  .tab:hover {
+    color: var(--color-text);
+  }
+
   .tab[aria-selected="true"] {
-    background: var(--color-accent);
-    color: var(--color-accent-text);
-  }
-
-  .tab.soon {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: default;
-  }
-
-  .tag {
-    font-size: var(--text-xs);
+    border-bottom-color: var(--color-text);
+    color: var(--color-text);
+    font-weight: var(--weight-bold);
   }
 
   .panel {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
+    padding: var(--space-4);
   }
 
   .notes {
-    width: 100%;
-    min-height: var(--notes-min-height);
-    padding: var(--space-3);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(10 * var(--space-6))), 1fr));
+    gap: var(--space-3);
+  }
+
+  .note-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  .note-field textarea {
+    padding: var(--space-2) var(--space-3);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-md);
     background: var(--color-surface);
+    color: var(--color-text);
     font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    letter-spacing: normal;
     line-height: var(--leading-normal);
+    text-transform: none;
     resize: vertical;
   }
 
-  .notes::placeholder {
+  .note-field textarea::placeholder {
     color: var(--color-text-placeholder);
+  }
+
+  .note {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .note:empty {
+    display: none;
   }
 
   .banner {
@@ -336,16 +450,5 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
-  }
-
-  /* Narrow windows: the play panel moves above the tabs, where it's needed most during a session. */
-  @media (max-width: 900px) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
-
-    .play {
-      order: -1;
-    }
   }
 </style>

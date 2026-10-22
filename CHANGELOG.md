@@ -3,6 +3,17 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.0] - 2026-10-22
+
+### Added
+
+- Character sheet: open a character from the overview. Every change saves on its own; characters in an archived campaign open read-only.
+- Header card with conditions (add and remove), speed, Heroic Inspiration, armor class (computed from armor and Dexterity, or set by hand), initiative, proficiency bonus, and hit points with damage, healing, temporary hit points, a colour-coded bar and death saves at 0.
+- Abilities, saving throws, passive Perception, Insight and Investigation, armor, weapon, tool and language proficiencies, and skills.
+- Tabs: Actions (attacks with equipped weapons), Spells (spellcasting numbers, a Concentrating toggle and spell slots), Inventory (catalog or custom items, equipped, attuned, coins and carrying capacity), Features & traits, and Notes & backstory.
+- Short rest (spend hit dice) and Long rest, and a switcher to the other characters in the same campaign.
+- Characters overview: delete a character, after a confirmation.
+
 ## [0.4.9] - 2026-10-21
 
 ### Added

@@ -1,8 +1,9 @@
 // Character sheet rules for play: hit points, death saves, hit dice, spell slots, rests and armor class.
 // Class numbers (hit die, slots) come from the class entry in the rules data, never from tables in code.
 
+import { capital } from "$lib/rules/format";
 import { plainText } from "$lib/rules/tags";
-import { modifier } from "./rules";
+import { modifier, type Ability, type Scores } from "./rules";
 
 export type Hp = { max: number; current: number; temp: number };
 export type DeathSaves = { successes: number; failures: number };
@@ -97,6 +98,86 @@ export const shortRest = (r: Resources): Resources => ({ ...r, pactSlotsUsed: 0 
 export function hitDieRoll(faces: number, con: number): string {
   const mod = modifier(con);
   return `1d${faces}${mod > 0 ? `+${mod}` : mod < 0 ? `${mod}` : ""}`;
+}
+
+// --- Weapons --------------------------------------------------------------------------------
+
+/** What the sheet keeps of a weapon from the rules data. `properties` are codes without their book ("F", "2H"). */
+export type Weapon = { category?: string; dmg?: string; dmgType?: string; properties?: string[]; ranged?: boolean; range?: string };
+
+const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+const obj = (v: unknown): Data => (v && typeof v === "object" && !Array.isArray(v) ? (v as Data) : {});
+const propertyCode = (p: unknown) => String(p ?? "").split("|")[0].toUpperCase();
+
+/** The weapon fields of an item entry, or undefined when it isn't a weapon. */
+export function weaponOf(item: Data): Weapon | undefined {
+  if (!item.weapon && !item.weaponCategory && !item.dmg1) return undefined;
+  return {
+    ...(item.weaponCategory ? { category: String(item.weaponCategory).toLowerCase() } : {}),
+    ...(item.dmg1 ? { dmg: String(item.dmg1) } : {}),
+    ...(item.dmgType ? { dmgType: String(item.dmgType) } : {}),
+    properties: list(item.property).map(propertyCode),
+    ...(String(item.type ?? "").split("|")[0] === "R" ? { ranged: true } : {}),
+    ...(item.range ? { range: String(item.range) } : {}),
+  };
+}
+
+/**
+ * Proficiency from the class: its `weapons` list ("simple", "martial") or `weaponProficiencies`
+ * (categories, named weapons, or "martial weapons with the Light or Finesse property").
+ */
+export function weaponProficient(cls: Data | null, name: string, weapon: Weapon): boolean {
+  const category = weapon.category ?? "";
+  if (list(cls?.weapons).some((w) => String(w).toLowerCase() === category)) return true;
+  return list(cls?.weaponProficiencies).some((entry) => {
+    const e = obj(entry);
+    if (category && e[category] === true) return true;
+    if (Object.keys(e).some((k) => e[k] === true && k.split("|")[0] === name.toLowerCase())) return true;
+    // e.g. "type=martial weapon|property=light;finesse"
+    const filter = String(obj(e.all).fromFilter ?? "").toLowerCase();
+    if (!filter) return false;
+    const parts = Object.fromEntries(filter.split("|").map((p) => p.split("=") as [string, string]));
+    const typeOk = !parts.type || parts.type.split(";").some((t) => t.startsWith(category));
+    const wanted = parts.property?.split(";") ?? [];
+    const names: Record<string, string> = { light: "L", finesse: "F", heavy: "H", reach: "R", thrown: "T", versatile: "V", "two-handed": "2H" };
+    const propsOk = !wanted.length || wanted.some((p) => weapon.properties?.includes(names[p] ?? p.toUpperCase()));
+    return !!category && typeOk && propsOk;
+  });
+}
+
+export type Attack = { ability: Ability; toHit: number; damage: string | null };
+
+/** Ranged weapons use DEX, finesse ones the better of STR and DEX, the rest STR; proficiency adds to the attack roll only. */
+export function weaponAttack(weapon: Weapon, scores: Scores, proficiency: number, proficient: boolean): Attack {
+  const finesse = weapon.properties?.includes("F");
+  const ability: Ability = weapon.ranged ? "dex" : finesse && scores.dex > scores.str ? "dex" : "str";
+  const mod = modifier(scores[ability]);
+  const bonus = mod > 0 ? `+${mod}` : mod < 0 ? `${mod}` : "";
+  return { ability, toHit: mod + (proficient ? proficiency : 0), damage: weapon.dmg ? `${weapon.dmg}${bonus}` : null };
+}
+
+// --- Proficiencies and carrying ---------------------------------------------------------------
+
+export type ProficiencyLists = { armor: string[]; weapons: string[]; tools: string[]; languages: string[] };
+
+/** Fixed proficiencies from the class, background and species entries, as readable text. */
+export function proficiencyLists(cls: Data | null, background: Data | null, species: Data | null): ProficiencyLists {
+  const text = (v: unknown) => list(v).map((s) => capital(plainText(String(s))));
+  // shortcut: only fixed grants (`{ "common": true }`); "choose" and "any" grants aren't recorded on the character yet, so they're left out until level up records choices.
+  const fixed = (...grants: unknown[]) => grants.flatMap((g) => list(g).flatMap((entry) => Object.entries(obj(entry)).filter(([, v]) => v === true).map(([k]) => capital(k.split("|")[0]))));
+  const unique = (xs: string[]) => [...new Set(xs)];
+  return {
+    armor: unique(text(cls?.armor)),
+    weapons: unique(text(cls?.weapons)),
+    tools: unique([...text(cls?.tools), ...fixed(background?.toolProficiencies)]),
+    languages: unique(fixed(species?.languageProficiencies, background?.languageProficiencies)),
+  };
+}
+
+/** Strength × 15 pounds, doubled per size above Medium and halved for Tiny. */
+export function carryingCapacity(str: number, size = "M"): number {
+  const factor = ({ T: 0.5, L: 2, H: 4, G: 8 } as Record<string, number>)[size] ?? 1;
+  return str * 15 * factor;
 }
 
 // --- Armor class ----------------------------------------------------------------------------

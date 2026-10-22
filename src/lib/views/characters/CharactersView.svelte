@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import Menu from "$lib/components/Menu.svelte";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
   import CharacterAvatar from "./CharacterAvatar.svelte";
-  import { copyCharacter, listCharacters, type CharacterCard, type CharacterList } from "$lib/api/characters";
+  import { copyCharacter, deleteCharacter, listCharacters, type CharacterCard, type CharacterList } from "$lib/api/characters";
   import { errorMessage } from "$lib/api/storage";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { strings } from "$lib/strings";
@@ -67,10 +67,44 @@
     load();
   });
 
-  function copyItems(character: CharacterCard) {
+  function menuItems(character: CharacterCard) {
     const targets = (campaigns.list?.campaigns ?? []).filter((c) => c.id !== character.campaignId);
-    if (targets.length === 0) return [{ label: t.noOtherCampaign, disabled: true, onselect: () => {} }];
-    return targets.map((target) => ({ label: t.copyTo(target.name), onselect: () => copy(character, target.id, target.name) }));
+    const copies = targets.length
+      ? targets.map((target) => ({ label: t.copyTo(target.name), onselect: () => copy(character, target.id, target.name) }))
+      : [{ label: t.noOtherCampaign, disabled: true, onselect: () => {} }];
+    // Archived campaigns are read-only until restored.
+    const remove = character.archived
+      ? { label: t.deleteArchived, disabled: true, onselect: () => {} }
+      : { label: t.delete, onselect: () => askDelete(character) };
+    return [...copies, remove];
+  }
+
+  // ---- Deleting: asked for in place on the card, since it can't be undone ----
+  let deleting = $state<CharacterCard | null>(null);
+  let busy = $state(false);
+  const keyOf = (c: CharacterCard) => `${c.campaignId}/${c.id}`;
+
+  async function askDelete(character: CharacterCard) {
+    status = copyError = null;
+    deleting = character;
+    await tick();
+    document.getElementById("cancel-character-delete")?.focus();
+  }
+
+  async function confirmDelete() {
+    const character = deleting;
+    if (!character) return;
+    busy = true;
+    try {
+      await deleteCharacter(character.campaignId, character.id);
+      deleting = null;
+      await load();
+      status = t.deleted(character.name);
+    } catch (e) {
+      copyError = t.deleteError(errorMessage(e));
+    } finally {
+      busy = false;
+    }
   }
 
   async function copy(character: CharacterCard, to: string, toName: string) {
@@ -168,7 +202,7 @@
                 </p>
               </div>
               <div class="menu">
-                <Menu id="character-{character.campaignId}-{character.id}" label={t.options(character.name)} triggerClass="icon-btn" items={copyItems(character)}>
+                <Menu id="character-{character.campaignId}-{character.id}" label={t.options(character.name)} triggerClass="icon-btn" items={menuItems(character)}>
                   {#snippet trigger()}
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M6 12h.01M12 12h.01M18 12h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
@@ -176,6 +210,15 @@
                   {/snippet}
                 </Menu>
               </div>
+              {#if deleting && keyOf(deleting) === keyOf(character)}
+                <div class="confirm" role="alertdialog" aria-labelledby="character-delete-text">
+                  <p id="character-delete-text">{t.confirmDelete(character.name)}</p>
+                  <div class="confirm-buttons">
+                    <button id="cancel-character-delete" class="btn small" onclick={() => (deleting = null)}>{t.cancel}</button>
+                    <button class="btn btn-danger small" disabled={busy} onclick={confirmDelete}>{t.confirm}</button>
+                  </div>
+                </div>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -385,6 +428,27 @@
     z-index: 1;
     flex: none;
     margin: calc(-1 * var(--space-1));
+  }
+
+  /* Covers the card (above its link) while a delete is being confirmed. */
+  .confirm {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+
+  .confirm-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   .muted {

@@ -2,16 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   armorClass,
   armorKind,
+  carryingCapacity,
   deathStatus,
   hitDieRoll,
   hpOf,
   longRest,
   pactSlots,
+  proficiencyLists,
   setTemp,
   shortRest,
   spellSlots,
   takeDamage,
   takeHealing,
+  weaponAttack,
+  weaponOf,
+  weaponProficient,
   type Vitals,
 } from "./sheet";
 
@@ -99,6 +104,58 @@ describe("rests", () => {
 
   it("short rest brings back pact slots only", () => {
     expect(shortRest(used)).toEqual({ hitDiceSpent: 3, slotsUsed: [2, 1], pactSlotsUsed: 0 });
+  });
+});
+
+describe("weapons", () => {
+  const rapier = weaponOf({ weapon: true, type: "M|XPHB", weaponCategory: "martial", property: ["F|XPHB"], dmg1: "1d8", dmgType: "P" })!;
+  const longbow = weaponOf({ weapon: true, type: "R|XPHB", weaponCategory: "martial", property: ["A|XPHB", "2H|XPHB"], dmg1: "1d8", range: "150/600" })!;
+  const scores = { str: 10, dex: 16, con: 12, int: 10, wis: 10, cha: 10 };
+
+  it("keeps only weapons, with property codes and range", () => {
+    expect(rapier).toEqual({ category: "martial", dmg: "1d8", dmgType: "P", properties: ["F"] });
+    expect(longbow.ranged).toBe(true);
+    expect(weaponOf({ type: "HA|XPHB", ac: 16 })).toBeUndefined();
+  });
+
+  it("picks the ability: DEX for ranged and finesse (when better), else STR", () => {
+    expect(weaponAttack(rapier, scores, 2, true)).toEqual({ ability: "dex", toHit: 5, damage: "1d8+3" });
+    expect(weaponAttack(longbow, scores, 2, false)).toEqual({ ability: "dex", toHit: 3, damage: "1d8+3" });
+    expect(weaponAttack({ ...rapier, properties: [] }, scores, 2, true)).toEqual({ ability: "str", toHit: 2, damage: "1d8" });
+    expect(weaponAttack({ ...rapier, properties: [] }, { ...scores, str: 8 }, 2, false).damage).toBe("1d8-1");
+  });
+
+  it("reads weapon proficiency from the class", () => {
+    const fighter = { weapons: ["simple", "martial"] };
+    const wizard = { weapons: ["simple"] };
+    const rogue = { weapons: ["simple", "Martial weapons that have the …"], weaponProficiencies: [{ simple: true, all: { fromFilter: "type=martial weapon|property=light;finesse" } }] };
+    expect(weaponProficient(fighter, "Rapier", rapier)).toBe(true);
+    expect(weaponProficient(wizard, "Rapier", rapier)).toBe(false);
+    expect(weaponProficient(rogue, "Rapier", rapier)).toBe(true);
+    expect(weaponProficient(rogue, "Longbow", longbow)).toBe(false);
+    expect(weaponProficient({ weaponProficiencies: [{ "longbow|xphb": true }] }, "Longbow", longbow)).toBe(true);
+    expect(weaponProficient(null, "Rapier", rapier)).toBe(false);
+  });
+});
+
+describe("proficiencies and carrying", () => {
+  it("lists fixed proficiencies from class, background and species", () => {
+    const rogue = { armor: ["light"], weapons: ["simple", "{@filter Martial weapons|items}"], tools: ["{@item Thieves' Tools|XPHB}"] };
+    const sage = { toolProficiencies: [{ "calligrapher's supplies": true }], languageProficiencies: [{ elvish: true, anyStandard: 1 }] };
+    const elf = { languageProficiencies: [{ common: true, elvish: true }] };
+    expect(proficiencyLists(rogue, sage, elf)).toEqual({
+      armor: ["Light"],
+      weapons: ["Simple", "Martial weapons"],
+      tools: ["Thieves' Tools", "Calligrapher's supplies"],
+      languages: ["Common", "Elvish"],
+    });
+    expect(proficiencyLists(null, null, null)).toEqual({ armor: [], weapons: [], tools: [], languages: [] });
+  });
+
+  it("carries Strength × 15 pounds, scaled by size", () => {
+    expect(carryingCapacity(10)).toBe(150);
+    expect(carryingCapacity(10, "S")).toBe(150);
+    expect(carryingCapacity(10, "L")).toBe(300);
   });
 });
 

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Weapon } from "$lib/characters/sheet";
 
 /** Mirrors the types in src-tauri/src/commands/characters.rs. */
 export type Subclass = { name: string; shortName: string; source: string };
@@ -22,6 +23,7 @@ export type InventoryItem = {
   attuned?: boolean;
   armor?: "light" | "medium" | "heavy" | "shield";
   ac?: number;
+  weapon?: Weapon;
 };
 
 /**
@@ -51,6 +53,13 @@ export type Character = {
   coins?: Partial<Record<Coin, number>>;
   /** Replaces the computed armor class, e.g. for Unarmored Defense or magic armor. */
   acOverride?: number | null;
+  inspiration?: boolean;
+  concentrating?: boolean;
+  personality?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+  /** The backstory. */
   notes?: string;
   [field: string]: unknown;
 };
@@ -77,6 +86,11 @@ export function getCharacter(campaign: string | null, id: string): Promise<Chara
 /** Replaces a character in an active campaign or without one. Its id and creation time stay as they were. */
 export function saveCharacter(campaign: string | null, id: string, character: Character): Promise<CharacterCard> {
   return invoke("save_character", { campaign, id, character });
+}
+
+/** Permanently deletes a character in an active campaign or without one. */
+export function deleteCharacter(campaign: string | null, id: string): Promise<void> {
+  return invoke("delete_character", { campaign, id });
 }
 
 /** Copies a character into another active campaign under a new id. */

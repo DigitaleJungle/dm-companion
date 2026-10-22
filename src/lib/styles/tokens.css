@@ -21,6 +21,16 @@
   --color-danger: #b42318; /* ≥ 6:1 on surface */
   --color-danger-soft: #fdecea;
   --color-success: #1a7f37; /* ≥ 5:1 on surface */
+  --color-success-fill: #1a7f37; /* button fill, white text ≥ 5:1 */
+  --color-danger-fill: #b42318; /* button fill, white text ≥ 6:1 */
+  /* Heroic Inspiration (gold) and Concentration (violet) highlights on the character sheet. */
+  --color-inspiration: #f2c230;
+  --color-inspiration-strong: #9a6b00;
+  --color-inspiration-text: #15181e;
+  --color-inspiration-glow: rgb(242 194 48 / 0.55);
+  --color-concentration: #6d3fd1;
+  --color-concentration-text: #ffffff;
+  --color-concentration-glow: rgb(109 63 209 / 0.4);
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
 
   /* Spacing (4px scale) */
@@ -80,8 +90,16 @@
   --avatar-size: 72px;
   --wizard-content-width: 1040px;
   --character-card-width: 300px;
-  --play-panel-width: 340px;
-  --notes-min-height: 320px;
+  --sheet-avatar-size: 72px;
+  --sheet-stat-width: 88px;
+  --sheet-hp-width: 272px;
+  --sheet-hp-amount-width: 108px;
+  --sheet-left-max: 720px;
+  --sheet-bar-height: 10px;
+  --sheet-glow-blur: 18px;
+  --stat-value-size: 1.875rem;
+  --ability-card-height: 64px;
+  --coin-box-width: 64px;
   --z-drawer: 100;
   --z-menu: 50;
   --menu-min-width: 160px;
@@ -114,5 +132,14 @@
   --color-danger: #ff9b8f;
   --color-danger-soft: #3a1d1b;
   --color-success: #4ac26b;
+  --color-success-fill: #1f7a3a;
+  --color-danger-fill: #c23a2c;
+  --color-inspiration: #e0b22a;
+  --color-inspiration-strong: #f0c94c;
+  --color-inspiration-text: #1a1400;
+  --color-inspiration-glow: rgb(240 201 76 / 0.45);
+  --color-concentration: #8b63ec;
+  --color-concentration-text: #ffffff;
+  --color-concentration-glow: rgb(139 99 236 / 0.45);
   --shadow-card: none;
 }

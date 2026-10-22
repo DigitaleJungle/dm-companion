@@ -43,6 +43,7 @@ pub fn run() {
             commands::campaigns::delete_campaign,
             commands::characters::list_characters,
             commands::characters::copy_character,
+            commands::characters::delete_character,
             commands::characters::create_character,
             commands::characters::get_character,
             commands::characters::save_character,

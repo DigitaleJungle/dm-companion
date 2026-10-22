@@ -3,7 +3,8 @@
   import { catalogRows, type CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { inSources } from "$lib/characters/rules";
-  import { ATTUNEMENT_LIMIT, armorKind } from "$lib/characters/sheet";
+  import { ATTUNEMENT_LIMIT, armorKind, carryingCapacity, weaponOf } from "$lib/characters/sheet";
+  import { DAMAGE_TYPES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
 
@@ -15,13 +16,25 @@
   const pounds = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
   const COINS: Coin[] = ["cp", "sp", "ep", "gp", "pp"];
   const MAX_RESULTS = 30;
+  // Item fields kept on the character, so the sheet never needs a lookup for armor class, weight or attacks.
+  const ITEM_KEYS = ["type", "weight", "ac", "reqAttune", "weapon", "weaponCategory", "dmg1", "dmgType", "property", "range"];
 
   const items = $derived(sheet.character?.inventory ?? []);
   const coins = $derived(sheet.character?.coins ?? {});
   const attuned = $derived(items.filter((i) => i.attuned).length);
   const totalWeight = $derived(items.reduce((sum, i) => sum + (i.weight ?? 0) * i.quantity, 0));
+  const capacity = $derived(sheet.scores ? carryingCapacity(sheet.scores.str, sheet.character?.species?.size) : null);
+  const carriedShare = $derived(capacity ? Math.min(100, Math.round((totalWeight / capacity) * 100)) : 0);
 
-  // ---- Adding items: the item catalog is loaded the first time it's searched ----
+  const note = (item: InventoryItem) =>
+    item.armor && typeof item.ac === "number"
+      ? t.acNote(item.armor === "shield" ? `+${item.ac}` : plain.format(item.ac))
+      : item.weapon?.dmg
+        ? [item.weapon.dmg, DAMAGE_TYPES[item.weapon.dmgType ?? ""]].filter(Boolean).join(" ")
+        : "";
+
+  // ---- Adding items: the item catalog is loaded the first time the add panel opens ----
+  let adding = $state(false);
   let search = $state("");
   let custom = $state("");
   let catalog = $state<CatalogRow[] | null>(null);
@@ -32,7 +45,7 @@
     if (catalog || loading) return;
     loading = true;
     try {
-      const rows = await catalogRows("item", ["type", "weight", "ac", "reqAttune"]);
+      const rows = await catalogRows("item", ITEM_KEYS);
       catalog = rows.filter((r) => inSources(r.source, sources));
     } catch (e) {
       catalogError = t.itemsError(errorMessage(e));
@@ -66,6 +79,7 @@
 
   function addFromCatalog(row: CatalogRow) {
     const armor = armorKind(row.data.type);
+    const weapon = weaponOf(row.data);
     add({
       name: row.name,
       source: row.source,
@@ -73,6 +87,7 @@
       ...(typeof row.data.weight === "number" ? { weight: row.data.weight } : {}),
       ...(row.data.reqAttune ? { attunement: true } : {}),
       ...(armor ? { armor, ...(typeof row.data.ac === "number" ? { ac: row.data.ac } : {}) } : {}),
+      ...(weapon ? { weapon } : {}),
     });
     search = "";
   }
@@ -100,82 +115,50 @@
     const n = whole(value === "" ? "0" : value);
     if (n !== null) sheet.change((c) => (c.coins = { ...c.coins, [coin]: n }));
   }
+
+  function toggleAdding() {
+    adding = !adding;
+    if (adding) loadCatalog();
+  }
 </script>
 
 <section aria-labelledby="inventory-title" class="inventory">
   <h2 id="inventory-title" class="sr-only">{t.title}</h2>
 
-  {#if items.length === 0}
-    <p class="muted">{t.empty}</p>
-  {:else}
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">{t.name}</th>
-            <th scope="col" class="numeric">{t.quantity}</th>
-            <th scope="col" class="numeric">{t.weight}</th>
-            <th scope="col">{t.equipped}</th>
-            <th scope="col">{t.attuned}</th>
-            <th scope="col"><span class="sr-only">{t.actions}</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each items as item, i (`${i}-${item.name}`)}
-            <tr>
-              <td>{item.name}{#if item.source}<span class="source"> {item.source}</span>{/if}</td>
-              <td class="numeric">
-                <input
-                  class="qty"
-                  type="text"
-                  inputmode="numeric"
-                  aria-label={t.quantityOf(item.name)}
-                  value={item.quantity}
-                  disabled={sheet.readOnly}
-                  onchange={(e) => setQuantity(i, e.currentTarget.value)}
-                />
-              </td>
-              <td class="numeric">{item.weight ? t.pounds(pounds.format(item.weight * item.quantity)) : ""}</td>
-              <td>
-                <input
-                  type="checkbox"
-                  aria-label={t.equippedOf(item.name)}
-                  checked={!!item.equipped}
-                  disabled={sheet.readOnly}
-                  onchange={(e) => edit(i, (it) => (it.equipped = e.currentTarget.checked))}
-                />
-              </td>
-              <td>
-                {#if item.attunement}
-                  <input
-                    type="checkbox"
-                    aria-label={t.attunedOf(item.name)}
-                    checked={!!item.attuned}
-                    disabled={sheet.readOnly || (!item.attuned && attuned >= ATTUNEMENT_LIMIT)}
-                    onchange={(e) => edit(i, (it) => (it.attuned = e.currentTarget.checked))}
-                  />
-                {/if}
-              </td>
-              <td>
-                <button class="icon-btn" aria-label={t.remove(item.name)} title={t.remove(item.name)} disabled={sheet.readOnly} onclick={() => remove(i)}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
-                </button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <p class="muted small">
-      {t.totalWeight(pounds.format(totalWeight))} · {t.attunement(plain.format(attuned), plain.format(ATTUNEMENT_LIMIT))}
-    </p>
-  {/if}
+  <div class="summary">
+    <fieldset class="coins">
+      <legend class="sr-only">{t.coins}</legend>
+      {#each COINS as coin (coin)}
+        <label class="coin" title={t.coinNames[coin]}>
+          <abbr title={t.coinNames[coin]}>{t.coinCodes[coin]}</abbr>
+          <input
+            type="text"
+            inputmode="numeric"
+            aria-label={t.coinNames[coin]}
+            value={coins[coin] ?? 0}
+            disabled={sheet.readOnly}
+            onchange={(e) => setCoin(coin, e.currentTarget.value)}
+          />
+        </label>
+      {/each}
+    </fieldset>
 
-  {#if !sheet.readOnly}
-    <div class="add">
-      <h3 class="label">{t.add}</h3>
+    <div class="carrying">
+      <span>{t.carrying(pounds.format(totalWeight), capacity === null ? strings.characters.sheet.unknown : pounds.format(capacity), plain.format(attuned), plain.format(ATTUNEMENT_LIMIT))}</span>
+      <div class="bar" role="meter" aria-label={t.carryingLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={carriedShare}>
+        <div class="fill" style:width="{carriedShare}%"></div>
+      </div>
+    </div>
+
+    {#if !sheet.readOnly}
+      <button class="btn btn-primary" aria-expanded={adding} aria-controls="inventory-add" onclick={toggleAdding}>{adding ? t.doneAdding : t.add}</button>
+    {/if}
+  </div>
+
+  {#if adding && !sheet.readOnly}
+    <div id="inventory-add" class="add">
       <label for="item-search" class="sr-only">{t.searchLabel}</label>
-      <input id="item-search" class="field" type="search" bind:value={search} onfocus={loadCatalog} placeholder={t.searchPlaceholder} autocomplete="off" />
+      <input id="item-search" class="field" type="search" bind:value={search} placeholder={t.searchPlaceholder} autocomplete="off" />
       {#if catalogError}
         <p class="error" role="alert">{catalogError}</p>
       {:else if search.trim() && !catalog}
@@ -204,15 +187,73 @@
     </div>
   {/if}
 
-  <fieldset class="coins">
-    <legend class="label">{t.coins}</legend>
-    {#each COINS as coin (coin)}
-      <label class="coin">
-        <span>{t.coinNames[coin]}</span>
-        <input type="text" inputmode="numeric" value={coins[coin] ?? 0} disabled={sheet.readOnly} onchange={(e) => setCoin(coin, e.currentTarget.value)} />
-      </label>
-    {/each}
-  </fieldset>
+  {#if items.length === 0}
+    <p class="muted">{t.empty}</p>
+  {:else}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t.equip}</th>
+            <th scope="col">{t.name}</th>
+            <th scope="col">{t.quantity}</th>
+            <th scope="col">{t.weight}</th>
+            <th scope="col">{t.notes}</th>
+            <th scope="col"><span class="sr-only">{t.actions}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each items as item, i (`${i}-${item.name}`)}
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  aria-label={t.equippedOf(item.name)}
+                  checked={!!item.equipped}
+                  disabled={sheet.readOnly}
+                  onchange={(e) => edit(i, (it) => (it.equipped = e.currentTarget.checked))}
+                />
+              </td>
+              <th scope="row">{item.name}{#if item.source}<span class="source"> {item.source}</span>{/if}</th>
+              <td>
+                <input
+                  class="qty"
+                  type="text"
+                  inputmode="numeric"
+                  aria-label={t.quantityOf(item.name)}
+                  value={item.quantity}
+                  disabled={sheet.readOnly}
+                  onchange={(e) => setQuantity(i, e.currentTarget.value)}
+                />
+              </td>
+              <td class="muted">{item.weight ? t.pounds(pounds.format(item.weight * item.quantity)) : ""}</td>
+              <td class="muted">
+                <span class="notes">
+                  {note(item)}
+                  {#if item.attunement}
+                    <label class="attune">
+                      <input
+                        type="checkbox"
+                        checked={!!item.attuned}
+                        disabled={sheet.readOnly || (!item.attuned && attuned >= ATTUNEMENT_LIMIT)}
+                        onchange={(e) => edit(i, (it) => (it.attuned = e.currentTarget.checked))}
+                      />
+                      {t.attuned}
+                    </label>
+                  {/if}
+                </span>
+              </td>
+              <td>
+                <button class="icon-btn" aria-label={t.remove(item.name)} title={t.remove(item.name)} disabled={sheet.readOnly} onclick={() => remove(i)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -220,6 +261,79 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+  }
+
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .coins {
+    display: flex;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .coin {
+    width: var(--coin-box-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-1);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .coin abbr {
+    text-decoration: none;
+  }
+
+  .coin input {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .coin:has(input:focus-visible) {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
+  }
+
+  .coin input:focus-visible {
+    outline: none;
+  }
+
+  .carrying {
+    flex: 1 1 calc(8 * var(--space-6));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .bar {
+    height: var(--space-2);
+    overflow: hidden;
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+  }
+
+  .fill {
+    height: 100%;
+    background: var(--color-text-muted);
   }
 
   .table-wrap {
@@ -234,15 +348,13 @@
 
   th,
   td {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2);
     border-bottom: var(--border-width) solid var(--color-border);
     text-align: left;
     vertical-align: middle;
   }
 
-  th {
-    background: var(--color-surface-sunken);
-    border-bottom: calc(2 * var(--border-width)) solid var(--color-border-strong);
+  thead th {
     color: var(--color-text-muted);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
@@ -251,9 +363,8 @@
     white-space: nowrap;
   }
 
-  .numeric {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
+  tbody th {
+    font-weight: var(--weight-semibold);
   }
 
   .qty {
@@ -263,6 +374,7 @@
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-sm);
     background: var(--color-surface);
+    font-variant-numeric: tabular-nums;
     text-align: right;
   }
 
@@ -272,17 +384,23 @@
     accent-color: var(--color-accent);
   }
 
+  .notes {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .attune {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
   .source {
     color: var(--color-text-muted);
     font-size: var(--text-xs);
-  }
-
-  .label {
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    font-weight: var(--weight-regular);
   }
 
   .add {
@@ -343,38 +461,6 @@
   .custom .field {
     flex: 1;
     min-width: 0;
-  }
-
-  .coins {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin: 0;
-    padding: 0;
-    border: none;
-  }
-
-  .coins legend {
-    margin-bottom: var(--space-2);
-    padding: 0;
-  }
-
-  .coin {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-  }
-
-  .coin input {
-    width: calc(4 * var(--space-6));
-    min-height: var(--control-height-sm);
-    padding: 0 var(--space-2);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
   }
 
   .muted {

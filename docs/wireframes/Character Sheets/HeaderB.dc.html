@@ -101,19 +101,19 @@ a{color:#1f1f1f}a:hover{color:#000}
     <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
 
       <div style="flex: 2 1 600px; min-width: 0; max-width: 720px; display: flex; flex-direction: column; gap: 20px">
-          <div role="group" aria-label="Ability scores" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start">
+        <div style="min-width: 0; display: flex; flex-direction: column; gap: 20px">
+          <div role="group" aria-label="Ability scores" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
             <sc-for list="{{abilities}}" as="a" hint-placeholder-count="6">
-              <button style="border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: inherit; color: #1f1f1f; text-align: left; height: 64px">
+              <button title="{{a.full}}" style="border: 1.5px solid #8a8a8a; border-radius: 8px; background: #fff; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-family: inherit; color: #1f1f1f; text-align: left; height: 64px; min-width: 0">
                 <span style="display: flex; flex-direction: column; line-height: 1.1">
-                  <span style="font-size: 12px; color: #1f1f1f; white-space: nowrap">{{a.full}} <span style="color: #5c5c5c; letter-spacing: 0.06em">{{a.abbr}}</span></span>
+                  <span style="font-size: 12px; font-weight: 700; color: #5c5c5c; letter-spacing: 0.06em">{{a.abbr}}</span>
                   <span style="font-size: 15px; color: #5c5c5c">[NN]</span>
                 </span>
-                <span style="font-size: 28px; font-weight: 700">[+N]</span>
+                <span style="font-size: 24px; font-weight: 700">[+N]</span>
               </button>
             </sc-for>
           </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start">
-        <div style="min-width: 0; display: flex; flex-direction: column; gap: 20px">
         <section style="background: #fff; border: 1.5px solid #8a8a8a; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
           <h2 style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #5c5c5c">Saving throws</h2>
           <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 2px">

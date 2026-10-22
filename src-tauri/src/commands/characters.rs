@@ -219,6 +219,16 @@ pub fn save(places: &Places, campaign: Option<&str>, id: &str, mut character: Va
     Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id: summary.id, name: summary.name, classes: summary.classes })
 }
 
+/// Permanently deletes a character. Characters in an archived campaign stay as they are until it's restored.
+pub fn delete(places: &Places, campaign: Option<&str>, id: &str) -> Result<(), StorageError> {
+    let (path, archived) = existing_file(places, campaign, id)?;
+    if archived {
+        return Err(StorageError::Invalid("This character's campaign is archived. Restore the campaign to delete the character.".into()));
+    }
+    fs::remove_file(path)?;
+    Ok(())
+}
+
 /// Copies a character (from an active or archived campaign, or from no campaign) into another active campaign, under a new id.
 pub fn copy(places: &Places, from_campaign: Option<&str>, id: &str, to_campaign: &str, now: u64) -> Result<CharacterCard, StorageError> {
     check_id(id)?;
@@ -253,6 +263,11 @@ pub async fn get_character(app: AppHandle, campaign: Option<String>, id: String)
 #[tauri::command]
 pub async fn save_character(app: AppHandle, campaign: Option<String>, id: String, character: Value) -> Result<CharacterCard, StorageError> {
     save(&places(&app)?, campaign.as_deref(), &id, character)
+}
+
+#[tauri::command]
+pub async fn delete_character(app: AppHandle, campaign: Option<String>, id: String) -> Result<(), StorageError> {
+    delete(&places(&app)?, campaign.as_deref(), &id)
 }
 
 #[tauri::command]
@@ -405,6 +420,29 @@ mod tests {
         assert!(matches!(save(&p, Some("a"), "c2", json!({ "name": " " })), Err(StorageError::Invalid(_))));
         assert!(matches!(save(&p, Some("a"), "c2", json!({ "name": "T", "classes": "Fighter" })), Err(StorageError::Invalid(_))));
         assert_eq!(read(p.campaigns.active.join("a").join(FOLDER).join("c2.json"))["name"], "Thalia");
+    }
+
+    #[test]
+    fn delete_removes_only_that_character_and_refuses_archived_ones() {
+        let p = temp_places("delete");
+        campaign(&p.campaigns.active, "a");
+        campaign(&p.campaigns.archived, "old");
+        let folder = p.campaigns.active.join("a").join(FOLDER);
+        character(&folder, "c1", json!({ "id": "c1", "name": "Thalia" }));
+        character(&folder, "c2", json!({ "id": "c2", "name": "Brom" }));
+        character(&p.loose, "m", json!({ "id": "m", "name": "Mira" }));
+        character(&p.campaigns.archived.join("old").join(FOLDER), "o", json!({ "id": "o", "name": "Old" }));
+
+        delete(&p, Some("a"), "c1").unwrap();
+        assert!(!folder.join("c1.json").exists() && folder.join("c2.json").exists());
+        delete(&p, None, "m").unwrap();
+        assert!(!p.loose.join("m.json").exists());
+
+        assert!(matches!(delete(&p, Some("old"), "o"), Err(StorageError::Invalid(_))));
+        assert!(p.campaigns.archived.join("old").join(FOLDER).join("o.json").exists());
+        assert!(matches!(delete(&p, Some("a"), "c1"), Err(StorageError::NotFound(_))));
+        assert!(matches!(delete(&p, Some("a"), "../c2"), Err(StorageError::Invalid(_))));
+        assert!(folder.join("c2.json").exists());
     }
 
     #[test]

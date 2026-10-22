@@ -22,7 +22,10 @@ export class Sheet {
   // Rules entries; null until loaded or when the rules data doesn't have them.
   cls = $state<Data | null>(null);
   species = $state<Data | null>(null);
+  background = $state<Data | null>(null);
   skills = $state<Skill[]>([]);
+  /** Item property names by code ("F" → "Finesse"). */
+  properties = $state<Record<string, string>>({});
   conditions = $state<CatalogRow[]>([]);
   rulesError = $state<string | null>(null);
 
@@ -80,14 +83,18 @@ export class Sheet {
     this.rulesError = null;
     const main = c.classes[0];
     try {
-      const [cls, species, skills, conditions] = await Promise.all([
+      const [cls, species, background, skills, conditions, properties] = await Promise.all([
         main ? findEntity("class", main.name, main.source) : null,
         c.species ? findEntity("species", c.species.name, c.species.source) : null,
+        c.background ? findEntity("background", c.background.name, c.background.source) : null,
         catalogRows("skill", ["ability"]),
         catalogRows("condition", []),
+        catalogRows("itemProperty", ["abbreviation"]),
       ]);
       this.cls = cls?.data ?? null;
       this.species = species?.data ?? null;
+      this.background = background?.data ?? null;
+      this.properties = Object.fromEntries(properties.map((p) => [String(p.data.abbreviation ?? "").toUpperCase(), p.name]));
       const byKey = new Map<string, Skill>();
       for (const row of skills) byKey.set(row.name.toLowerCase(), { key: row.name.toLowerCase(), name: row.name, ability: String(row.data.ability ?? "") as Ability });
       this.skills = [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
