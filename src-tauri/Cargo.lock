@@ -645,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "dm-companion"
-version = "0.5.12"
+version = "0.5.13"
 dependencies = [
  "flate2",
  "rusqlite",

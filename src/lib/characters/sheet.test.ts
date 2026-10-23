@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  inUse,
+  pay,
+  withdraw,
   masteryNames,
   armorClass,
   armorKind,
@@ -245,5 +248,38 @@ describe("item references", () => {
   it("reads masteries and properties as strings or { uid } objects", () => {
     expect(masteryNames(["Sap|XPHB", { uid: "Vex|XPHB" }])).toEqual(["Sap", "Vex"]);
     expect(weaponOf({ weaponCategory: "martial", property: [{ uid: "F|XPHB", note: "x" }, "2H|XPHB"] })?.properties).toEqual(["F", "2H"]);
+  });
+});
+
+describe("items at quantity 0", () => {
+  it("count as unequipped for armor class, keeping their tick", () => {
+    const chain = { armor: "heavy" as const, ac: 16, equipped: true, quantity: 0 };
+    expect(armorClass(14, [chain])).toBe(12);
+    expect(armorClass(14, [{ ...chain, quantity: 1 }])).toBe(16);
+    expect(inUse(chain)).toBe(false);
+  });
+});
+
+describe("paying", () => {
+  it("pays with small coins first, breaks a bigger coin for change, and refuses when there's too little", () => {
+    expect(pay({ cp: 5, sp: 3, gp: 2 }, 35)).toEqual({ cp: 0, sp: 0, gp: 2, ep: 0, pp: 0 });
+    // 1 gp for a 25 cp item: 7 sp 5 cp back.
+    expect(pay({ gp: 1 }, 25)).toEqual({ cp: 5, sp: 7, ep: 0, gp: 0, pp: 0 });
+    // 15 gp from 10 gp and 1 pp: the gold first, then the platinum is broken and 5 gp comes back.
+    expect(pay({ gp: 10, pp: 1 }, 1500)).toEqual({ cp: 0, sp: 0, ep: 0, gp: 5, pp: 0 });
+    expect(pay({ gp: 1 }, 101)).toBeNull();
+    expect(pay({}, 0)).toEqual({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+  });
+});
+
+describe("taking out one coin", () => {
+  it("takes one when there is one, else breaks the smallest bigger coin", () => {
+    expect(withdraw({ cp: 2 }, "cp")).toEqual({ cp: 1 });
+    expect(withdraw({ cp: 0, sp: 3 }, "cp")).toEqual({ cp: 9, sp: 2 });
+    // No silver: a gold piece is broken into 9 sp and 9 cp, plus the copper taken out.
+    expect(withdraw({ gp: 1 }, "cp")).toEqual({ gp: 0, sp: 9, cp: 9 });
+    expect(withdraw({ pp: 1 }, "gp")).toEqual({ pp: 0, gp: 9 });
+    expect(withdraw({ gp: 1 }, "ep")).toEqual({ gp: 0, sp: 5 });
+    expect(withdraw({ cp: 5 }, "gp")).toBeNull();
   });
 });

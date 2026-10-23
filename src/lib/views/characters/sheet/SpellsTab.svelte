@@ -152,7 +152,7 @@
                   onchange={(e) => setPrepared(s.name, s.source, e.currentTarget.checked)}
                 />
               {/if}
-              <button class="spell-name" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
+              <button class="entry-link" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
               <span class="origin">{s.origin}</span>
               {#if s.always}<span class="tag">{t.always}</span>{/if}
               <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
@@ -280,19 +280,6 @@
     border-bottom: var(--border-width) solid var(--color-border);
   }
 
-  .spell-name {
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--color-text);
-    font-weight: var(--weight-semibold);
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .spell-name:hover {
-    color: var(--color-link);
-  }
 
   .origin {
     color: var(--color-text-muted);

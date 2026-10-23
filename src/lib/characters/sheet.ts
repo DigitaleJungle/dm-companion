@@ -270,7 +270,10 @@ export function carryingCapacity(str: number, size = "M"): number {
 // --- Armor class ----------------------------------------------------------------------------
 
 export type ArmorKind = "light" | "medium" | "heavy" | "shield";
-export type ArmorPiece = { armor?: ArmorKind; ac?: number; equipped?: boolean };
+export type ArmorPiece = { armor?: ArmorKind; ac?: number; equipped?: boolean; quantity?: number };
+
+/** Equipped and still there: an item at quantity 0 keeps its Equipped tick but counts as not worn or wielded. */
+export const inUse = (item: { equipped?: boolean; quantity?: number }) => !!item.equipped && (item.quantity ?? 1) > 0;
 
 /** Item type codes in the rules data ("HA|XPHB") to armor kinds. */
 export function armorKind(type: unknown): ArmorKind | undefined {
@@ -287,6 +290,7 @@ export function inventoryItem(row: { name: string; source: string; data: Data },
     source: row.source,
     quantity,
     ...(typeof row.data.weight === "number" ? { weight: row.data.weight } : {}),
+    ...(typeof row.data.value === "number" ? { value: row.data.value } : {}),
     ...(row.data.reqAttune ? { attunement: true } : {}),
     ...(armor ? { armor, ...(typeof row.data.ac === "number" ? { ac: row.data.ac } : {}) } : {}),
     ...(weapon ? { weapon } : {}),
@@ -299,10 +303,67 @@ export function inventoryItem(row: { name: string; source: string; data: Data },
  */
 export function armorClass(dex: number, items: ArmorPiece[], override?: number | null): number {
   if (typeof override === "number" && Number.isFinite(override)) return override;
-  const worn = items.filter((i) => i.equipped);
+  const worn = items.filter(inUse);
   const body = worn.find((i) => i.armor && i.armor !== "shield" && typeof i.ac === "number");
   const mod = modifier(dex);
   const base = !body ? 10 + mod : body.armor === "heavy" ? body.ac! : body.armor === "medium" ? body.ac! + Math.min(2, mod) : body.ac! + mod;
   const shield = worn.find((i) => i.armor === "shield");
   return base + (shield ? (shield.ac ?? 2) : 0);
+}
+
+// --- Paying -------------------------------------------------------------------------------
+
+export type Purse = Partial<Record<"cp" | "sp" | "ep" | "gp" | "pp", number>>;
+const COIN_VALUES: [keyof Purse, number][] = [
+  ["cp", 1],
+  ["sp", 10],
+  ["ep", 50],
+  ["gp", 100],
+  ["pp", 1000],
+];
+
+/**
+ * The purse after paying `price` copper, or null when it holds too little. Small coins go first; when a bigger coin
+ * has to be broken, the change comes back in gold, silver and copper.
+ */
+export function pay(purse: Purse, price: number): Purse | null {
+  const left: Purse = { ...purse };
+  const total = COIN_VALUES.reduce((sum, [coin, value]) => sum + (left[coin] ?? 0) * value, 0);
+  if (price > total) return null;
+  let owed = price;
+  for (const [coin, value] of COIN_VALUES) {
+    const use = Math.min(left[coin] ?? 0, Math.floor(owed / value));
+    left[coin] = (left[coin] ?? 0) - use;
+    owed -= use * value;
+  }
+  if (owed > 0) {
+    // Every coin still in the purse is now worth more than what's owed: break the smallest one.
+    const [coin, value] = COIN_VALUES.find(([c]) => (left[c] ?? 0) > 0)!;
+    left[coin] = (left[coin] ?? 0) - 1;
+    const change = value - owed;
+    left.gp = (left.gp ?? 0) + Math.floor(change / 100);
+    left.sp = (left.sp ?? 0) + Math.floor((change % 100) / 10);
+    left.cp = (left.cp ?? 0) + (change % 10);
+  }
+  return left;
+}
+
+/**
+ * The purse after taking out one coin of a kind, or null when it can't. Without that coin, the smallest bigger coin
+ * there is gets broken: 1 sp becomes 9 cp left over; the change comes back in gold, silver and copper.
+ */
+export function withdraw(purse: Purse, coin: keyof Purse): Purse | null {
+  if ((purse[coin] ?? 0) > 0) return { ...purse, [coin]: (purse[coin] ?? 0) - 1 };
+  const value = COIN_VALUES.find(([c]) => c === coin)![1];
+  const bigger = COIN_VALUES.find(([c, v]) => v > value && (purse[c] ?? 0) > 0);
+  if (!bigger) return null;
+  const left: Purse = { ...purse, [bigger[0]]: (purse[bigger[0]] ?? 0) - 1 };
+  let change = bigger[1] - value;
+  // The change in gold, silver and copper, biggest first (no electrum or platinum, as when paying).
+  for (const [c, v] of [...COIN_VALUES].reverse()) {
+    if (c === "pp" || c === "ep" || change < v) continue;
+    left[c] = (left[c] ?? 0) + Math.floor(change / v);
+    change %= v;
+  }
+  return left;
 }

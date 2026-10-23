@@ -3,6 +3,19 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.13] - 2026-10-23
+
+### Added
+
+- Inventory: item names open a window with all the item's information; custom items can be edited there (weight, price, armor, weapon, description)
+- Inventory: buy items with coins, see prices in the search, drag items to reorder them
+
+### Changed
+
+- Inventory: one always-visible add bar with Add and Buy; adding an item again gives a separate line
+- Inventory: quantities and coins have + and − buttons; quantity can go to 0, which counts as unequipped; taking a coin you don't have breaks a bigger one
+- Action and inventory item names open their rules
+
 ## [0.5.12] - 2026-10-23
 
 ### Changed

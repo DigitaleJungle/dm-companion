@@ -19,6 +19,8 @@ export type InventoryItem = {
   quantity: number;
   /** Per item, in pounds. */
   weight?: number;
+  /** Price per item, in copper pieces (from the rules data). */
+  value?: number;
   equipped?: boolean;
   /** The item needs attunement (from the rules data). */
   attunement?: boolean;
@@ -26,6 +28,8 @@ export type InventoryItem = {
   armor?: "light" | "medium" | "heavy" | "shield";
   ac?: number;
   weapon?: Weapon;
+  /** A custom item's own text. */
+  description?: string;
 };
 
 /**

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { proficiencyBonus } from "$lib/characters/rules";
-  import { weaponAttack, weaponProficient } from "$lib/characters/sheet";
+  import { inUse, weaponAttack, weaponProficient } from "$lib/characters/sheet";
   import { DAMAGE_TYPES } from "$lib/rules/format";
+  import { openPreview } from "$lib/rules/preview.svelte";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
 
@@ -17,13 +18,14 @@
   const rows = $derived(
     (sheet.character?.inventory ?? []).flatMap((item) => {
       const weapon = item.weapon;
-      if (!item.equipped || !weapon || !sheet.scores) return [];
+      if (!inUse(item) || !weapon || !sheet.scores) return [];
       const proficient = weaponProficient(sheet.cls, item.name, weapon);
       const attack = weaponAttack(weapon, sheet.scores, pb, proficient);
       const props = (weapon.properties ?? []).map((p) => sheet.properties[p] ?? p);
       return [
         {
           name: item.name,
+          source: item.source,
           range: weapon.range ? t.feet(weapon.range) : t.reach,
           hit: signed.format(attack.toHit),
           damage: attack.damage ? [attack.damage, DAMAGE_TYPES[weapon.dmgType ?? ""]].filter(Boolean).join(" ") : strings.characters.sheet.unknown,
@@ -55,7 +57,12 @@
       <tbody>
         {#each rows as row, i (i)}
           <tr>
-            <th scope="row">{row.name}</th>
+            <th scope="row">
+              {#if row.source}
+                {@const ref = { kind: "item", name: row.name, source: row.source }}
+                <button class="entry-link" onclick={(e) => openPreview(ref, e.currentTarget)}>{row.name}</button>
+              {:else}{row.name}{/if}
+            </th>
             <td class="muted">{row.range}</td>
             <td><span class="pill strong">{row.hit}</span></td>
             <td><span class="pill">{row.damage}</span></td>
