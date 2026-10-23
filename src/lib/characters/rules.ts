@@ -20,6 +20,12 @@ export const modifier = (score: number) => Math.floor((score - 10) / 2);
 /** Level 1 hit points: the hit die's maximum plus the Constitution modifier, at least 1. */
 export const level1Hp = (hitDieFaces: number, con: number) => Math.max(1, hitDieFaces + modifier(con));
 
+export const MAX_LEVEL = 20;
+
+/** Hit points at a starting level: level 1's, plus the fixed value (half the die + 1, plus CON) for each level after, at least 1 each. */
+export const startingHp = (hitDieFaces: number, con: number, level: number) =>
+  level1Hp(hitDieFaces, con) + (Math.max(1, level) - 1) * Math.max(1, hitDieFaces / 2 + 1 + modifier(con));
+
 /** `sources` null means every book is allowed (a character without a campaign). */
 export const inSources = (source: string, sources: string[] | null) => sources === null || sources.some((s) => s.toLowerCase() === source.toLowerCase());
 

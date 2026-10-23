@@ -15,10 +15,10 @@ import {
   equipmentGroups,
   gearOptions,
   startingGear,
+  startingHp,
   emptyPick,
   finalScores,
   inSources,
-  level1Hp,
   lineageNames,
   mergeOptions,
   skillGrant,
@@ -62,6 +62,7 @@ function blank() {
     subspecies: null as CatalogRow | null,
     size: null as string | null,
     cls: null as CatalogRow | null,
+    level: 1,
     background: null as CatalogRow | null,
     method: "standard" as Method,
     rolls: [] as Roll[],
@@ -296,7 +297,7 @@ export function toCharacter() {
       ...(draft.subspecies ? { subspecies: { name: draft.subspecies.name, source: draft.subspecies.source } } : {}),
       ...(draft.size ? { size: draft.size } : {}),
     },
-    classes: [{ name: draft.cls!.name, source: draft.cls!.source, level: 1 }],
+    classes: [{ name: draft.cls!.name, source: draft.cls!.source, level: draft.level }],
     background: { name: draft.background!.name, source: draft.background!.source },
     abilities: {
       method: draft.method,
@@ -305,7 +306,7 @@ export function toCharacter() {
     },
     skills: allSkills().sort(),
     savingThrows: savingThrows(),
-    hp: { max: level1Hp(hitDie(), final.con) },
+    hp: { max: startingHp(hitDie(), final.con, draft.level) },
     feats: backgroundFeats(),
   };
 }
@@ -345,6 +346,7 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
   const sizes = sizesOf(draft.species);
   draft.size = c.species?.size ?? (sizes.length === 1 ? sizes[0] : null);
   draft.cls = options.classes.find((r) => same(r, c.classes[0])) ?? null;
+  draft.level = c.classes[0]?.level ?? 1;
   draft.background = options.backgrounds.find((r) => same(r, c.background)) ?? null;
 
   const saved = c.abilities;
@@ -384,15 +386,15 @@ export function editedCharacter(existing: Character): Character {
   const next = toCharacter();
   const sameClass = same(draft.cls!, existing.classes[0]);
   const sameBackground = same(draft.background!, existing.background);
-  // shortcut: max HP is the level 1 value, which is right while every character is level 1; level up will record HP per level.
+  // shortcut: max HP is the fixed value per level, recomputed; once level up records rolled HP per level, keep those.
   const max = next.hp.max;
   const oldMax = existing.hp?.max ?? max;
   const damage = Math.max(0, oldMax - (existing.hp?.current ?? oldMax));
   return {
     ...existing,
     ...next,
-    // Keeping the class keeps its level and subclass.
-    classes: sameClass ? existing.classes : next.classes,
+    // Keeping the class keeps its subclass.
+    classes: sameClass ? [{ ...existing.classes[0], level: draft.level }, ...existing.classes.slice(1)] : next.classes,
     hp: { ...existing.hp, max, current: Math.max(0, max - damage) },
     feats: sameBackground ? (existing.feats ?? next.feats) : next.feats,
     ...(sameClass ? {} : { slotsUsed: [], pactSlotsUsed: 0 }),

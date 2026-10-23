@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ABILITY_NAMES, SIZES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
-  import { checkBonus, level1Hp, modifier, proficiencyBonus, speciesLabel, type Ability } from "$lib/characters/rules";
+  import { checkBonus, modifier, proficiencyBonus, speciesLabel, startingHp, type Ability } from "$lib/characters/rules";
   import AbilityCards from "./AbilityCards.svelte";
   import { allSkills, backgroundFeats, draft, hitDie, savingThrows, scores } from "./draft.svelte";
 
@@ -12,8 +12,8 @@
   const plain = new Intl.NumberFormat();
   const list = new Intl.ListFormat(undefined, { type: "conjunction" });
 
-  const level = 1;
-  const pb = proficiencyBonus(level);
+  const level = $derived(draft.level);
+  const pb = $derived(proficiencyBonus(level));
   const final = $derived(scores());
   const proficient = $derived(new Set(allSkills()));
   const saves = $derived(new Set(savingThrows()));
@@ -34,7 +34,7 @@
   <div><dt>{t.class}</dt><dd>{draft.cls?.name} <span class="source">{draft.cls?.source}</span></dd></div>
   <div><dt>{t.background}</dt><dd>{draft.background?.name} <span class="source">{draft.background?.source}</span></dd></div>
   <div><dt>{t.level}</dt><dd>{plain.format(level)}</dd></div>
-  <div><dt>{t.hp}</dt><dd>{final ? plain.format(level1Hp(hitDie(), final.con)) : ""}</dd></div>
+  <div><dt>{t.hp}</dt><dd>{final ? plain.format(startingHp(hitDie(), final.con, level)) : ""}</dd></div>
   <div><dt>{t.proficiency}</dt><dd>{signed.format(pb)}</dd></div>
   <div><dt>{t.passivePerception}</dt><dd>{plain.format(10 + perception)}</dd></div>
   <div><dt>{t.feats}</dt><dd>{feats.length ? list.format(feats.map((f) => f.name)) : t.none}</dd></div>

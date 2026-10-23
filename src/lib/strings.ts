@@ -546,7 +546,7 @@ export const strings = {
           species:
             "Changing the species asks for its skill choices again, and for its ability bonuses where the species gives them. Size, lineage and subspecies are chosen again; speed, languages and traits update by themselves.",
           class:
-            "Changing the class changes the saving throws, the class's skill choices and the maximum hit points (damage already taken is kept), and resets spent spell slots. Proficiencies, spellcasting and features update by themselves. Check a hand-set armor class afterwards. Starting equipment isn't added again; change the inventory on the sheet.",
+            "Changing the class changes the saving throws, the class's skill choices and the maximum hit points (damage already taken is kept), and resets spent spell slots. A different level changes the maximum hit points, hit dice and spell slots. Proficiencies, spellcasting and features update by themselves. Check a hand-set armor class afterwards. Starting equipment isn't added again; change the inventory on the sheet.",
           background:
             "Changing the background asks for its ability bonuses and skill choices again and replaces its feat. Tools and languages update by themselves. Starting equipment isn't added again; change the inventory on the sheet.",
         },
@@ -583,6 +583,10 @@ export const strings = {
         subspecies: "Subspecies",
         size: "Size",
         choose: "Choose…",
+      },
+      level: {
+        label: "Level",
+        later: "Choices from later levels (subclass, ability score improvements, more spells) aren't asked yet.",
       },
       gear: {
         label: "Starting equipment",

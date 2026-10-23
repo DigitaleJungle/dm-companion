@@ -10,6 +10,7 @@ import {
   gearOf,
   gearOptions,
   startingGear,
+  startingHp,
   emptyPick,
   finalScores,
   inSources,
@@ -169,5 +170,13 @@ describe("starting equipment", () => {
     expect(coinsOf(1550)).toEqual({ gp: 15, sp: 5 });
     expect(coinsOf(7)).toEqual({ cp: 7 });
     expect(coinsOf(0)).toEqual({});
+  });
+});
+
+describe("starting hit points", () => {
+  it("adds the fixed value per level after the first", () => {
+    expect(startingHp(10, 14, 1)).toBe(12); // d10 + 2
+    expect(startingHp(10, 14, 3)).toBe(12 + 2 * 8); // + (6 + 2) per level
+    expect(startingHp(6, 1, 3)).toBe(1 + 2 * 1); // at least 1 per level
   });
 });

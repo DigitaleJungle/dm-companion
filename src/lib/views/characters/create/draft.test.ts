@@ -70,4 +70,13 @@ describe("editing a saved character", () => {
     expect(saved.slotsUsed).toEqual([]);
     expect(saved.classes).toEqual([{ name: "Wizard", source: "XPHB", level: 1 }]);
   });
+
+  it("a new level keeps the class and recomputes max HP", () => {
+    loadCharacter(thalia(), "a", options);
+    expect(draft.level).toBe(1);
+    draft.level = 3;
+    const saved = editedCharacter(thalia());
+    expect(saved.classes).toEqual([{ name: "Fighter", source: "XPHB", level: 3 }]);
+    expect(saved.hp).toEqual({ max: 28, current: 23, temp: 3 }); // 12 + 2 × (6 + 2); 5 damage carried over
+  });
 });
