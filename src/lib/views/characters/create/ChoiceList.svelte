@@ -3,15 +3,17 @@
   import EntityView from "$lib/components/rules/EntityView.svelte";
   import { getEntity, type CatalogRow, type Entity } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { sourceName } from "$lib/stores/rules.svelte";
+  import { rules, sourceName } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import ChoiceArt from "./ChoiceArt.svelte";
+  import type { VersionGroup } from "./cards";
 
-  // Two stages: a filterable grid of picture cards; after picking, an overview of the pick with its choices.
+  // Two stages: a filterable grid of picture cards, one per option (reprints are versions of it); after picking,
+  // an overview of the pick with its version, choices and rules text.
   let {
     id,
     label,
-    rows,
+    groups,
     selected,
     onselect,
     facts,
@@ -20,7 +22,7 @@
   }: {
     id: string;
     label: string;
-    rows: CatalogRow[];
+    groups: VersionGroup[];
     selected: CatalogRow | null;
     onselect: (row: CatalogRow) => void;
     /** Short facts on each card and in the overview. */
@@ -43,9 +45,18 @@
 
   const visible = $derived.by(() => {
     const needle = filter.trim().toLowerCase();
-    const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
-    return needle ? sorted.filter((r) => r.name.toLowerCase().includes(needle) || r.source.toLowerCase().includes(needle)) : sorted;
+    const matches = (r: CatalogRow) => [r.name, r.source, sourceName(r.source)].some((s) => s.toLowerCase().includes(needle));
+    const sorted = [...groups].sort((a, b) => a.main.name.localeCompare(b.main.name) || sourceName(a.main.source).localeCompare(sourceName(b.main.source)));
+    return needle ? sorted.filter((g) => g.versions.some(matches)) : sorted;
   });
+  /** A version's book with its publication year, unless the name already has one ("Player's Handbook (2024)"). */
+  function versionLabel(source: string) {
+    const name = sourceName(source);
+    const year = rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published?.slice(0, 4);
+    return year && !/\b\d{4}\b/.test(name) ? t.withYear(name, year) : name;
+  }
+  const pickedIn = (g: VersionGroup) => g.versions.find((v) => v.id === selected?.id) ?? null;
+  const group = $derived(groups.find((g) => pickedIn(g)) ?? null);
 
   $effect(() => {
     const row = selected;
@@ -79,20 +90,21 @@
       <input id="{id}-filter" class="filter" type="search" bind:value={filter} placeholder={t.filterPlaceholder} autocomplete="off" />
     </div>
 
-    {#if rows.length === 0}
+    {#if groups.length === 0}
       <p class="muted">{t.empty}</p>
     {:else if visible.length === 0}
       <p class="muted">{t.none}</p>
     {:else}
       <ul class="grid" bind:this={grid} aria-label="{label} ({strings.characters.wizard.basics.required})">
-        {#each visible as row (row.id)}
+        {#each visible as g (g.main.id)}
+          {@const row = pickedIn(g) ?? g.main}
           <li>
-            <button class="card" aria-pressed={selected?.id === row.id} onclick={() => pick(row)}>
+            <button class="card" aria-pressed={pickedIn(g) !== null} onclick={() => pick(row)}>
               <span class="card-art"><ChoiceArt path={art(row)} name={row.name} /></span>
               <span class="card-body">
-                <span class="card-top">
-                  <span class="name">{row.name}</span>
-                  <span class="source" title={sourceName(row.source)}>{row.source}</span>
+                <span class="name">{row.name}</span>
+                <span class="source">
+                  {sourceName(row.source)}{#if g.versions.length > 1}<span class="versions">{t.moreVersions(g.versions.length - 1)}</span>{/if}
                 </span>
                 <span class="fact">{facts(row).join(" · ")}</span>
               </span>
@@ -111,7 +123,16 @@
           <h3 id="{id}-picked" class="hero-name" bind:this={heading} tabindex="-1">{selected.name}</h3>
           <button class="change" onclick={change}><span aria-hidden="true">←</span> {t.change(label)}</button>
         </div>
-        <p class="muted">{sourceName(selected.source)} ({selected.source})</p>
+        {#if group && group.versions.length > 1}
+          <label class="version">
+            <span class="sr-only">{t.version}</span>
+            <select value={String(selected.id)} onchange={(e) => onselect(group.versions.find((v) => String(v.id) === e.currentTarget.value) ?? selected)}>
+              {#each group.versions as v (v.id)}<option value={String(v.id)}>{versionLabel(v.source)}</option>{/each}
+            </select>
+          </label>
+        {:else}
+          <p class="muted">{sourceName(selected.source)}</p>
+        {/if}
         {#if facts(selected).length}
           <ul class="chips">
             {#each facts(selected) as fact, i (i)}<li class="chip">{fact}</li>{/each}
@@ -226,22 +247,30 @@
     padding: var(--space-3) var(--space-4) var(--space-4);
   }
 
-  .card-top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
   .name {
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
   }
 
   .source {
-    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
     color: var(--color-text-muted);
     font-size: var(--text-xs);
+  }
+
+  .versions {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
+    font-weight: var(--weight-medium);
+  }
+
+  .version select {
+    max-width: 100%;
   }
 
   .fact {

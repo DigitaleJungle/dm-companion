@@ -584,6 +584,9 @@ export const strings = {
         size: "Size",
         choose: "Choose…",
         change: (kind: string) => `Change ${kind.toLowerCase()}`,
+        moreVersions: (n: number) => (n === 1 ? "+1 version" : `+${n} versions`),
+        version: "Version (book)",
+        withYear: (book: string, year: string) => `${book} (${year})`,
       },
       cards: {
         speed: (feet: string) => `${feet} ft`,

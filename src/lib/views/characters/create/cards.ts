@@ -52,3 +52,43 @@ export function backgroundFacts(row: CatalogRow): string[] {
     feat ? t.feat(title(feat)) : "",
   ].filter(Boolean);
 }
+
+// --- Versions ---------------------------------------------------------------------------------
+
+/** One option with all its printings the campaign allows, newest first; `main` is the one its card shows. */
+export type VersionGroup = { main: CatalogRow; versions: CatalogRow[] };
+
+const keyOf = (name: string, source: string) => `${name}|${source}`.toLowerCase();
+const reprints = (value: unknown): string[] =>
+  (Array.isArray(value) ? value : []).flatMap((v) => {
+    const uid = typeof v === "string" ? v : (v as { uid?: unknown } | null)?.uid;
+    return typeof uid === "string" ? [uid.toLowerCase()] : [];
+  });
+
+/**
+ * Groups reprints of the same option ("Fighter|PHB" is reprinted as "Fighter|XPHB") by following `reprintedAs`
+ * through every book, also ones the campaign doesn't use; then keeps the allowed printings, newest book first.
+ * Options that only share a name (Aven in two settings) stay apart.
+ */
+export function versionGroups(rows: CatalogRow[], allowed: (source: string) => boolean, published: (source: string) => string): VersionGroup[] {
+  const byKey = new Map(rows.map((r) => [keyOf(r.name, r.source), r]));
+  const latest = (row: CatalogRow) => {
+    const seen = new Set([row]);
+    let current = row;
+    for (;;) {
+      const next = reprints(current.data.reprintedAs).map((k) => byKey.get(k)).find((r) => r && !seen.has(r));
+      if (!next) return current;
+      seen.add(next);
+      current = next;
+    }
+  };
+  const groups = new Map<CatalogRow, CatalogRow[]>();
+  for (const row of rows) {
+    const root = latest(row);
+    groups.set(root, [...(groups.get(root) ?? []), row]);
+  }
+  return [...groups.values()]
+    .map((versions) => versions.filter((r) => allowed(r.source)).sort((a, b) => published(b.source).localeCompare(published(a.source))))
+    .filter((versions) => versions.length > 0)
+    .map((versions) => ({ main: versions[0], versions }));
+}

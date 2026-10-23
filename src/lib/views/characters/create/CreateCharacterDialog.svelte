@@ -5,7 +5,7 @@
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import { createCharacter, saveCharacter, type Character, type CharacterCard } from "$lib/api/characters";
   import type { Campaign } from "$lib/api/campaigns";
-  import { catalogRows } from "$lib/api/rules";
+  import { catalogRows, type CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
@@ -13,7 +13,7 @@
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import AbilitiesStep from "./AbilitiesStep.svelte";
-  import { artPath, backgroundFacts, classFacts, speciesFacts } from "./cards";
+  import { artPath, backgroundFacts, classFacts, speciesFacts, versionGroups } from "./cards";
   import ChoiceList from "./ChoiceList.svelte";
   import ReviewStep from "./ReviewStep.svelte";
   import SkillsStep from "./SkillsStep.svelte";
@@ -77,10 +77,12 @@
   const activeCampaigns = $derived(campaigns.list?.campaigns ?? []);
   const campaign = $derived(activeCampaigns.find((c) => c.id === draft.campaignId) ?? null);
   const sources = $derived(campaign ? campaign.sources : null);
-  const allowed = <T extends { source: string }>(rows: T[]) => rows.filter((r) => inSources(r.source, sources));
-  const speciesRows = $derived(allowed(options?.species ?? []));
-  const classRows = $derived(allowed((options?.classes ?? []).filter((c) => !c.data.isSidekick)));
-  const backgroundRows = $derived(allowed(options?.backgrounds ?? []));
+  // One card per option: reprints in other books are its versions.
+  const published = (source: string) => rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published ?? "";
+  const grouped = (rows: CatalogRow[]) => versionGroups(rows, (source) => inSources(source, sources), published);
+  const speciesCards = $derived(grouped(options?.species ?? []));
+  const classCards = $derived(grouped((options?.classes ?? []).filter((c) => !c.data.isSidekick)));
+  const backgroundCards = $derived(grouped(options?.backgrounds ?? []));
   const skills = $derived.by(() => {
     const byKey = new Map<string, { key: string; name: string; ability: string }>();
     for (const row of options?.skills ?? []) byKey.set(row.name.toLowerCase(), { key: row.name.toLowerCase(), name: row.name, ability: String(row.data.ability ?? "") });
@@ -368,7 +370,7 @@
               <ChoiceList
                 id="species"
                 label={t.steps.species}
-                rows={speciesRows}
+                groups={speciesCards}
                 selected={draft.species}
                 onselect={chooseSpecies}
                 facts={speciesFacts}
@@ -376,12 +378,12 @@
                 choices={hasSpeciesChoices ? speciesLead : undefined}
               />
             {:else if step === "class"}
-              <ChoiceList id="class" label={t.steps.class} rows={classRows} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
+              <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
             {:else if step === "background"}
               <ChoiceList
                 id="background"
                 label={t.steps.background}
-                rows={backgroundRows}
+                groups={backgroundCards}
                 selected={draft.background}
                 onselect={chooseBackground}
                 facts={backgroundFacts}
