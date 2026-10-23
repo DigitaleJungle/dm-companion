@@ -167,3 +167,26 @@ describe("features referred to inside another", () => {
     expect(s.features.usesOf(cards[1])).toMatchObject({ key: "channel divinity", max: 2 });
   });
 });
+
+describe("Actions tab bundles", () => {
+  it("options that draw from a pool come under it, the pool shown even when not ticked itself", () => {
+    const s = sheet();
+    s.character!.classes = [{ name: "Paladin", source: "XPHB", level: 3 }];
+    s.cls = { classFeatures: ["Lay on Hands|Paladin|XPHB|1", "Channel Divinity|Paladin|XPHB|3"] };
+    const ref = (name: string) => ({ type: "refClassFeature", classFeature: `${name}|Paladin|XPHB|3|XPHB` });
+    s.features.classFeatures = [
+      { name: "Lay on Hands", source: "XPHB", data: { level: 1, entries: ["A pool."] } },
+      { name: "Channel Divinity", source: "XPHB", data: { level: 3, entries: [ref("Divine Sense"), ref("Holy Ward")] } },
+      { name: "Divine Sense", source: "XPHB", data: { level: 3, consumes: { name: "Channel Divinity" }, entries: ["Sense."] } },
+      { name: "Holy Ward", source: "XPHB", data: { level: 3, consumes: { name: "Channel Divinity" }, entries: ["Ward."] } },
+    ];
+    const byName = (name: string) => s.features.cards.find((c) => c.name === name)!;
+    for (const name of ["Holy Ward", "Lay on Hands", "Divine Sense"]) s.features.setOnActions(byName(name), true);
+    expect(s.features.actionRows().map((r) => [r.card.name, r.option])).toEqual([
+      ["Lay on Hands", false],
+      ["Channel Divinity", false],
+      ["Divine Sense", true],
+      ["Holy Ward", true],
+    ]);
+  });
+});

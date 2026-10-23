@@ -79,9 +79,9 @@
   </th>
   {#if line}
     <td class="muted">
-      {#if line.time.short === line.time.long}{line.time.long}{:else}<span title={line.time.long}><span aria-hidden="true">{line.time.short}</span><span class="sr-only">{line.time.long}</span></span>{/if}
+      <span class="col-time" title={line.time.long}>{#if line.time.short === line.time.long}{line.time.long}{:else}<span aria-hidden="true">{line.time.short}</span><span class="sr-only">{line.time.long}</span>{/if}</span>
     </td>
-    <td class="muted"><span class="cut" title={line.range}>{line.range}</span></td>
+    <td class="muted"><span class="col-range" title={line.range}>{line.range}</span></td>
     <td><span class="pill strong">{line.hit}</span></td>
     <td><span class="pill wrap">{line.damage}</span></td>
     <td class="muted"><span class="notes" title={line.notesTitle}>{line.notes}</span></td>

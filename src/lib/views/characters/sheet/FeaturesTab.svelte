@@ -1,24 +1,30 @@
 <script lang="ts">
   import { strings } from "$lib/strings";
+  import { passesTime, type TimeKind } from "$lib/characters/sheet";
   import FeatureRow from "./FeatureRow.svelte";
   import type { Sheet } from "./sheet.svelte";
 
   // Class and subclass features up to the character's level, species traits, feats, and picks made when leveling
   // (Divine Order, invocations…), as rows like the Spells tab (FeatureRow): when it's used (A, BA, R), its uses to tick
   // off and which rest gives them back, all read from its rules text. The checkbox in front shows it on the Actions tab.
-  let { sheet }: { sheet: Sheet } = $props();
+  // `filter`: the sheet's time filter (Action, Bonus action, Reaction, Other); empty shows everything.
+  let { sheet, filter = [] }: { sheet: Sheet; filter?: TimeKind[] } = $props();
 
   const t = strings.characters.sheet.features;
   const f = $derived(sheet.features);
   $effect(() => f.load());
 
   const GROUPS = ["class", "traits", "feats", "other"] as const;
-  const groups = $derived(GROUPS.map((g) => [g, f.cards.filter((card) => card.group === g)] as const).filter(([, list]) => list.length > 0));
+  const all = $derived(GROUPS.map((g) => [g, f.cards.filter((card) => card.group === g)] as const).filter(([, list]) => list.length > 0));
+  // The time filter keeps the features used that way; a group left empty is hidden.
+  const groups = $derived(all.map(([g, list]) => [g, list.filter((card) => passesTime(filter, f.useOf(card).time))] as const).filter(([, list]) => list.length > 0));
 </script>
 
 {#if f.error}<p class="error" role="alert">{t.loadError(f.error)}</p>{/if}
-{#if groups.length === 0}
+{#if all.length === 0}
   <p class="muted">{t.empty}</p>
+{:else if groups.length === 0}
+  <p class="muted">{strings.characters.sheet.timeFilter.none}</p>
 {:else}
   <table class="sheet-table compact">
     <thead>

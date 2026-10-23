@@ -335,13 +335,22 @@ select option::checkmark {
   padding-block: var(--space-1);
 }
 
-/* A value cut to the data column's width ("…" beyond); its title shows it whole. */
-.sheet-table .cut {
+/* Time and Range: fixed widths (padding included), so the columns don't move when a filter hides rows; longer
+   text ends in "…" and its title shows it whole. */
+.sheet-table .col-time,
+.sheet-table .col-range {
   display: block;
-  width: calc(var(--action-data-width) - 2 * var(--space-2));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sheet-table .col-time {
+  width: calc(var(--action-time-width) - 2 * var(--space-2));
+}
+
+.sheet-table .col-range {
+  width: calc(var(--action-range-width) - 2 * var(--space-2));
 }
 
 .sheet-table .notes {

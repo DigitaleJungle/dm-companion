@@ -217,3 +217,8 @@ export function nestedFeatures(entries: unknown): { kind: "classFeature" | "subc
 export function inspirationOnLongRest(entries: unknown): boolean {
   return /\byou gain Heroic Inspiration\b[^.]*\bLong Rest\b/i.test(texts(entries).map(plainText).join(" "));
 }
+
+/** The standard actions a feature's text names ({@action Dash}): Cunning Action lets you Dash, Disengage or Hide. */
+export function actionsIn(entries: unknown): string[] {
+  return [...new Set(texts(entries).flatMap((s) => [...s.matchAll(/\{@action ([^|}]+)/g)].map((m) => m[1])))];
+}

@@ -223,6 +223,8 @@ export class Sheet {
     const cast = strings.characters.levelUpDialog.cast[row.unit as keyof typeof strings.characters.levelUpDialog.cast];
     return {
       level: Number(data.level ?? 0),
+      // Its first casting time's unit ("action", "bonus", "minute"…), for the sheet's time filter.
+      unit: row.unit,
       concentration: row.concentration,
       // A, BA or R (the full word on hover); a longer casting time ("1 minute") is written out.
       time: (cast ?? { short: castingTime(data), long: castingTime(data) }) as { short: string; long: string },

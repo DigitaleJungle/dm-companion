@@ -3,6 +3,23 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.17] - 2026-10-24
+
+### Added
+
+- Actions tab: Standard actions, Bonus actions and Reactions lines, with the character's own features (Cunning Action (Dash, Disengage, Hide)); each opens its rules
+- A time filter under the tabs (Action, Bonus action, Reaction, Other) for the Actions, Spells and Features & traits tabs
+- Saving throws panel: resistances and immunities from feats, items in use, class features and species traits, each with its source on hover; an Elf's Magical sleep immunity
+
+### Changed
+
+- Actions tab: features drawing from a pool are bundled under it (Divine Sense and Sacred Weapon under Channel Divinity)
+- Condition immunities are listed with the other immunities
+
+### Fixed
+
+- Table columns keep their width when filtered
+
 ## [0.5.16] - 2026-10-24
 
 ### Added

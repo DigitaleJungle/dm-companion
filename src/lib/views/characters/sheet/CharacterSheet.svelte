@@ -17,7 +17,7 @@
   import CreateCharacterDialog from "../create/CreateCharacterDialog.svelte";
   import { rollDice } from "$lib/api/dice";
   import { errorMessage } from "$lib/api/storage";
-  import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing } from "$lib/characters/sheet";
+  import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing, TIME_KINDS, type TimeKind } from "$lib/characters/sheet";
   import { inspirationOnLongRest } from "$lib/characters/features";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
@@ -47,6 +47,8 @@
   // Rule references in feature texts and spell names open a preview card.
   enablePreviews();
   let tab = $state<Tab>("actions");
+  // The time filter, shared by the Actions, Spells and Features & traits tabs (kept while switching between them).
+  let timeFilter = $state<TimeKind[]>([]);
   let party = $state<CharacterCard[]>([]);
   let rolling = $state(false);
 
@@ -279,15 +281,31 @@
             {/each}
           </div>
 
+          <!-- Filters the Actions, Spells and Features & traits tabs by when a row is used; none picked shows all. -->
+          {#if tab === "actions" || tab === "spells" || tab === "features"}
+            <div class="time-filter" role="group" aria-label={t.timeFilter.label}>
+              {#each TIME_KINDS as kind (kind)}
+                <button
+                  type="button"
+                  class="chip"
+                  aria-pressed={timeFilter.includes(kind)}
+                  onclick={() => (timeFilter = timeFilter.includes(kind) ? timeFilter.filter((k) => k !== kind) : [...timeFilter, kind])}
+                >
+                  {t.timeFilter.kinds[kind]}
+                </button>
+              {/each}
+            </div>
+          {/if}
+
           <div id="sheet-panel" class="panel" role="tabpanel" aria-labelledby="sheet-tab-{tab}">
             {#if tab === "actions"}
-              <ActionsTab {sheet} />
+              <ActionsTab {sheet} filter={timeFilter} />
             {:else if tab === "spells"}
-              <SpellsTab {sheet} />
+              <SpellsTab {sheet} filter={timeFilter} />
             {:else if tab === "inventory"}
               <InventoryTab {sheet} {sources} />
             {:else if tab === "features"}
-              <FeaturesTab {sheet} />
+              <FeaturesTab {sheet} filter={timeFilter} />
             {:else}
               <div class="notes">
                 {#each NOTES as key (key)}
@@ -498,6 +516,40 @@
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+  }
+
+  .time-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4) 0;
+  }
+
+  .chip {
+    min-height: var(--control-height-sm);
+    padding: 0 var(--space-3);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  .chip:hover {
+    border-color: var(--color-link);
+  }
+
+  .chip[aria-pressed="true"] {
+    border-color: var(--color-link);
+    background: var(--color-accent-soft);
+    color: var(--color-link);
+  }
+
+  .chip:focus-visible {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
   }
 
   .tabs {

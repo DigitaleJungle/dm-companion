@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { featureUse, inspirationOnLongRest, nestedFeatures, resolveUse, restUses, structuredUse, tableCount, usesMax } from "./features";
+import { actionsIn, featureUse, inspirationOnLongRest, nestedFeatures, resolveUse, restUses, structuredUse, tableCount, usesMax } from "./features";
 
 describe("featureUse", () => {
   it("reads the action type and how a rest gives uses back", () => {
@@ -107,5 +107,13 @@ describe("inspirationOnLongRest", () => {
   it("is Resourceful's rule, not Musician's (which gives it to others)", () => {
     expect(inspirationOnLongRest([{ name: "Resourceful", entries: ["You gain {@variantrule Heroic Inspiration|XPHB} whenever you finish a {@variantrule Long Rest|XPHB}."] }])).toBe(true);
     expect(inspirationOnLongRest(["As you finish a Long Rest, you can play a song and give Heroic Inspiration to allies who hear it."])).toBe(false);
+  });
+});
+
+describe("actionsIn", () => {
+  it("lists the standard actions a feature names, once each", () => {
+    const cunning = ["On your turn, you can take one of the following actions as a {@variantrule Bonus Action|XPHB}: {@action Dash|XPHB}, {@action Disengage|XPHB}, or {@action Hide|XPHB}. {@action Dash|XPHB} again."];
+    expect(actionsIn(cunning)).toEqual(["Dash", "Disengage", "Hide"]);
+    expect(actionsIn(["No actions here."])).toEqual([]);
   });
 });

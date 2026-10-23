@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  defensesFrom,
+  passesTime,
   castSlots,
   skillEdges,
   skillAdvantages,
@@ -383,5 +385,39 @@ describe("castSlots", () => {
     expect(castSlots(0, [4], [0], null, 0)).toEqual([]);
     expect(castSlots(3, [4, 2], [0, 0], { count: 1, level: 2 }, 0)).toEqual([]);
     expect(castSlots(1, [2], [2], { count: 1, level: 1 }, 1)).toEqual([]);
+  });
+});
+
+describe("passesTime", () => {
+  it("shows everything with no filter, else only the picked kinds; anything else is other", () => {
+    expect(passesTime([], "minute")).toBe(true);
+    expect(passesTime(["bonus"], "bonus")).toBe(true);
+    expect(passesTime(["bonus"], "action")).toBe(false);
+    expect(passesTime(["action", "other"], null)).toBe(true);
+    expect(passesTime(["reaction"], "minute")).toBe(false);
+  });
+});
+
+describe("defensesFrom", () => {
+  it("reads the data's fields and a feature's wording about the character, with their sources", () => {
+    const d = defensesFrom([
+      { name: "Tiefling", data: { resist: ["fire"] } },
+      { name: "Ring of Resistance", data: { resist: ["fire", "cold"] } },
+      { name: "Boon of Energy Resistance", data: { resist: [{ choose: { count: 2, from: ["acid", "cold"] } }] } },
+      { name: "Deathless Nature", entries: ["You have Resistance to Necrotic and Poison damage.", "Creatures have Immunity to fire damage near you."] },
+      { name: "Aura of Devotion", entries: ["You have Immunity to the {@condition Charmed|XPHB} condition."] },
+    ]);
+    expect(Object.fromEntries(d.resist)).toEqual({ Fire: ["Tiefling", "Ring of Resistance"], Cold: ["Ring of Resistance"], Necrotic: ["Deathless Nature"], Poison: ["Deathless Nature"] });
+    expect(d.immune.size).toBe(0);
+    expect(Object.fromEntries(d.conditionImmune)).toEqual({ Charmed: ["Aura of Devotion"] });
+  });
+});
+
+describe("magical sleep", () => {
+  it("an Elf's \"magic can't put you to sleep\" is a condition immunity", () => {
+    const d = defensesFrom([{ name: "Elf", entries: [{ name: "Trance", entries: ["You don't need to sleep, and magic can't put you to sleep."] }] }]);
+    expect(Object.fromEntries(d.conditionImmune)).toEqual({ "Magical sleep": ["Elf"] });
+    const kalashtar = defensesFrom([{ name: "Kalashtar", entries: ["You are immune to magic that requires you to dream, but not to spells that put you to sleep."] }]);
+    expect(kalashtar.conditionImmune.size).toBe(0);
   });
 });

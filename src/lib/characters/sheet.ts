@@ -4,6 +4,7 @@
 import type { InventoryItem } from "$lib/api/characters";
 import { ABILITY_NAMES, capital, titleCase } from "$lib/rules/format";
 import { plainText } from "$lib/rules/tags";
+import { strings } from "$lib/strings";
 import { modifier, type Ability, type Scores } from "./rules";
 
 export type Hp = { max: number; current: number; temp: number };
@@ -439,7 +440,7 @@ export function skillAdvantages(entries: unknown[], skills: { key: string; name:
 }
 
 /** Something that can give advantage or disadvantage on skills: a species, feat, feature or item, with its rules text. */
-export type EdgeSource = { name: string; entries?: unknown; stealth?: boolean };
+export type EdgeSource = { name: string; entries?: unknown; stealth?: boolean; data?: Data | null };
 
 /**
  * For each skill (key), the sources that give it advantage, and the ones that give it disadvantage. Armor whose data
@@ -472,4 +473,49 @@ export function castSlots(spellLevel: number, slots: number[], used: number[], p
   });
   const pactLeft = pact ? pact.count - pactUsed : 0;
   return [...regular, ...(pact && pact.level >= spellLevel && pactLeft > 0 ? [{ level: pact.level, pact: true, left: pactLeft }] : [])];
+}
+
+/** The sheet's filter on when a row is used: an action, bonus action, reaction, or anything else. */
+export type TimeKind = "action" | "bonus" | "reaction" | "other";
+export const TIME_KINDS: TimeKind[] = ["action", "bonus", "reaction", "other"];
+
+/** A casting time or feature time ("action", "bonus", "reaction", "minute", none) as a filter kind. */
+export const timeKind = (time: string | null | undefined): TimeKind => (time === "action" || time === "bonus" || time === "reaction" ? time : "other");
+
+/** Whether a row shows: everything when nothing is picked, else only the picked kinds. */
+export const passesTime = (filter: TimeKind[], time: string | null | undefined) => filter.length === 0 || filter.includes(timeKind(time));
+
+/** Resistances, immunities, condition immunities and vulnerabilities, each with what gives it ("Fire" → ["Tiefling"]). */
+export type DefenseKind = "resist" | "immune" | "conditionImmune" | "vulnerable";
+export type DefenseMap = Record<DefenseKind, Map<string, string[]>>;
+const DEFENSE_KINDS: DefenseKind[] = ["resist", "immune", "conditionImmune", "vulnerable"];
+
+/**
+ * What protects the character, from each source's rules data (`resist`, `immune`… on species, feats and items; a choice
+ * not settled is left out) or, for a feature without those fields, its wording about the character: "You have
+ * Resistance to Necrotic damage", "Immunity to the Charmed condition", "magic can't put you to sleep" (an Elf's).
+ * shortcut: features are read by wording, like skill advantage; a structured field in the data would replace this.
+ */
+export function defensesFrom(sources: { name: string; data?: Data | null; entries?: unknown }[]): DefenseMap {
+  const out: DefenseMap = { resist: new Map(), immune: new Map(), conditionImmune: new Map(), vulnerable: new Map() };
+  const add = (kind: DefenseKind, what: string, from: string) => {
+    const key = capital(what.toLowerCase());
+    out[kind].set(key, [...new Set([...(out[kind].get(key) ?? []), from])]);
+  };
+  for (const source of sources) {
+    for (const kind of DEFENSE_KINDS) for (const v of list(source.data?.[kind])) if (typeof v === "string") add(kind, v, source.name);
+    const sentences = texts(source.entries)
+      .flatMap((text) => plainText(text).split(/(?<=\.)\s+/))
+      .filter((s) => /^you have\b/i.test(s.trim()));
+    for (const s of sentences) {
+      for (const m of s.matchAll(/\bResistance to ([\w, ]+?) damage\b/gi)) for (const w of m[1].split(/,\s*(?:and |or )?|\s+(?:and|or)\s+/)) add("resist", w, source.name);
+      for (const m of s.matchAll(/\bImmunity to ([\w, ]+?) damage\b/gi)) for (const w of m[1].split(/,\s*(?:and |or )?|\s+(?:and|or)\s+/)) add("immune", w, source.name);
+      for (const m of s.matchAll(/\bImmunity to the (\w+) condition\b/gi)) add("conditionImmune", m[1], source.name);
+    }
+    // Not worded as "Immunity", but one: an Elf's Trance (or Fey Ancestry), Eladrin, some potions.
+    if (/\bmagic can(?:'|’|no)t put you to sleep\b/i.test(texts(source.entries).map(plainText).join(" "))) {
+      add("conditionImmune", strings.characters.sheet.defenses.sleep, source.name);
+    }
+  }
+  return out;
 }

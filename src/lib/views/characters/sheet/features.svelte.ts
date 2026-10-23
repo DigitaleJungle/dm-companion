@@ -211,6 +211,27 @@ export class SheetFeatures {
     this.sheet.setFeatureUsed(free.key, free.used + 1, free.max, free.short);
   }
 
+  /**
+   * The Actions tab's feature rows: the ticked ones, each that draws from a pool bundled under it as an `option`
+   * (Channel Divinity, then Divine Sense and Sacred Weapon). The pool shows even when only its options are ticked.
+   */
+  actionRows(): { card: FeatureCard; option: boolean }[] {
+    const rows: { card: FeatureCard; option: boolean }[] = [];
+    const placed = new Set<string>();
+    const ticked = this.cards.filter((card) => this.onActions(card));
+    for (const card of ticked) {
+      const head = this.poolOf(card);
+      if (placed.has(head.key)) continue;
+      placed.add(head.key);
+      rows.push({ card: head, option: false });
+      for (const option of ticked.filter((o) => o.key !== head.key && this.poolOf(o).key === head.key)) {
+        placed.add(option.key);
+        rows.push({ card: option, option: true });
+      }
+    }
+    return rows;
+  }
+
   /** Whether it's ticked to show on the Actions tab. */
   onActions(card: FeatureCard): boolean {
     return (this.sheet.character?.actionFeatures ?? []).includes(card.key);

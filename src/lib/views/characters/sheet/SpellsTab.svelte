@@ -2,14 +2,15 @@
   import InfoTip from "$lib/components/InfoTip.svelte";
   import { modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
   import { progressionAt, spellSources } from "$lib/characters/levelup";
-  import { pactSlots, spellSlots } from "$lib/characters/sheet";
+  import { pactSlots, passesTime, spellSlots, type TimeKind } from "$lib/characters/sheet";
   import { ordinal } from "$lib/rules/catalog";
   import { strings } from "$lib/strings";
   import SpellRow from "./SpellRow.svelte";
   import { spellKey, type Sheet } from "./sheet.svelte";
 
   // Spellcasting numbers, concentration, spell slots, and the spells the character has (picked when leveling up), by level.
-  let { sheet }: { sheet: Sheet } = $props();
+  // `filter`: the sheet's time filter (Action, Bonus action, Reaction, Other); empty shows everything.
+  let { sheet, filter = [] }: { sheet: Sheet; filter?: TimeKind[] } = $props();
 
   const t = strings.characters.sheet.spells;
   const tl = strings.characters.levelUpDialog;
@@ -46,6 +47,10 @@
     }
     return [...groups.entries()].sort((a, b) => (a[0] < 0 ? 99 : a[0]) - (b[0] < 0 ? 99 : b[0]));
   });
+  // The time filter keeps the spells cast that way; a level left empty is hidden.
+  const shownByLevel = $derived(
+    byLevel.map(([level, spells]) => [level, spells.filter((s) => passesTime(filter, sheet.spellLine(s)?.unit))] as const).filter(([, spells]) => spells.length > 0),
+  );
   const preparedLimit = $derived(progressionAt(sheet.cls?.preparedSpellsProgression, sheet.level));
   // Every listed spell is prepared or known; this counts the leveled class spells against the class table.
   const prepared = $derived((c.spells ?? []).filter((s) => !s.always && levelOf(s) > 0 && s.origin === c.classes[0]?.name).length);
@@ -141,6 +146,9 @@
     <!-- The same table as the Actions tab's spells (SpellRow), one row group per spell level; here with every spell,
          the (!) for one had from two places, and ✕ for one added outside Level up. -->
     <!-- No sideways scrolling here: it would clip a Cast button's slot menu. -->
+    {#if shownByLevel.length === 0}
+      <p class="muted">{strings.characters.sheet.timeFilter.none}</p>
+    {:else}
     <table class="sheet-table compact">
         <thead>
           <tr>
@@ -153,7 +161,7 @@
             <th scope="col"><span class="sr-only">{t.col.remove}</span></th>
           </tr>
         </thead>
-        {#each byLevel as [level, spells] (level)}
+        {#each shownByLevel as [level, spells] (level)}
           <tbody>
             <tr><th scope="colgroup" colspan="7" class="group-name">{groupName(level)}</th></tr>
             {#each spells as s, i (spellKey(s))}
@@ -179,6 +187,7 @@
           </tbody>
         {/each}
       </table>
+    {/if}
   {/if}
 </div>
 

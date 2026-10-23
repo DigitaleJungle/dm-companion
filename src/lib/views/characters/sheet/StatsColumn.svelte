@@ -1,7 +1,7 @@
 <script lang="ts">
   import { byExtra, findEntity } from "$lib/api/rules";
   import { ABILITIES, checkBonus, modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { inUse, proficiencyLists, skillEdges, speciesDefenses, type EdgeSource } from "$lib/characters/sheet";
+  import { defensesFrom, inUse, proficiencyLists, skillEdges, speciesDefenses, type DefenseKind, type EdgeSource } from "$lib/characters/sheet";
   import { baseFeatName } from "$lib/characters/features";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
@@ -60,8 +60,8 @@
       loaded = [
         ...upTo(classFeatures),
         ...upTo(subFeatures.filter((r) => lower(String(r.data.subclassSource ?? "")) === lower(sub?.source ?? ""))),
-        ...featRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries }] : [])),
-        ...itemRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries, stealth: e.data.stealth === true }] : [])),
+        ...featRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries, data: e.data }] : [])),
+        ...itemRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries, stealth: e.data.stealth === true, data: e.data }] : [])),
       ];
     })().catch(() => (loaded = [])); // without them, only the species and the hand-set ones count
   });
@@ -88,15 +88,24 @@
     return bonus === null ? t.unknown : plain.format(10 + bonus);
   };
   const lists = $derived(proficiencyLists(sheet.cls, sheet.background, sheet.species, { tools: sheet.character?.tools, languages: sheet.character?.languages }));
-  // From the species (or its chosen lineage): save advantages, then resistances and the like, only the ones it has.
+  // Save advantages from the species (or its chosen lineage); resistances and the like from the species, feats, items
+  // in use and class features, each with where it comes from (its tooltip). Only the kinds the character has.
   const defenses = $derived(speciesDefenses(sheet.species, sheet.character?.species?.lineage));
+  // The species' traits count by their wording too ("magic can't put you to sleep"); their fields come from above.
+  const others = $derived(defensesFrom([...loaded, { name: sheet.character?.species?.name ?? "", entries: sheet.species?.entries }]));
+  const speciesName = $derived(sheet.character?.species?.name ?? "");
+  const withSources = (kind: DefenseKind, fromSpecies: string[]) => {
+    const all = new Map(others[kind]);
+    for (const name of fromSpecies) all.set(name, [speciesName, ...(all.get(name) ?? []).filter((s) => s !== speciesName)]);
+    return [...all].map(([name, from]) => ({ name, from }));
+  };
   const defenseRows = $derived(
     ([
-      [t.defenses.advantage, defenses.advantages],
-      [t.defenses.resist, defenses.resist],
-      [t.defenses.immune, defenses.immune],
-      [t.defenses.conditionImmune, defenses.conditionImmune],
-      [t.defenses.vulnerable, defenses.vulnerable],
+      [t.defenses.advantage, defenses.advantages.map((name) => ({ name, from: [speciesName] }))],
+      [t.defenses.resist, withSources("resist", defenses.resist)],
+      // Damage types and conditions on one line: "Poison and Magical sleep".
+      [t.defenses.immune, [...withSources("immune", defenses.immune), ...withSources("conditionImmune", defenses.conditionImmune)]],
+      [t.defenses.vulnerable, withSources("vulnerable", defenses.vulnerable)],
     ] as const).filter(([, items]) => items.length > 0),
   );
   // Only the categories the character has something in.
@@ -143,7 +152,14 @@
               <p class="prof">{text}</p>
             {/each}
             {#each defenseRows as [label, items] (label)}
-              <p class="prof"><b class="prof-label">{t.senses.label(label)}</b> {list.format(items)}</p>
+              <!-- "Fire and Cold", each name with where it comes from as its tooltip. -->
+              <p class="prof">
+                <b class="prof-label">{t.senses.label(label)}</b>
+                {#each list.formatToParts(items.map((x) => x.name)) as part, i (i)}{#if part.type === "element"}{@const item = items.find((x) => x.name === part.value)}<span
+                      class="defense"
+                      title={t.defenses.from(item?.from.filter(Boolean).join(", ") ?? "")}>{part.value}</span
+                    >{:else}{part.value}{/if}{/each}
+              </p>
             {/each}
           </div>
         {/if}
@@ -206,6 +222,12 @@
 </div>
 
 <style>
+  .defense {
+    text-decoration: underline dotted;
+    text-decoration-color: var(--color-border-strong);
+    cursor: help;
+  }
+
   .column {
     display: flex;
     flex-direction: column;

@@ -468,6 +468,11 @@ export const strings = {
         label: (label: string) => `${label}:`,
       },
       skills: "Skills",
+      timeFilter: {
+        label: "Show only",
+        kinds: { action: "Action", bonus: "Bonus action", reaction: "Reaction", other: "Other" },
+        none: "Nothing of the picked kinds here.",
+      },
       edges: {
         advantage: {
           short: "A",
@@ -483,10 +488,21 @@ export const strings = {
         },
         cancel: (skill: string) => `Advantage and disadvantage on ${skill} cancel out.`,
       },
-      defenses: { advantage: "Advantage", resist: "Resistances", immune: "Immunities", conditionImmune: "Condition immunities", vulnerable: "Vulnerabilities" },
+      defenses: {
+        advantage: "Advantage",
+        resist: "Resistances",
+        immune: "Immunities",
+        vulnerable: "Vulnerabilities",
+        from: (sources: string) => `From ${sources}`,
+        sleep: "Magical sleep",
+      },
       actions: {
         empty: "The attacks show once the character's ability scores are set.",
         weapons: "Attacks",
+        lines: { action: "Standard actions:", bonus: "Bonus actions:", reaction: "Reactions:" },
+        /** Shorter labels for some standard actions on those lines (the popup still shows the rule's own name). */
+        actionLabels: { "Improvising an Action": "Improvise" },
+        combatError: (message: string) => `Couldn't load the combat actions: ${message}`,
         features: "Features",
         unarmed: {
           name: "Unarmed Strike",

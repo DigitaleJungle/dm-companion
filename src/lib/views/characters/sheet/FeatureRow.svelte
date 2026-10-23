@@ -8,7 +8,8 @@
   // One feature as a row of a .sheet-table. On the Features & traits tab ("features"): a checkbox to show it on the
   // Actions tab, then Name, Time, Uses and Rest. On the Actions tab ("actions"): Name, Time, then its uses and rest
   // across the other columns. The name opens its preview card, or unfolds a species trait's text under the row.
-  let { sheet, card, mode }: { sheet: Sheet; card: FeatureCard; mode: "features" | "actions" } = $props();
+  // `option`: shown under the pool it draws from (Actions tab), indented and without the pool's uses.
+  let { sheet, card, mode, option = false }: { sheet: Sheet; card: FeatureCard; mode: "features" | "actions"; option?: boolean } = $props();
 
   const t = strings.characters.sheet.features;
   const tl = strings.characters.levelUpDialog;
@@ -76,7 +77,7 @@
   {#if poolUse.short}<span class="rest short">{t.rest.short}</span>{:else if poolUse.long}<span class="rest long">{t.rest.long}</span>{:else if mode === "features"}<span class="muted">{none}</span>{/if}
 {/snippet}
 
-<tr>
+<tr class:option>
   {#if mode === "features"}
     <td class="pick">
       <input type="checkbox" class="box" aria-label={t.showOnActions(card.name)} title={t.showOnActions(card.name)} checked={f.onActions(card)} disabled={sheet.readOnly} onchange={(e) => f.setOnActions(card, e.currentTarget.checked)} />
@@ -96,7 +97,7 @@
     </span>
   </th>
   <td class="muted">
-    {#if cast}<span title={cast.long}><span aria-hidden="true">{cast.short}</span><span class="sr-only">{cast.long}</span></span>{:else}{none}{/if}
+    <span class="col-time">{#if cast}<span title={cast.long}><span aria-hidden="true">{cast.short}</span><span class="sr-only">{cast.long}</span></span>{:else}{none}{/if}</span>
   </td>
   {#if mode === "features"}
     <td>{@render usesCell()}</td>
@@ -104,10 +105,10 @@
   {:else}
     <!-- On the Actions tab: what's filled in for it (range, a save with the class's spell save DC, damage), then its uses. -->
     {@const dc = sheet.spellSaveDc()}
-    <td class="muted"><span class="cut" title={use.range ?? ""}>{use.range ?? none}</span></td>
+    <td class="muted"><span class="col-range" title={use.range ?? ""}>{use.range ?? none}</span></td>
     <td><span class="pill strong">{use.save ? strings.characters.sheet.spells.dc(dc === null ? strings.characters.sheet.unknown : plain.format(dc), use.save.toUpperCase()) : none}</span></td>
     <td><span class="pill wrap">{use.damage ?? none}</span></td>
-    <td><span class="together">{@render usesCell()}{@render rest()}</span></td>
+    <td>{#if !option}<span class="together">{@render usesCell()}{@render rest()}</span>{/if}</td>
   {/if}
 </tr>
 {#if !card.ref && card.text && expanded}
@@ -117,6 +118,17 @@
 {/if}
 
 <style>
+  /* An option under its pool: indented, with a line to show where it belongs. */
+  .option > th {
+    padding-left: var(--space-5);
+  }
+
+  .option > th .name-cell::before {
+    content: "↳" / "";
+    margin-right: var(--space-1);
+    color: var(--color-text-muted);
+  }
+
   .pick {
     width: var(--space-4);
     padding-right: 0;
