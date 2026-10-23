@@ -456,3 +456,20 @@ export function skillEdges(sources: EdgeSource[], skills: { key: string; name: s
   }
   return result;
 }
+
+/** A slot a spell can be cast with: a spell slot of `level`, or a pact slot (`pact`), with `left` unused. */
+export type CastSlot = { level: number; pact: boolean; left: number };
+
+/**
+ * The slots a spell of `spellLevel` can be cast with: its own level or higher (never lower), only those with one left,
+ * pact slots last. A cantrip (level 0) needs none, so it has none.
+ */
+export function castSlots(spellLevel: number, slots: number[], used: number[], pact: { count: number; level: number } | null, pactUsed: number): CastSlot[] {
+  if (spellLevel < 1) return [];
+  const regular = slots.flatMap((count, i) => {
+    const left = count - (used[i] ?? 0);
+    return i + 1 >= spellLevel && left > 0 ? [{ level: i + 1, pact: false, left }] : [];
+  });
+  const pactLeft = pact ? pact.count - pactUsed : 0;
+  return [...regular, ...(pact && pact.level >= spellLevel && pactLeft > 0 ? [{ level: pact.level, pact: true, left: pactLeft }] : [])];
+}

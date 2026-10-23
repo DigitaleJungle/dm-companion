@@ -62,3 +62,19 @@ describe("autosave", () => {
     expect(saveCharacter).not.toHaveBeenCalled();
   });
 });
+
+describe("endConcentration", () => {
+  it("ends concentration and forgets its spell, saying which one", () => {
+    const s = sheet();
+    s.character!.concentrating = true;
+    s.character!.concentratingOn = { name: "Bless", source: "XPHB" };
+    expect(s.endConcentration()).toBe("Concentration on Bless ended.");
+    expect([s.character!.concentrating, s.character!.concentratingOn]).toEqual([false, undefined]);
+  });
+
+  it("does nothing when the character isn't concentrating", () => {
+    const s = sheet();
+    expect(s.endConcentration()).toBeNull();
+    expect(s.save.status).toBe("saved");
+  });
+});

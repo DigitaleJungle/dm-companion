@@ -107,9 +107,10 @@
   --sheet-stats-width: 270px;
   --sheet-skills-width: 270px;
   --sheet-left-max: calc(var(--sheet-stats-width) + var(--space-5) + var(--sheet-skills-width));
-  --spell-data-width: 72px;
   --action-data-width: 72px;
   --action-notes-width: 150px;
+  /* The Spells tab's Notes hold only the components and Ritual. */
+  --spell-notes-width: 96px;
   --sheet-bar-height: 10px;
   --sheet-glow-blur: 18px;
   --stat-value-size: 1.875rem;

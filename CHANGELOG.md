@@ -3,6 +3,20 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.15] - 2026-10-23
+
+### Added
+
+- Spells tab: a Cast button before each spell; it uses a slot of the spell's level or higher (a menu when there's a choice) and starts concentration for a concentration spell
+- Spells tab: the spell being concentrated on glows like the header card, easing in and out
+- Actions tab: Unarmed Strike (Damage, Grapple, Shove), its name opening the rule
+
+### Changed
+
+- Spells tab: the same table design as the Actions tab, more compact; long ranges are cut off with … and shown whole on hover
+- Actions tab: spells moved to the Spells tab
+- A short or long rest ends concentration
+
 ## [0.5.14] - 2026-10-23
 
 ### Added

@@ -125,7 +125,8 @@
       disabled: sheet.readOnly,
       onselect: () => {
         applyRest(sheet.vitals, shortRest(sheet.resources));
-        notify(t.rest.rested.short);
+        const ended = sheet.endConcentration();
+        notify(ended ? `${t.rest.rested.short} ${ended}` : t.rest.rested.short);
       },
     },
   ]);
@@ -163,7 +164,8 @@
   function takeLongRest() {
     const rested = longRest(sheet.vitals, sheet.resources, sheet.level);
     applyRest(rested.vitals, rested.resources);
-    notify(t.rest.rested.long);
+    const ended = sheet.endConcentration();
+    notify(ended ? `${t.rest.rested.long} ${ended}` : t.rest.rested.long);
   }
 
   function onTabKeydown(event: KeyboardEvent) {

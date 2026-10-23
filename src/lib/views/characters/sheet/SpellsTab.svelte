@@ -2,11 +2,10 @@
   import InfoTip from "$lib/components/InfoTip.svelte";
   import { modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
   import { progressionAt, spellSources } from "$lib/characters/levelup";
-  import { pactSlots, spellRow, spellSlots, type SpellRow } from "$lib/characters/sheet";
-  import { capital, castingTime, components, spellRange } from "$lib/rules/format";
-  import { openPreview } from "$lib/rules/preview.svelte";
+  import { pactSlots, spellSlots } from "$lib/characters/sheet";
   import { ordinal } from "$lib/rules/catalog";
   import { strings } from "$lib/strings";
+  import SpellRow from "./SpellRow.svelte";
   import { spellKey, type Sheet } from "./sheet.svelte";
 
   // Spellcasting numbers, concentration, spell slots, and the spells the character has (picked when leveling up), by level.
@@ -14,6 +13,7 @@
 
   const t = strings.characters.sheet.spells;
   const tl = strings.characters.levelUpDialog;
+  const ta = strings.characters.sheet.actions;
   const plain = new Intl.NumberFormat();
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
 
@@ -35,8 +35,6 @@
   const levelOf = (s: NonNullable<typeof c.spells>[number]) => (typeof s.level === "number" ? s.level : Number(rowOf(s)?.data.level ?? -1));
   const sources = $derived(spellSources(c, (cls, level) => tl.classLevel(cls, plain.format(level))));
 
-  const effectOf = (row: SpellRow) => (row.effects.length ? row.effects.map(capital).join(", ") : row.healing ? t.healing : t.none);
-  const componentsOf = (row: SpellRow) => [row.v && "V", row.s && "S", row.m && "M"].filter(Boolean).join(", ");
   const byLevel = $derived.by(() => {
     const groups = new Map<number, NonNullable<typeof c.spells>>();
     // Species spells that come at a later character level (Drow: Faerie Fire at 3) show from that level on.
@@ -79,7 +77,12 @@
       class="concentrating"
       aria-pressed={!!c.concentrating}
       disabled={sheet.readOnly}
-      onclick={() => sheet.change((x) => (x.concentrating = !x.concentrating))}
+      onclick={() =>
+        sheet.change((x) => {
+          x.concentrating = !x.concentrating;
+          // Ending concentration ends it on the spell too (its row stops glowing).
+          if (!x.concentrating) delete x.concentratingOn;
+        })}
     >
       {t.concentrating}
     </button>
@@ -133,54 +136,33 @@
   {:else}
     {#if preparedLimit > 0}<p class="muted">{t.preparedCount(plain.format(prepared), plain.format(preparedLimit))}</p>{/if}
     {#if detailsError}<p class="error" role="alert">{t.detailsError(detailsError)}</p>{:else if !details}<p class="muted" role="status">{t.loadingDetails}</p>{/if}
-    {#snippet abbr(short: string, long: string)}<span title={long}><span aria-hidden="true">{short}</span><span class="sr-only">{long}</span></span>{/snippet}
-    <!-- One table, a row group per spell level, so the columns line up across levels. The data columns are a fixed width ("…" beyond), the name takes the rest. -->
-    <table class="spell-table">
+    <!-- The same table as the Actions tab's spells (SpellRow), one row group per spell level; here with every spell,
+         the (!) for one had from two places, and ✕ for one added outside Level up. -->
+    <!-- No sideways scrolling here: it would clip a Cast button's slot menu. -->
+    <table class="sheet-table compact">
         <thead>
           <tr>
-            <th scope="col">{t.col.name}</th>
-            <th scope="col">{t.col.time}</th>
-            <th scope="col">{t.col.range}</th>
-            <th scope="col">{t.col.hit}</th>
-            <th scope="col">{t.col.effect}</th>
-            <th scope="col"><span title={t.col.componentsLong}>{t.col.components}</span></th>
+            <th scope="col">{ta.name}</th>
+            <th scope="col">{ta.time}</th>
+            <th scope="col">{ta.range}</th>
+            <th scope="col">{ta.hit}</th>
+            <th scope="col">{ta.damage}</th>
+            <th scope="col">{ta.notes}</th>
             <th scope="col"><span class="sr-only">{t.col.remove}</span></th>
           </tr>
         </thead>
         {#each byLevel as [level, spells] (level)}
-            <tbody>
-              <tr class="group-row">
-                <th scope="colgroup" colspan="7" class="group-name">{groupName(level)}</th>
-              </tr>
-              {#each spells as s, i (spellKey(s))}
-                {@const data = rowOf(s)?.data ?? null}
-                {@const row = data ? spellRow(data) : null}
-                {@const from = sources.get(spellKey(s)) ?? []}
-                <tr>
-                  <th scope="row">
-                    <span class="name-cell">
-                      <button class="entry-link" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
-                      {#if row?.concentration}<span class="badge">{@render abbr(t.col.concentration.short, t.col.concentration.long)}</span>{/if}
-                      {#if row?.ritual}<span class="badge">{@render abbr(t.col.ritual.short, t.col.ritual.long)}</span>{/if}
-                      {#if from.length > 1}
-                        <InfoTip id="spell-twice-{level}-{i}" label={tl.preparedTwiceOf(s.name)} text={tl.preparedTwice(from.join(", "))} icon="alert" />
-                      {/if}
-                    </span>
-                  </th>
-                  {#if data && row}
-                    <td>
-                      {#if tl.cast[row.unit as keyof typeof tl.cast]}
-                        {@const cast = tl.cast[row.unit as keyof typeof tl.cast]}
-                        <span class="cut">{@render abbr(cast.short, cast.long)}</span>
-                      {:else}<span class="cut" title={castingTime(data)}>{castingTime(data)}</span>{/if}
-                    </td>
-                    <td><span class="cut" title={spellRange(data)}>{spellRange(data)}</span></td>
-                    <td><span class="cut" title={sheet.spellHitOrDc(s, row)}>{sheet.spellHitOrDc(s, row)}</span></td>
-                    <td><span class="cut" title={effectOf(row)}>{effectOf(row)}</span></td>
-                    <td><span class="cut" title={components(data)}>{componentsOf(row)}</span></td>
-                  {:else}
-                    <td colspan="5" class="muted">{t.none}</td>
+          <tbody>
+            <tr><th scope="colgroup" colspan="7" class="group-name">{groupName(level)}</th></tr>
+            {#each spells as s, i (spellKey(s))}
+              {@const from = sources.get(spellKey(s)) ?? []}
+              <SpellRow {sheet} spell={s}>
+                {#snippet after()}
+                  {#if from.length > 1}
+                    <InfoTip id="spell-twice-{level}-{i}" label={tl.preparedTwiceOf(s.name)} text={tl.preparedTwice(from.join(", "))} icon="alert" />
                   {/if}
+                {/snippet}
+                {#snippet end()}
                   <td>
                     <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
                     {#if !s.always && s.gained === undefined}
@@ -189,11 +171,12 @@
                       </button>
                     {/if}
                   </td>
-                </tr>
-              {/each}
-            </tbody>
+                {/snippet}
+              </SpellRow>
+            {/each}
+          </tbody>
         {/each}
-    </table>
+      </table>
   {/if}
 </div>
 
@@ -284,85 +267,6 @@
 
   .muted {
     color: var(--color-text-muted);
-  }
-
-  .spell-table .group-name {
-    padding-top: var(--space-4);
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-  }
-
-  .spell-table {
-    width: 100%;
-    border-collapse: collapse;
-    color: var(--color-text);
-  }
-
-  .spell-table th,
-  .spell-table td {
-    padding: var(--space-1) var(--space-2);
-    border-bottom: var(--border-width) solid var(--color-border);
-    text-align: left;
-    vertical-align: middle;
-    white-space: nowrap;
-  }
-
-  /* The name column takes all the room the data columns leave. */
-  .spell-table th:first-child {
-    width: 100%;
-  }
-
-  /* Only when the block is too narrow does a name wrap; it's never cut off. */
-  .spell-table tbody th:first-child {
-    white-space: normal;
-  }
-
-  /* Every data column is the same fixed width; longer text ends in "…" (the full text is its tooltip). */
-  .cut {
-    display: block;
-    /* The column is the token's width with the cell's padding included. */
-    width: calc(var(--spell-data-width) - 2 * var(--space-2));
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .spell-table thead th {
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .spell-table tbody th {
-    font-weight: var(--weight-regular);
-  }
-
-  .spell-table th:first-child,
-  .spell-table td:first-child {
-    padding-left: 0;
-  }
-
-  .name-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  /* C and R: a solid square after the name. */
-  .badge {
-    display: inline-grid;
-    place-items: center;
-    min-width: var(--space-4);
-    height: var(--space-4);
-    padding: 0 var(--space-1);
-    border-radius: var(--radius-sm);
-    background: var(--color-text);
-    color: var(--color-surface);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    line-height: 1;
   }
 
   .error {

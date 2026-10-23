@@ -3,7 +3,8 @@ import { catalogRows, findEntity, type CatalogRow } from "$lib/api/rules";
 import { errorMessage, type StorageError } from "$lib/api/storage";
 import { scoresWithLevels } from "$lib/characters/levelup";
 import { modifier, proficiencyBonus, type Ability, type Scores } from "$lib/characters/rules";
-import { hpOf, type Resources, type SpellRow, type Vitals } from "$lib/characters/sheet";
+import { castSlots, hpOf, pactSlots, spellDice, spellRow, spellSlots, type CastSlot, type Resources, type SpellRow, type Vitals } from "$lib/characters/sheet";
+import { capital, castingTime, components, spellRange } from "$lib/rules/format";
 import { strings } from "$lib/strings";
 
 type Data = Record<string, unknown>;
@@ -15,6 +16,7 @@ const SPELL_KEYS = ["level", "time", "range", "components", "duration", "meta", 
 export const spellKey = (s: { name: string; source: string }) => `${s.name}|${s.source}`.toLowerCase();
 const plain = new Intl.NumberFormat();
 const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
+const listShort = new Intl.ListFormat(undefined, { type: "unit", style: "short" });
 
 /** One open character sheet: the file, the rules entries it refers to, and saving every change shortly after it's made. */
 export class Sheet {
@@ -134,6 +136,68 @@ export class Sheet {
 
   spellDetail(spell: { name: string; source: string }): CatalogRow | null {
     return this.spellDetails?.get(spellKey(spell)) ?? null;
+  }
+
+  /** The slots a spell of this level can be cast with now (see castSlots). */
+  castSlotsFor(spellLevel: number): CastSlot[] {
+    const c = this.character;
+    return castSlots(spellLevel, spellSlots(this.cls, this.level), c?.slotsUsed ?? [], pactSlots(this.cls, this.level), c?.pactSlotsUsed ?? 0);
+  }
+
+  /**
+   * Ends concentration (a short or long rest): Concentrating off, and its spell's row stops glowing. Returns the
+   * notification's sentence, or null when the character wasn't concentrating.
+   */
+  endConcentration(): string | null {
+    const c = this.character;
+    if (!c?.concentrating || this.readOnly) return null;
+    const t = strings.characters.sheet.spells;
+    const message = c.concentratingOn ? t.concentrationEnded(c.concentratingOn.name) : t.concentrationEndedPlain;
+    this.change((x) => {
+      x.concentrating = false;
+      delete x.concentratingOn;
+    });
+    return message;
+  }
+
+  /** Casts a spell: uses the slot (none for a cantrip) and, for a concentration spell, starts concentrating on it. */
+  cast(spell: { name: string; source: string }, slot: CastSlot | null, concentration: boolean) {
+    this.change((x) => {
+      if (slot?.pact) x.pactSlotsUsed = (x.pactSlotsUsed ?? 0) + 1;
+      else if (slot) {
+        const used = [...(x.slotsUsed ?? [])];
+        while (used.length < slot.level) used.push(0);
+        used[slot.level - 1] += 1;
+        x.slotsUsed = used;
+      }
+      if (concentration) {
+        x.concentrating = true;
+        x.concentratingOn = { name: spell.name, source: spell.source };
+      }
+    });
+  }
+
+  /** One spell as the Spells tab shows it; null until its rules data is loaded (or when it has none). */
+  spellLine(spell: { name: string; source: string; ability?: string }) {
+    const data = this.spellDetail(spell)?.data;
+    if (!data) return null;
+    const t = strings.characters.sheet;
+    const row = spellRow(data);
+    const dice = spellDice(data, this.level);
+    const damage =
+      row.healing && !row.effects.length ? (dice ? t.actions.healing(dice) : t.spells.healing) : [dice, row.effects.map(capital).join(", ")].filter(Boolean).join(" ");
+    const cast = strings.characters.levelUpDialog.cast[row.unit as keyof typeof strings.characters.levelUpDialog.cast];
+    return {
+      level: Number(data.level ?? 0),
+      concentration: row.concentration,
+      // A, BA or R (the full word on hover); a longer casting time ("1 minute") is written out.
+      time: (cast ?? { short: castingTime(data), long: castingTime(data) }) as { short: string; long: string },
+      range: spellRange(data),
+      hit: this.spellHitOrDc(spell, row),
+      damage: damage || t.spells.none,
+      notes: listShort.format([[row.v && "V", row.s && "S", row.m && "M"].filter(Boolean).join(", "), ...(row.ritual ? [t.actions.ritual] : [])].filter(Boolean)),
+      notesTitle: components(data),
+    };
   }
 
   /** Hit/DC of a spell: "+5" for an attack, "WIS 13" for a save, "—" otherwise; with its own ability (Magic Initiate's pick), else the class's. */

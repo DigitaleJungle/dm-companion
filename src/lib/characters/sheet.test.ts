@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  castSlots,
   skillEdges,
   skillAdvantages,
   spellDice,
@@ -362,5 +363,25 @@ describe("skillEdges", () => {
     );
     expect(Object.fromEntries(edges.advantage)).toEqual({ perception: ["Elf", "Alert"], stealth: ["Cloak of Elvenkind"] });
     expect(Object.fromEntries(edges.disadvantage)).toEqual({ stealth: ["Chain Mail"] });
+  });
+});
+
+describe("castSlots", () => {
+  it("offers the spell's own level and higher, only with a slot left, pact slots last", () => {
+    // 4 first-level slots (1 used), 2 second-level (both used), 1 third-level.
+    expect(castSlots(1, [4, 2, 1], [1, 2], null, 0)).toEqual([
+      { level: 1, pact: false, left: 3 },
+      { level: 3, pact: false, left: 1 },
+    ]);
+    expect(castSlots(2, [4, 2, 1], [1, 2], { count: 2, level: 2 }, 1)).toEqual([
+      { level: 3, pact: false, left: 1 },
+      { level: 2, pact: true, left: 1 },
+    ]);
+  });
+
+  it("has none for a cantrip, a spell above every slot, or when all are used", () => {
+    expect(castSlots(0, [4], [0], null, 0)).toEqual([]);
+    expect(castSlots(3, [4, 2], [0, 0], { count: 1, level: 2 }, 0)).toEqual([]);
+    expect(castSlots(1, [2], [2], { count: 1, level: 1 }, 1)).toEqual([]);
   });
 });

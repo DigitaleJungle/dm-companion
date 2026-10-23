@@ -93,6 +93,8 @@ export type Character = {
   acOverride?: number | null;
   inspiration?: boolean;
   concentrating?: boolean;
+  /** The spell being concentrated on, when Cast started it; cleared when concentration ends. */
+  concentratingOn?: Ref;
   personality?: string;
   ideals?: string;
   bonds?: string;
