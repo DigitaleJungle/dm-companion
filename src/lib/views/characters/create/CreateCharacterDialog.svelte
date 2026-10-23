@@ -7,12 +7,13 @@
   import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { MAX_LEVEL, gearOf, gearOptions, inSources, lineageTarget, type GearEntry, type GearGroup } from "$lib/characters/rules";
+  import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import AbilitiesStep from "./AbilitiesStep.svelte";
+  import { artPath, backgroundFacts, classFacts, speciesFacts } from "./cards";
   import ChoiceList from "./ChoiceList.svelte";
   import ReviewStep from "./ReviewStep.svelte";
   import SkillsStep from "./SkillsStep.svelte";
@@ -94,11 +95,9 @@
   );
 
   const lineages = $derived(lineagesOf(draft.species));
-  const lineageKey = $derived(lineageTarget(draft.species?.data._versions, draft.species?.data.entries)?.toLowerCase() ?? null);
   const subs = $derived(subspeciesOf(options, draft.species));
   const sizes = $derived(sizesOf(draft.species));
-  const hasLead = $derived(sizes.length > 1 || subs.length > 0 || (lineages.length > 0 && !lineageKey));
-  const speciesChoices = $derived(lineages.length && lineageKey ? { [lineageKey]: lineageSelect } : {});
+  const hasSpeciesChoices = $derived(sizes.length > 1 || subs.length > 0 || lineages.length > 0);
   // Starting equipment is chosen when creating; editing leaves the inventory to the sheet.
   const classGear = $derived(edit ? [] : classGroups());
   const backgroundGear = $derived(edit ? [] : backgroundGroups());
@@ -235,7 +234,7 @@
 {#snippet backgroundLead()}{@render gearChooser("background", backgroundGear, draft.backgroundGear)}{/snippet}
 
 {#snippet speciesLead()}
-  {#if lineages.length && !lineageKey}{@render lineageSelect()}{/if}
+  {#if lineages.length}{@render lineageSelect()}{/if}
   {#if subs.length}
     <label class="inline-field">
       <span class="label-text">{t.pick.subspecies} <span class="required" aria-hidden="true">*</span></span>
@@ -372,11 +371,12 @@
                 rows={speciesRows}
                 selected={draft.species}
                 onselect={chooseSpecies}
-                lead={hasLead ? speciesLead : undefined}
-                choices={speciesChoices}
+                facts={speciesFacts}
+                art={artPath("races")}
+                choices={hasSpeciesChoices ? speciesLead : undefined}
               />
             {:else if step === "class"}
-              <ChoiceList id="class" label={t.steps.class} rows={classRows} selected={draft.cls} onselect={chooseClass} lead={classLead} />
+              <ChoiceList id="class" label={t.steps.class} rows={classRows} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
             {:else if step === "background"}
               <ChoiceList
                 id="background"
@@ -384,7 +384,9 @@
                 rows={backgroundRows}
                 selected={draft.background}
                 onselect={chooseBackground}
-                lead={backgroundGear.length ? backgroundLead : undefined}
+                facts={backgroundFacts}
+                art={artPath("backgrounds")}
+                choices={backgroundGear.length ? backgroundLead : undefined}
               />
             {:else if step === "abilities"}
               <AbilitiesStep />

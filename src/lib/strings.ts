@@ -583,6 +583,15 @@ export const strings = {
         subspecies: "Subspecies",
         size: "Size",
         choose: "Choose…",
+        change: (kind: string) => `Change ${kind.toLowerCase()}`,
+      },
+      cards: {
+        speed: (feet: string) => `${feet} ft`,
+        darkvision: (feet: string) => `Darkvision ${feet} ft`,
+        moves: { fly: "Fly", swim: "Swim", climb: "Climb", burrow: "Burrow" } as Record<string, string>,
+        hitDie: (faces: string) => `d${faces}`,
+        saves: (list: string) => `Saves ${list}`,
+        feat: (name: string) => `Feat: ${name}`,
       },
       level: {
         label: "Level",

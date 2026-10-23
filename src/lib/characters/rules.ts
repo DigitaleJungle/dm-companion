@@ -165,22 +165,6 @@ export const proficiencyBonus = (level: number) => 2 + Math.floor((Math.max(1, l
 /** A skill check or saving throw bonus: the ability modifier, plus the proficiency bonus when proficient. */
 export const checkBonus = (score: number, proficient: boolean, proficiency: number) => modifier(score) + (proficient ? proficiency : 0);
 
-/** The species entry a lineage choice belongs under: the one its `_versions` replace or remove ("Elven Lineage"). */
-export function lineageTarget(versions: unknown, entries: unknown): string | null {
-  const names = new Set(
-    (Array.isArray(entries) ? entries : []).flatMap((e) => (typeof record(e)?.name === "string" ? [String(record(e)!.name).toLowerCase()] : [])),
-  );
-  const candidates = (Array.isArray(versions) ? versions : []).flatMap((v) => {
-    const mod = record(record(v)?._mod) ?? record(record(record(v)?._abstract)?._mod);
-    const edits = mod?.entries;
-    return (Array.isArray(edits) ? edits : [edits]).flatMap((edit) => {
-      const e = record(edit);
-      return [e?.replace, ...(Array.isArray(e?.names) ? e.names : [e?.names])].filter((n): n is string => typeof n === "string");
-    });
-  });
-  return candidates.find((n) => names.has(n.toLowerCase())) ?? null;
-}
-
 /** "Dragonborn (Black)" stays as is; "Drow Lineage" for an Elf becomes "Elf (Drow Lineage)". */
 export const speciesLabel = (species: string, variant: string | null | undefined) =>
   !variant ? species : variant.toLowerCase().includes(species.toLowerCase()) ? variant : `${species} (${variant})`;

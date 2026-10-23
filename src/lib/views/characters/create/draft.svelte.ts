@@ -39,9 +39,9 @@ export type Method = "standard" | "manual" | "roll";
 export type Options = { species: CatalogRow[]; subspecies: CatalogRow[]; classes: CatalogRow[]; backgrounds: CatalogRow[]; skills: CatalogRow[] };
 
 export const OPTION_KEYS = {
-  species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "entries"],
+  species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "speed", "darkvision"],
   subspecies: ["raceName", "raceSource", "skillProficiencies", "ability"],
-  class: ["startingProficiencies", "proficiency", "hd", "isSidekick", "startingEquipment"],
+  class: ["startingProficiencies", "proficiency", "hd", "isSidekick", "startingEquipment", "primaryAbility"],
   background: ["skillProficiencies", "ability", "feats", "startingEquipment"],
   skill: ["ability"],
 };

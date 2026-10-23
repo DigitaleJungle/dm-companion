@@ -16,7 +16,6 @@ import {
   inSources,
   level1Hp,
   lineageNames,
-  lineageTarget,
   speciesLabel,
   mergeOptions,
   modifier,
@@ -106,14 +105,6 @@ describe("lineages and sources", () => {
 });
 
 describe("species versions", () => {
-  it("finds the entry a lineage choice belongs under", () => {
-    const entries = [{ name: "Darkvision" }, { name: "Elven Lineage" }, { name: "Trance" }];
-    expect(lineageTarget([{ _mod: { entries: [{ mode: "replaceArr", replace: "Elven Lineage" }, { replace: "Darkvision" }] } }], entries)).toBe("Elven Lineage");
-    expect(lineageTarget([{ _abstract: { _mod: { entries: [{ mode: "removeArr", names: "Draconic Ancestry" }] } } }], [{ name: "Draconic Ancestry" }])).toBe("Draconic Ancestry");
-    expect(lineageTarget([{ _mod: { entries: { replace: "Missing" } } }], entries)).toBeNull();
-    expect(lineageTarget(undefined, entries)).toBeNull();
-  });
-
   it("labels the species with its chosen version", () => {
     expect(speciesLabel("Dragonborn", "Dragonborn (Black)")).toBe("Dragonborn (Black)");
     expect(speciesLabel("Elf", "Drow Lineage")).toBe("Elf (Drow Lineage)");
