@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
 import { emptyChoice, emptyLevelPicks, type LevelPicks } from "$lib/characters/levelup";
-import { levelNeedsChoice, saveLevel, type LevelData } from "./levelData";
+import { alwaysSpellsAt, levelNeedsChoice, saveLevel, type LevelData } from "./levelData";
 
 let id = 1;
 const row = (kind: string, name: string, data: Record<string, unknown> = {}): CatalogRow => ({ id: id++, kind, source: "XPHB", name, data });
@@ -111,5 +111,16 @@ describe("saving a level", () => {
     expect(character.feats?.map((f) => [f.name, f.origin])).toEqual([["Magic Initiate", "Lessons of the First Ones"]]);
     expect(character.spells?.map((s) => [s.name, s.origin])).toEqual([["Eldritch Blast", "Warlock"], ["Light", "Magic Initiate"]]);
     expect(levelNeedsChoice(character, d, 2)).toBe(false);
+  });
+});
+
+describe("alwaysSpellsAt", () => {
+  it("class and subclass spells first reached at a level, with where they come from", () => {
+    const spells = ["Divine Smite", "Find Steed", "Bless"].map((n) => row("spell", n, { level: 1 }));
+    const d = data({ cls: { name: "Paladin", source: "XPHB", data: { additionalSpells: [{ prepared: { "2": ["divine smite|xphb"], "5": ["find steed|xphb"] } }] } }, spells });
+    const devotion = row("subclass", "Oath of Devotion", { additionalSpells: [{ prepared: { "3": ["bless|xphb"] } }] });
+    expect(alwaysSpellsAt(d, devotion, 2).map((s) => [s.name, s.origin])).toEqual([["Divine Smite", "Paladin"]]);
+    expect(alwaysSpellsAt(d, devotion, 3).map((s) => [s.name, s.origin])).toEqual([["Bless", "Oath of Devotion"]]);
+    expect(alwaysSpellsAt(d, null, 4)).toEqual([]);
   });
 });

@@ -48,14 +48,18 @@ export function spellMatches(spell: Entry, f: SpellFilter, classLists: Map<strin
   );
 }
 
-/** One way an entry grants spells (Magic Initiate has one per class, an Elf one per lineage). `atLevel`: from which character level. */
-export type SpellGrant = { name: string; fixed: (Ref & { atLevel: number })[]; choose: { filter: SpellFilter; count: number }[] };
+/**
+ * One way an entry grants spells (Magic Initiate has one per class, an Elf one per lineage). `atLevel`: from which character level.
+ * `abilities`: their spellcasting ability; one is given, several are to choose from (Magic Initiate: INT, WIS or CHA).
+ */
+export type SpellGrant = { name: string; fixed: (Ref & { atLevel: number })[]; choose: { filter: SpellFilter; count: number }[]; abilities: string[] };
 
 /** The spells in an `additionalSpells` list. Fixed spells keep the character level they come at; choices only count up to `level`. */
 export function spellGrants(raw: unknown, level: number): SpellGrant[] {
   return list(raw).map((option, i) => {
     const o = obj(option);
-    const grant: SpellGrant = { name: typeof o.name === "string" ? o.name : String(i + 1), fixed: [], choose: [] };
+    const abilities = typeof o.ability === "string" ? [o.ability] : list(obj(o.ability).choose).map(String);
+    const grant: SpellGrant = { name: typeof o.name === "string" ? o.name : String(i + 1), fixed: [], choose: [], abilities };
     for (const kind of ["known", "innate", "prepared"]) {
       for (const [key, value] of Object.entries(obj(o[kind]))) {
         const atLevel = key === "_" ? 1 : Number.parseInt(key);
@@ -218,6 +222,8 @@ export type SavedChoice = {
   grant: number;
   /** Picked spell keys per choice of that option. */
   spells: string[][];
+  /** The spellcasting ability picked for those spells, when the option offers several. */
+  ability?: string | null;
   feats: SavedChoice[];
   /** The known spell it applies to (Agonizing Blast). */
   target: string | null;
@@ -261,6 +267,7 @@ export function choiceComplete(entry: Entry | null, saved: SavedChoice, level: n
     saved.saves.length === c.saves.reduce((n, s) => n + s.count, 0) &&
     saved.expertise.length === c.expertise &&
     (!grant || grant.choose.every((x, i) => (saved.spells[i] ?? []).length === x.count)) &&
+    (!grant || grant.abilities.length < 2 || grant.abilities.includes(saved.ability ?? "")) &&
     (!c.target || !!saved.target) &&
     featSlots(c).every((_, i) => {
       const f = saved.feats[i];
@@ -272,7 +279,7 @@ export function choiceComplete(entry: Entry | null, saved: SavedChoice, level: n
 /** What a pick gives, resolved for the character file. Feats it grants (Lessons of the First Ones) come with their own gains. */
 export type ChoiceGains = {
   feats: (Ref & { origin: string })[];
-  spells: (Ref & { origin: string; level?: number; atLevel?: number })[];
+  spells: (Ref & { origin: string; level?: number; atLevel?: number; ability?: string })[];
   skills: string[];
   tools: string[];
   languages: string[];
@@ -316,14 +323,16 @@ export function resolveChoice(entry: Entry, saved: SavedChoice, level: number, f
   g.bonus = bonusTotals(c.bonus, saved.bonus) as Record<string, number>;
   const grant = c.spells[saved.grant];
   if (grant) {
+    const ability = grant.abilities.length === 1 ? grant.abilities[0] : grant.abilities.includes(saved.ability ?? "") ? saved.ability! : null;
+    const withAbility = ability ? { ability } : {};
     // The data names granted spells by key ("misty step|xphb"); the spell itself has the real name and level.
     g.spells.push(
       ...grant.fixed.map((r) => {
         const spell = find.spell(refKey(r));
-        return { name: spell?.name ?? r.name, source: spell?.source ?? r.source, origin, atLevel: r.atLevel, ...(spell ? { level: Number(spell.data.level ?? 1) } : {}) };
+        return { name: spell?.name ?? r.name, source: spell?.source ?? r.source, origin, atLevel: r.atLevel, ...(spell ? { level: Number(spell.data.level ?? 1) } : {}), ...withAbility };
       }),
     );
-    g.spells.push(...saved.spells.flat().flatMap((k) => find.spell(k) ?? []).map((s) => ({ name: s.name, source: s.source, origin, level: Number(s.data.level ?? 1) })));
+    g.spells.push(...saved.spells.flat().flatMap((k) => find.spell(k) ?? []).map((s) => ({ name: s.name, source: s.source, origin, level: Number(s.data.level ?? 1), ...withAbility })));
   }
   featSlots(c).forEach((_, i) => {
     const f = saved.feats[i];

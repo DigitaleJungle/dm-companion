@@ -72,7 +72,7 @@ export async function loadChoiceData(classSource: string, published: (source: st
   const [feats, optional, spells, items, languages, classes] = await Promise.all([
     catalogRows("feat", ["category", ...CHOICE_KEYS]),
     catalogRows("optionalfeature", ["featureType", "entries", ...CHOICE_KEYS]),
-    catalogRows("spell", ["level", "school", "meta"]),
+    catalogRows("spell", ["level", "school", "meta", "time"]),
     catalogRows("item", ["type", "mastery", "reprintedAs"]),
     catalogRows("language", ["type"]),
     catalogRows("class", ["isSidekick"]),
@@ -158,12 +158,19 @@ export function stateBefore(c: Character, level: number, faces: number): Charact
   return rebuild({ ...c, classes: [{ ...main, level: Math.max(1, level - 1) }, ...c.classes.slice(1)], levels: (c.levels ?? []).filter((r) => r.level < level) }, level > 1 ? faces : 0);
 }
 
-/** The subclass's always-prepared spells first reached at this level. */
-export function alwaysSpellsAt(data: LevelData, subclass: CatalogRow | null, level: number): Entry[] {
-  const now = subclassSpells(subclass?.data ?? null, level);
-  const before = new Set(subclassSpells(subclass?.data ?? null, level - 1).map(refKey));
+/** The class's and subclass's always-prepared spells first reached at this level (Paladin: Divine Smite at 2), with where they come from. */
+export function alwaysSpellsAt(data: LevelData, subclass: CatalogRow | null, level: number): (Entry & { origin: string })[] {
   const spells = new Map(data.spells.map((s) => [refKey(s), s]));
-  return now.filter((r) => !before.has(refKey(r))).flatMap((r) => spells.get(refKey(r)) ?? []);
+  return [data.cls, subclass].flatMap((owner) => {
+    if (!owner) return [];
+    const before = new Set(subclassSpells(owner.data, level - 1).map(refKey));
+    return subclassSpells(owner.data, level)
+      .filter((r) => !before.has(refKey(r)))
+      .flatMap((r) => {
+        const s = spells.get(refKey(r));
+        return s ? [{ ...s, origin: owner.name }] : [];
+      });
+  });
 }
 
 /** Prerequisite context from a character state; `extraSpells` are spells picked in the same level (its cantrips). */

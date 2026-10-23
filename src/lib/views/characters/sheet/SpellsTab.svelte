@@ -45,15 +45,9 @@
     return [...groups.entries()].sort((a, b) => (a[0] < 0 ? 99 : a[0]) - (b[0] < 0 ? 99 : b[0]));
   });
   const preparedLimit = $derived(progressionAt(sheet.cls?.preparedSpellsProgression, sheet.level));
-  const prepared = $derived((c.spells ?? []).filter((s) => s.prepared && !s.always && levelOf(s) !== 0 && s.origin === c.classes[0]?.name).length);
+  // Every listed spell is prepared or known; this counts the leveled class spells against the class table.
+  const prepared = $derived((c.spells ?? []).filter((s) => !s.always && levelOf(s) > 0 && s.origin === c.classes[0]?.name).length);
   const groupName = (l: number) => (l === 0 ? t.cantrips : l < 0 ? t.otherSpells : t.levelGroup(ordinal(l)));
-
-  function setPrepared(name: string, source: string, on: boolean) {
-    sheet.change((x) => {
-      const spell = x.spells?.find((s) => spellKey(s) === spellKey({ name, source }));
-      if (spell) spell.prepared = on;
-    });
-  }
 
   function removeSpell(name: string, source: string) {
     sheet.change((x) => (x.spells = (x.spells ?? []).filter((s) => spellKey(s) !== spellKey({ name, source }))));
@@ -142,18 +136,8 @@
         <ul class="spell-list">
           {#each spells as s (spellKey(s))}
             <li class="spell">
-              {#if level > 0 && !s.always && s.origin === c.classes[0]?.name}
-                <input
-                  type="checkbox"
-                  class="box"
-                  aria-label={t.preparedOf(s.name)}
-                  checked={!!s.prepared}
-                  disabled={sheet.readOnly}
-                  onchange={(e) => setPrepared(s.name, s.source, e.currentTarget.checked)}
-                />
-              {/if}
               <button class="entry-link" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
-              <span class="origin">{s.origin}</span>
+              <span class="origin">{s.ability ? t.originAbility(s.origin, s.ability.toUpperCase()) : s.origin}</span>
               {#if s.always}<span class="tag">{t.always}</span>{/if}
               <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
               {#if !s.always && s.gained === undefined}

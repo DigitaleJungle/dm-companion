@@ -47,9 +47,11 @@
 
   function finish() {
     if (!data || !ready) return;
-    const { character } = saveLevel($state.snapshot(c) as typeof c, data, level, $state.snapshot(picks) as LevelPicks, faces);
+    // `level` follows the character, so it reads one higher once the change is in.
+    const reached = level;
+    const { character } = saveLevel($state.snapshot(c) as typeof c, data, reached, $state.snapshot(picks) as LevelPicks, faces);
     sheet.change((x) => Object.assign(x, character));
-    notify(t.done(c.name, plain.format(level)));
+    notify(t.done(c.name, plain.format(reached)));
     open = false;
   }
 </script>

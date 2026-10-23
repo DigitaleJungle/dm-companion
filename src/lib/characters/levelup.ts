@@ -212,7 +212,7 @@ export type Gains = {
   /** `origin` when a feat came through something else (Lessons of the First Ones); `bonus`/`skills` on records from before `bonus`/`skills` below. */
   feats: (Ref & { origin?: string; bonus?: Record<string, number>; skills?: string[]; epic?: boolean })[];
   /** `atLevel`: the character level from which a spell applies (species spells). */
-  spells: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean })[];
+  spells: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean; ability?: string })[];
   /** `target`: the known spell it applies to ("Eldritch Blast" for Agonizing Blast). */
   optional: (Ref & { type: string[]; target?: string })[];
   options: (Ref & { feature: string })[];
@@ -290,8 +290,8 @@ function addChoice(g: Gains, sub: ChoiceGains) {
   Object.assign(g, { skills: merged.skills, tools: merged.tools, languages: merged.languages, saves: merged.saves, bonus: merged.bonus });
 }
 
-/** The resolved gains of a level's picks; `always` are the subclass's always-prepared spells reached at this level. */
-export function gainsOf(plan: Plan, picks: LevelPicks, find: Lookup, cls: Entry, always: Entry[] = []): Gains {
+/** The resolved gains of a level's picks; `always` are the class's and subclass's always-prepared spells reached at this level. */
+export function gainsOf(plan: Plan, picks: LevelPicks, find: Lookup, cls: Entry, always: (Entry & { origin?: string })[] = []): Gains {
   const g = emptyLevelGains();
   const spell = (s: Entry, origin: string, extra: { prepared?: boolean; always?: boolean } = {}) => ({ name: s.name, source: s.source, origin, level: Number(s.data.level ?? 1), ...extra });
   const keys = (id: string) => picks.keys[id] ?? [];
@@ -317,7 +317,7 @@ export function gainsOf(plan: Plan, picks: LevelPicks, find: Lookup, cls: Entry,
     else if (d.kind === "expertise") g.expertise.push(...keys(d.id));
   }
   const subclassName = picks.subclass?.name ?? cls.name;
-  g.spells.push(...always.map((s) => spell(s, subclassName, { always: true, prepared: true })));
+  g.spells.push(...always.map((s) => spell(s, s.origin ?? subclassName, { always: true, prepared: true })));
   return g;
 }
 
@@ -416,7 +416,18 @@ export function withLevel(character: Character, record: LevelRecord, faces: numb
   if (record.level > (c.classes[0]?.level ?? 0)) c.classes = [{ ...c.classes[0], level: record.level }, ...c.classes.slice(1)];
   return rebuild(c, faces);
 }
-/** Subclass spells that are always prepared up to a class level ("prepared": { "3": ["bless|xphb"] }). */
+/** The character one class level lower: the highest level and what it gave are dropped (its subclass too). Level 1 stays. */
+export function removeTopLevel(character: Character, faces: number): Character {
+  const main = character.classes[0];
+  if (!main || main.level <= 1) return copy(character);
+  const top = (character.levels ?? []).find((r) => r.level === main.level);
+  // rebuild only sets a subclass it finds in the records, so one picked at the removed level is cleared here.
+  const cls = { ...main, level: main.level - 1 };
+  if (top?.gains?.subclass) delete cls.subclass;
+  return rebuild({ ...character, classes: [cls, ...character.classes.slice(1)] }, faces);
+}
+
+/** A class's or subclass's spells that are always prepared up to a class level ("prepared": { "3": ["bless|xphb"] }). */
 export function subclassSpells(subclass: Data | null, level: number): Ref[] {
   // shortcut: only a subclass's first spell list; Circle of the Land's land types (several named lists) need a pick, add it with that subclass.
   const first = obj(list(subclass?.additionalSpells)[0]);

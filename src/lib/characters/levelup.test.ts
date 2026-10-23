@@ -13,6 +13,7 @@ import {
   prerequisite,
   progressionAt,
   rebuild,
+  removeTopLevel,
   scoresWithLevels,
   spellGrants,
   spellMatches,
@@ -265,5 +266,23 @@ describe("numbers", () => {
       { name: "aid", source: "XPHB" },
       { name: "bless", source: "XPHB" },
     ]);
+  });
+});
+
+describe("removeTopLevel", () => {
+  it("drops the highest level with what it gave, its subclass too; level 1 stays", () => {
+    const sub = { ...noGains(), subclass: { name: "Champion", source: "XPHB", shortName: "Champion" } };
+    const two = withLevel(character("Fighter", 1), { class: "Fighter", level: 2, hp: { how: "average", value: 6 }, gains: noGains() }, 10);
+    const three = withLevel(two, { class: "Fighter", level: 3, hp: { how: "average", value: 6 }, gains: sub }, 10);
+    const back = removeTopLevel(three, 10);
+    expect([back.classes[0].level, back.classes[0].subclass, back.levels?.map((r) => r.level), back.hp?.max]).toEqual([2, undefined, [2], two.hp?.max]);
+    expect(removeTopLevel(removeTopLevel(back, 10), 10).classes[0].level).toBe(1);
+  });
+
+  it("keeps a subclass picked at a lower level", () => {
+    const sub = { ...noGains(), subclass: { name: "Champion", source: "XPHB", shortName: "Champion" } };
+    const three = withLevel(character("Fighter", 2), { class: "Fighter", level: 3, hp: { how: "average", value: 6 }, gains: sub }, 10);
+    const four = withLevel(three, { class: "Fighter", level: 4, hp: { how: "average", value: 6 }, gains: noGains() }, 10);
+    expect(removeTopLevel(four, 10).classes[0].subclass?.name).toBe("Champion");
   });
 });

@@ -60,7 +60,7 @@ export type Character = {
   levels?: LevelRecord[];
   /** `prepared` for class spells; `always`: always prepared (from a subclass). */
   /** `atLevel`: the character level from which it applies (species spells). */
-  spells?: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean; gained?: number })[];
+  spells?: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean; gained?: number; ability?: string })[];
   /** Invocations, maneuvers, metamagic…; `type` is the feature type codes ("EI"). */
   optionalFeatures?: (Ref & { origin: string; type: string[]; target?: string; gained?: number })[];
   /** A pick in a feature with options, like Divine Order: Protector. */

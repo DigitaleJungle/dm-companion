@@ -2,7 +2,7 @@
   import { tick } from "svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import { errorMessage } from "$lib/api/storage";
-  import { emptyLevelPicks, normalizePicks, type LevelPicks, type LevelRecord } from "$lib/characters/levelup";
+  import { emptyLevelPicks, normalizePicks, removeTopLevel, type LevelPicks, type LevelRecord } from "$lib/characters/levelup";
   import { hitDieFaces } from "$lib/characters/sheet";
   import { enablePreviews } from "$lib/rules/preview.svelte";
   import { notify } from "$lib/stores/notifications.svelte";
@@ -43,6 +43,7 @@
   const published = sourcePublished;
 
   let leaveDialog: HTMLDialogElement | undefined = $state();
+  let removeDialog: HTMLDialogElement | undefined = $state();
   let data = $state<LevelData | null>(null);
   let loadError = $state<string | null>(null);
   let selected = $state(1);
@@ -127,6 +128,18 @@
     original = normalized(picks);
   }
 
+  // Only the highest level goes: every level builds on the ones below it.
+  const removable = $derived(!readOnly && selected === main.level && main.level > 1);
+
+  async function removeLevel() {
+    removeDialog?.close();
+    const removed = main.level;
+    onsave(removeTopLevel($state.snapshot(c) as Character, faces));
+    notify(t.removed(plain.format(removed)));
+    await tick();
+    select(removed - 1);
+  }
+
   async function onListKey(e: KeyboardEvent) {
     const i = levels.indexOf(selected);
     const next = e.key === "ArrowDown" ? i + 1 : e.key === "ArrowUp" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? levels.length - 1 : null;
@@ -190,6 +203,9 @@
     {/if}
 
   {#snippet footer()}
+    {#if removable}
+      <button class="btn btn-danger remove" disabled={!data} onclick={() => removeDialog?.showModal()}>{t.remove(plain.format(selected))}</button>
+    {/if}
     <button class="btn" onclick={close}>{t.close}</button>
     {#if !readOnly}
       <button class="btn btn-primary" disabled={!data || !dirty} onclick={save}>{t.save(plain.format(selected))}</button>
@@ -205,10 +221,23 @@
       <button class="btn btn-danger" onclick={discard}>{t.discard}</button>
     </div>
   </dialog>
+  <dialog bind:this={removeDialog} class="leave" aria-labelledby="levels-remove-title">
+    <h2 id="levels-remove-title">{t.removeTitle(plain.format(main.level))}</h2>
+    <p>{t.removeBody(plain.format(main.level - 1))}</p>
+    <div class="leave-actions">
+      <button class="btn" onclick={() => removeDialog?.close()}>{t.cancel}</button>
+      <button class="btn btn-danger" onclick={removeLevel}>{t.remove(plain.format(main.level))}</button>
+    </div>
+  </dialog>
   {/snippet}
 </LevelDialogFrame>
 
 <style>
+  /* Away from Save, on the left. */
+  .remove {
+    margin-right: auto;
+  }
+
   .leave::backdrop {
     background: var(--color-backdrop);
   }

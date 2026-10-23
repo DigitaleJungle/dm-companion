@@ -1,13 +1,14 @@
 <script lang="ts">
-  let { id, label, text }: { id: string; label: string; text: string } = $props();
+  // `alert`: a red (!) instead of the (i), for something to check.
+  let { id, label, text, alert = false }: { id: string; label: string; text: string; alert?: boolean } = $props();
 </script>
 
-<!-- Shows on hover and keyboard focus; the text is also the button's description for screen readers. -->
+<!-- Shows on hover, focus and click; the text is also the button's description for screen readers. -->
 <span class="info-tip">
-  <button type="button" class="trigger" aria-label={label} aria-describedby={id}>
+  <button type="button" class="trigger" class:alert aria-label={label} aria-describedby={id}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
-      <path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      <path d={alert ? "M12 7v6M12 16h.01" : "M12 11v5M12 8h.01"} stroke="currentColor" stroke-width="2" stroke-linecap="round" />
     </svg>
   </button>
   <span {id} role="tooltip" class="tip">{text}</span>
@@ -38,6 +39,11 @@
     color: var(--color-text);
   }
 
+  .trigger.alert,
+  .trigger.alert:hover {
+    color: var(--color-danger);
+  }
+
   svg {
     width: var(--icon-size);
     height: var(--icon-size);
@@ -64,8 +70,9 @@
     transition: opacity var(--duration-drawer) ease;
   }
 
+  /* Focus, not only focus-visible, so a click opens it too. */
   .info-tip:hover .tip,
-  .trigger:focus-visible + .tip {
+  .trigger:focus + .tip {
     visibility: visible;
     opacity: 1;
   }

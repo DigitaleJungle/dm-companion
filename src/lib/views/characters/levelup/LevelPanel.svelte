@@ -51,8 +51,9 @@
   const subclass = $derived(subclassAt(character, data, level, picks));
   const plan = $derived(planFor(data, level, subclass));
   const before = $derived(stateBefore(character, level, faces));
+  const autoSpells = $derived(alwaysSpellsAt(data, subclass, level));
   const prereq = $derived(prereqContext(before, level, data, picks.keys.cantrips ?? []));
-  const input = $derived({ data, before, prereq, sources, published, skills, alsoKnown: picks.keys.cantrips ?? [] });
+  const input = $derived({ data, before, prereq, sources, published, skills, alsoKnown: picks.keys.cantrips ?? [], always: autoSpells.map((s) => ({ key: refKey(s), note: t.classLevel(main.name, plain.format(level)) })) });
   const cctx = $derived(choiceContext(input));
   const con = $derived(scoresWithLevels(character)?.con ?? 10);
 
@@ -127,7 +128,6 @@
 
   const subclassGroups = $derived(versionGroups(data.subclasses, allowed, published));
   const subclassArt = (r: CatalogRow) => `classes/${r.source}/${String(r.data.shortName ?? r.name)} ${main.name}.webp`;
-  const autoSpells = $derived(alwaysSpellsAt(data, subclass, level));
   const keysOf = (id: string) => picks.keys[id] ?? [];
   const setKeys = (id: string, v: string[]) => (picks.keys = { ...picks.keys, [id]: v });
 </script>

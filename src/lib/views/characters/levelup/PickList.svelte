@@ -1,9 +1,20 @@
 <script lang="ts" module>
-  /** One pickable thing; `preview` makes its name open the rules preview. */
-  export type PickItem = { key: string; name: string; note?: string; group?: string; preview?: { kind: string; name: string; source: string } };
+  /** One pickable thing; `preview` makes its name open the rules preview; `taken`: already had (shown ticked, can't be picked);
+   * `alert`: a (!) that shows this text on hover or click, while it is ticked; `tag`: a short label after the name (a spell's "BA"). */
+  export type PickItem = {
+    key: string;
+    name: string;
+    tag?: { short: string; long: string };
+    note?: string;
+    group?: string;
+    preview?: { kind: string; name: string; source: string };
+    taken?: boolean;
+    alert?: string;
+  };
 </script>
 
 <script lang="ts">
+  import InfoTip from "$lib/components/InfoTip.svelte";
   import { openPreview } from "$lib/rules/preview.svelte";
   import { strings } from "$lib/strings";
 
@@ -41,15 +52,18 @@
     <ul class="items">
       {#each visible as item, i (item.key)}
         {#if item.group && item.group !== visible[i - 1]?.group}<li class="group" aria-hidden="true">{item.group}</li>{/if}
-        <li class="item">
+        {@const on = item.taken || selected.includes(item.key)}
+        <li class="item" class:taken={item.taken}>
           <input
             id="{id}-{i}"
             type="checkbox"
-            checked={selected.includes(item.key)}
-            disabled={full && !selected.includes(item.key)}
+            checked={on}
+            disabled={item.taken || (full && !on)}
             onchange={(e) => toggle(item.key, e.currentTarget.checked)}
           />
           <label for="{id}-{i}" class="name">{item.name}</label>
+          {#if item.tag}<span class="tag" title={item.tag.long}><span aria-hidden="true">{item.tag.short}</span><span class="sr-only">{item.tag.long}</span></span>{/if}
+          {#if on && item.alert}<InfoTip id="{id}-{i}-alert" label={t.preparedTwiceOf(item.name)} text={item.alert} alert />{/if}
           {#if item.note}<span class="note">{item.note}</span>{/if}
           {#if item.preview}
             {@const ref = item.preview}
@@ -152,6 +166,31 @@
     color: var(--color-text-muted);
     font-size: var(--text-xs);
   }
+
+  .tag {
+    flex: none;
+    padding: 0 var(--space-1);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+  }
+
+  /* The note of an already-had spell sits right before its (i). */
+  .taken .note {
+    margin-left: auto;
+  }
+
+  .taken .note + .info {
+    margin-left: 0;
+  }
+
+  .taken .name {
+    color: var(--color-text-muted);
+    cursor: default;
+  }
+
 
   .info {
     flex: none;

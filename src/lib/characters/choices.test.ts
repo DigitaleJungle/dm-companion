@@ -5,7 +5,7 @@ const entry = (name: string, data: Record<string, unknown> = {}, source = "XPHB"
 
 const magicInitiate = entry("Magic Initiate", {
   category: "O",
-  additionalSpells: [{ name: "Wizard Spells", innate: { _: { daily: { "1": [{ choose: "level=1|class=Wizard" }] } } }, known: { _: [{ choose: "level=0|class=Wizard", count: 2 }] } }],
+  additionalSpells: [{ name: "Wizard Spells", ability: { choose: ["int", "wis", "cha"] }, innate: { _: { daily: { "1": [{ choose: "level=1|class=Wizard" }] } } }, known: { _: [{ choose: "level=0|class=Wizard", count: 2 }] } }],
 });
 const pactOfTheTome = entry("Pact of the Tome", {
   featureType: ["EI"],
@@ -94,6 +94,7 @@ describe("picks and what they give", () => {
     const pick = { ...emptyChoice({ name: "Lessons of the First Ones", source: "XPHB" }), feats: [{ ...emptyChoice({ name: "Magic Initiate", source: "XPHB" }) }] };
     expect(choiceComplete(lessons, pick, 2, find)).toBe(false);
     pick.feats[0].spells = [["fire bolt|xphb", "light|xphb"], ["shield|xphb"]];
+    pick.feats[0].ability = "int";
     expect(choiceComplete(lessons, pick, 2, find)).toBe(true);
     const g = resolveChoice(lessons, pick, 2, find, "Lessons of the First Ones");
     expect(g.feats).toEqual([{ name: "Magic Initiate", source: "XPHB", origin: "Lessons of the First Ones" }]);
@@ -121,5 +122,14 @@ describe("picks and what they give", () => {
     // A granted spell found in the library takes its real name and level.
     const named: Lookup = { ...find, spell: (k) => (k === "faerie fire|xphb" ? entry("Faerie Fire", { level: 1 }) : find.spell(k)) };
     expect(resolveChoice(elf, emptyChoice(), 1, named, "Elf").spells[1]).toEqual({ name: "Faerie Fire", source: "XPHB", origin: "Elf", atLevel: 3, level: 1 });
+  });
+
+  it("Magic Initiate asks for its spellcasting ability and gives it to its spells; a given ability needs no pick", () => {
+    const picks = { ...emptyChoice(), spells: [["fire bolt|xphb", "light|xphb"], ["shield|xphb"]] };
+    expect(choiceComplete(magicInitiate, picks, 1, find)).toBe(false);
+    expect(choiceComplete(magicInitiate, { ...picks, ability: "wis" }, 1, find)).toBe(true);
+    expect(resolveChoice(magicInitiate, { ...picks, ability: "wis" }, 1, find, "Magic Initiate").spells.map((s) => s.ability)).toEqual(["wis", "wis", "wis"]);
+    const tome = resolveChoice(pactOfTheTome, { ...emptyChoice(), spells: [["light|xphb"], []] }, 1, find, "Pact of the Tome");
+    expect(tome.spells.map((s) => s.ability)).toEqual(["cha"]);
   });
 });

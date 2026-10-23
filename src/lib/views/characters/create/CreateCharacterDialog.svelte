@@ -111,7 +111,8 @@
   const originFind = $derived(choiceData ? lookup(choiceData) : null);
   const originCtx = $derived.by(() => {
     if (!choiceData) return null;
-    const before = draftCharacter();
+    // With the configured levels, so their spells show as had in the origin's spell lists.
+    const before = withConfiguredLevels(draftCharacter());
     const prereq = { level: draft.level, scores: scores(), feats: before.feats ?? [], optional: [] };
     return choiceContext({ data: choiceData, before, prereq, sources, published, skills });
   });
@@ -418,7 +419,7 @@
   {#if originCtx && backgroundFeat && asks(backgroundFeat)}
     <div class="origin-feat">
       <p class="label-text">{t.originFeat(backgroundFeat.name)}</p>
-      <ChoicePicker id="wizard-background-feat" level={draft.level} entry={backgroundFeat} bind:pick={draft.backgroundFeatChoice} ctx={originCtx} preset={featRef?.preset ?? null} />
+      <ChoicePicker id="wizard-background-feat" level={draft.level} entry={backgroundFeat} bind:pick={draft.backgroundFeatChoice} ctx={originCtx} preset={featRef?.preset ?? null} entryText />
     </div>
   {/if}
 {/snippet}
@@ -670,6 +671,7 @@
     {sources}
     onsave={(next) => {
       draft.levels = next.levels ?? [];
+      draft.level = next.classes[0]?.level ?? draft.level; // Remove level lowers it
       levelsCharacter = next;
     }}
   />
@@ -992,6 +994,7 @@
   }
 
   .origin-feat {
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);

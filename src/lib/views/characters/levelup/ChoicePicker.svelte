@@ -48,6 +48,7 @@
     ctx,
     preset = null,
     showText = true,
+    entryText = false,
   }: {
     id: string;
     label?: string;
@@ -60,6 +61,8 @@
     /** Preselects the spell option with this name ("Drow", "Wizard Spells") and hides the option choice. */
     preset?: string | null;
     showText?: boolean;
+    /** Also show a fixed `entry`'s rules text (a background's feat, which the page around it doesn't show). */
+    entryText?: boolean;
   } = $props();
 
   const t = strings.characters.levelUpDialog;
@@ -95,9 +98,10 @@
     pick = next;
   }
 
-  // The picked entry's rules text (a fixed entry's text is shown by the page around it).
+  // The picked entry's rules text (a fixed entry's text is shown by the page around it, unless `entryText`).
+  const textRow = $derived(candidates ? row : entryText ? (entry as CatalogRow | null) : null);
   $effect(() => {
-    const r = row;
+    const r = textRow;
     text = null;
     textError = null;
     if (r && showText) getEntity(r.id).then((e) => (text = e?.data.entries ?? null)).catch((e) => (textError = errorMessage(e)));
@@ -137,10 +141,17 @@
   {#if candidates && pick.ref && !row}
     <p class="error" role="alert">{t.featMissing(pick.ref.name)}</p>
   {:else if current && choices}
+    {#snippet rulesText()}
+      {#if textError}<p class="error" role="alert">{textError}</p>{:else if text}<Entries entry={text} depth={4} />{:else}<p class="muted">{t.loading}</p>{/if}
+    {/snippet}
     {#if candidates && showText}
-      <div class="text">
-        {#if textError}<p class="error" role="alert">{textError}</p>{:else if text}<Entries entry={text} depth={4} />{:else}<p class="muted">{t.loading}</p>{/if}
-      </div>
+      <div class="text">{@render rulesText()}</div>
+    {:else if entryText && showText && current}
+      <!-- A fixed entry's full text is long (Magic Initiate), so it starts folded. -->
+      <details class="text">
+        <summary>{t.fullText(current.name)}</summary>
+        {@render rulesText()}
+      </details>
     {/if}
 
     {#if choices.target}
@@ -206,6 +217,15 @@
       </label>
     {/if}
     {#if grant}
+      {#if grant.abilities.length > 1}
+        <label class="field">
+          <span class="label-text">{t.spellAbility} <span class="required" aria-hidden="true">*</span></span>
+          <select value={pick.ability ?? ""} onchange={(e) => (pick.ability = e.currentTarget.value || null)}>
+            <option value="">{t.chooseAbility}</option>
+            {#each grant.abilities as a (a)}<option value={a}>{ABILITY_NAMES[a] ?? a.toUpperCase()}</option>{/each}
+          </select>
+        </label>
+      {/if}
       {#if grant.fixed.length}
         <p class="muted">
           {t.alsoLearn(grant.fixed.map((s) => (s.atLevel > 1 ? t.atLevel(titleCase(s.name), String(s.atLevel)) : titleCase(s.name))).join(", "))}
@@ -233,7 +253,9 @@
 </div>
 
 <style>
+  /* Full width, so its spell lists get the same columns as the class spell lists. */
   .choice {
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -270,6 +292,20 @@
 
   .text :global(p) {
     margin-bottom: var(--space-2);
+  }
+
+  summary {
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  details[open] summary {
+    margin-bottom: var(--space-2);
+  }
+
+  summary:focus-visible {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
   }
 
   /* A feat granted by this pick: indented under it. */
