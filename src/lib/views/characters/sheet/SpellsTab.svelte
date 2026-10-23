@@ -29,6 +29,8 @@
   $effect(() => {
     if ((c.spells ?? []).length) sheet.loadSpellDetails();
   });
+  // The features' texts too: one may cast a spell without a slot (Paladin's Smite), which Cast then offers.
+  $effect(() => sheet.features.load());
   const details = $derived(sheet.spellDetails);
   const detailsError = $derived(sheet.spellDetailsError);
   const rowOf = (s: { name: string; source: string }) => sheet.spellDetail(s);

@@ -95,6 +95,12 @@ export type Character = {
   concentrating?: boolean;
   /** The spell being concentrated on, when Cast started it; cleared when concentration ends. */
   concentratingOn?: Ref;
+  /** Uses spent of features, traits and feats (by lowercase name), and how a short rest gives them back. */
+  featureUses?: Record<string, { used: number; short?: "all" | "one" }>;
+  /** A feature's number of uses set by hand, when its text doesn't give one. */
+  featureUsesMax?: Record<string, number>;
+  /** Features ticked on the Features & traits tab to show on the Actions tab (their row keys, e.g. "c:Channel Divinity:3"). */
+  actionFeatures?: string[];
   personality?: string;
   ideals?: string;
   bonds?: string;

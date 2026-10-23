@@ -7,6 +7,7 @@
   import { openPreview } from "$lib/rules/preview.svelte";
   import { plainText } from "$lib/rules/tags";
   import { strings } from "$lib/strings";
+  import FeatureRow from "./FeatureRow.svelte";
   import type { Sheet } from "./sheet.svelte";
 
   // Attacks with the equipped weapons, and the Unarmed Strike.
@@ -72,6 +73,11 @@
     };
   });
   const rows = $derived([...weaponRows, ...(unarmed ? [unarmed] : [])]);
+
+  // The features ticked on the Features & traits tab, under their own heading.
+  const f = $derived(sheet.features);
+  $effect(() => f.load());
+  const features = $derived(f.cards.filter((card) => f.onActions(card)));
 </script>
 
 {#snippet time(cast: { short: string; long: string })}
@@ -82,7 +88,7 @@
   <tr><th scope="colgroup" colspan="6" class="group-name">{title}</th></tr>
 {/snippet}
 
-{#if rows.length === 0}
+{#if rows.length === 0 && features.length === 0}
   <p class="muted">{t.empty}</p>
 {:else}
   <div class="table-wrap">
@@ -130,6 +136,14 @@
           </tr>
         {/each}
       </tbody>
+      {/if}
+      {#if features.length}
+        <tbody>
+          {@render group(t.features)}
+          {#each features as card (card.key)}
+            <FeatureRow {sheet} {card} mode="actions" />
+          {/each}
+        </tbody>
       {/if}
     </table>
   </div>

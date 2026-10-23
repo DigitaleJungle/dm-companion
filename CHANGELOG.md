@@ -3,6 +3,27 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.16] - 2026-10-24
+
+### Added
+
+- Features & traits tab: a table like the Spells tab, with when each is used (A, BA, R), uses to tick off and which rest gives them back
+- Features & traits tab: a checkbox to show a feature on the Actions tab; the popup says where it comes from
+- Feature popups: a Usage section to fill in once (usage, number of uses, rests, time, range, damage, save, draws from), kept app-wide
+- Features that draw from a pool (Turn Undead, Divine Sense, Sacred Weapon from Channel Divinity) tick the pool's uses
+- Cast offers a feature's free cast (Paladin's Smite, Magic Initiate) and ticks its use instead of a slot
+- A long rest gives Heroic Inspiration with the Human's Resourceful
+
+### Changed
+
+- Actions tab: the Weapons group is called Attacks
+
+### Fixed
+
+- Channel Divinity's short rest gives back one use, not all
+- A feature's popup shows that class's feature, not another class's of the same name
+- A background's feat saved with its choice (Magic Initiate (Wizard)) now finds its rules text
+
 ## [0.5.15] - 2026-10-23
 
 ### Added

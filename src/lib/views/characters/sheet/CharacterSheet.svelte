@@ -18,6 +18,7 @@
   import { rollDice } from "$lib/api/dice";
   import { errorMessage } from "$lib/api/storage";
   import { hitDieFaces, hitDieRoll, longRest, shortRest, takeHealing } from "$lib/characters/sheet";
+  import { inspirationOnLongRest } from "$lib/characters/features";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
   import { notify } from "$lib/stores/notifications.svelte";
@@ -125,6 +126,7 @@
       disabled: sheet.readOnly,
       onselect: () => {
         applyRest(sheet.vitals, shortRest(sheet.resources));
+        sheet.restFeatures("short");
         const ended = sheet.endConcentration();
         notify(ended ? `${t.rest.rested.short} ${ended}` : t.rest.rested.short);
       },
@@ -164,8 +166,12 @@
   function takeLongRest() {
     const rested = longRest(sheet.vitals, sheet.resources, sheet.level);
     applyRest(rested.vitals, rested.resources);
+    sheet.restFeatures("long");
+    // A feature like the Human's Resourceful gives Heroic Inspiration on every long rest.
+    const inspiring = sheet.features.cards.find((card) => inspirationOnLongRest(card.text));
+    if (inspiring) sheet.change((x) => (x.inspiration = true));
     const ended = sheet.endConcentration();
-    notify(ended ? `${t.rest.rested.long} ${ended}` : t.rest.rested.long);
+    notify([t.rest.rested.long, inspiring ? t.rest.inspiration(inspiring.name) : null, ended].filter(Boolean).join(" "));
   }
 
   function onTabKeydown(event: KeyboardEvent) {

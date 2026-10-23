@@ -212,7 +212,7 @@ export function lineageFields(versions: unknown, lineage: string | null | undefi
 export type Defenses = { advantages: string[]; advantageNotes: string[]; resist: string[]; immune: string[]; conditionImmune: string[]; vulnerable: string[] };
 
 /** Every string in nested `entries`, in order. */
-function texts(value: unknown): string[] {
+export function texts(value: unknown): string[] {
   if (typeof value === "string") return [value];
   if (Array.isArray(value)) return value.flatMap(texts);
   return texts(obj(value).entries ?? []);

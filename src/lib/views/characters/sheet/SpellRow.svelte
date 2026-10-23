@@ -10,13 +10,28 @@
 
   // One spell as a row of a .sheet-table (the Actions tab's design): name (with C), Time, Range, Hit/DC, Damage and Notes.
   // `after` adds to the name (the (!)); `end` adds cells at the end (the ✕).
-  let { sheet, spell, after, end }: { sheet: Sheet; spell: { name: string; source: string; ability?: string }; after?: Snippet; end?: Snippet } = $props();
+  let { sheet, spell, after, end }: { sheet: Sheet; spell: { name: string; source: string; ability?: string; origin?: string }; after?: Snippet; end?: Snippet } = $props();
 
   const t = strings.characters.sheet.spells;
   const plain = new Intl.NumberFormat();
   const line = $derived(sheet.spellLine(spell));
   // A leveled spell needs a slot of its level or higher; a cantrip none.
-  const options = $derived(line && line.level > 0 ? sheet.castSlotsFor(line.level) : []);
+  const slots = $derived(line && line.level > 0 ? sheet.castSlotsFor(line.level) : []);
+  // A feature may cast it without a slot (Paladin's Smite: Divine Smite once per long rest): offered first.
+  const free = $derived(line && line.level > 0 ? sheet.features.freeCastsFor(spell) : []);
+  type Option = { label: string; title: string; cast: () => void };
+  const options = $derived<Option[]>([
+    ...free.map((f) => ({
+      label: t.cast.freeOption(f.card.name, plain.format(f.max - f.used)),
+      title: t.cast.castWith(spell.name, t.cast.free(f.card.name)),
+      cast: () => {
+        sheet.features.spendFreeCast(f);
+        sheet.cast(spell, null, !!line?.concentration);
+        notify(t.cast.castWith(spell.name, t.cast.free(f.card.name)));
+      },
+    })),
+    ...slots.map((slot) => ({ label: t.cast.option(slotName(slot), plain.format(slot.left)), title: t.cast.castWith(spell.name, slotName(slot)), cast: () => cast(slot) })),
+  ]);
   const noSlot = $derived(!!line && line.level > 0 && options.length === 0);
   const c = $derived(sheet.character);
   const concentratingHere = $derived(!!c?.concentrating && c.concentratingOn?.name === spell.name && c.concentratingOn?.source === spell.source);
@@ -40,7 +55,7 @@
             label={t.cast.label(spell.name)}
             align="start"
             triggerClass="cast"
-            items={options.map((slot) => ({ label: t.cast.option(slotName(slot), plain.format(slot.left)), onselect: () => cast(slot) }))}
+            items={options.map((o) => ({ label: o.label, onselect: o.cast }))}
           >
             {#snippet trigger()}{t.cast.button}{/snippet}
           </Menu>
@@ -50,8 +65,8 @@
             class="cast"
             disabled={noSlot}
             aria-label={t.cast.label(spell.name)}
-            title={noSlot ? t.cast.noSlot : options[0] ? t.cast.castWith(spell.name, slotName(options[0])) : t.cast.label(spell.name)}
-            onclick={() => cast(options[0] ?? null)}
+            title={noSlot ? t.cast.noSlot : (options[0]?.title ?? t.cast.label(spell.name))}
+            onclick={() => (options[0] ? options[0].cast() : cast(null))}
           >{t.cast.button}</button>
         {/if}
       {/if}

@@ -1,7 +1,10 @@
 import { getContext, setContext } from "svelte";
 
-/** What a clicked reference points at. */
-export type Ref = { kind: string; name: string; source?: string };
+/**
+ * What a clicked reference points at; `id`, when known, is the exact entry (several share a name, like the Cleric's
+ * and the Paladin's Channel Divinity). `note` is a line of context the card shows above the entry ("From: Paladin 3").
+ */
+export type Ref = { kind: string; name: string; source?: string; id?: number; note?: string };
 
 /** The open preview card: the references followed inside it (newest last) and where it opened. */
 export const preview = $state({

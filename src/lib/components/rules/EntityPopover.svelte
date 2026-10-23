@@ -1,6 +1,7 @@
 <script lang="ts">
+  import FeatureUsageEditor from "./FeatureUsageEditor.svelte";
   import { tick } from "svelte";
-  import { findEntity, type Entity } from "$lib/api/rules";
+  import { findEntity, getEntity, type Entity } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { closePreview, isPreviewAnchor, preview, previewBack, setPreviewCard } from "$lib/rules/preview.svelte";
   import { strings } from "$lib/strings";
@@ -67,7 +68,7 @@
     let live = true; // ignore a slow answer for a reference we've moved past
     status = "loading";
     entity = null;
-    findEntity(ref.kind, ref.name, ref.source).then(
+    (ref.id !== undefined ? getEntity(ref.id) : findEntity(ref.kind, ref.name, ref.source)).then(
       (found) => {
         if (!live) return;
         entity = found;
@@ -94,6 +95,7 @@
     const target = event.target as Node;
     if (current && card && !card.contains(target) && !isPreviewAnchor(target)) closePreview();
   }
+  const USAGE_KINDS = ["classFeature", "subclassFeature", "feat", "optionalfeature"];
 </script>
 
 <svelte:window onkeydown={onKeydown} onpointerdown={onPointerdown} onresize={() => current && closePreview()} />
@@ -126,7 +128,12 @@
           {#if addError}<p class="error" role="alert">{strings.campaignSettings.error(addError)}</p>{/if}
         </div>
       {/if}
+      {#if current.note}<p class="note">{current.note}</p>{/if}
       <EntityView {entity} compact />
+      <!-- A feature, feat or other pick: how it's used, to fill in once for every character. -->
+      {#if USAGE_KINDS.includes(current.kind)}
+        <FeatureUsageEditor ref={{ kind: current.kind, name: entity.name, source: entity.source }} data={entity.data} />
+      {/if}
     {:else if status === "loading"}
       <p class="muted" role="status">{t.loading}</p>
     {:else if status === "missing"}
@@ -139,6 +146,13 @@
 {/if}
 
 <style>
+  .note {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+
   .card {
     position: fixed;
     z-index: var(--z-menu);

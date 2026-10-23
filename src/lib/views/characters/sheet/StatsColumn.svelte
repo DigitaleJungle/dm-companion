@@ -2,6 +2,7 @@
   import { byExtra, findEntity } from "$lib/api/rules";
   import { ABILITIES, checkBonus, modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
   import { inUse, proficiencyLists, skillEdges, speciesDefenses, type EdgeSource } from "$lib/characters/sheet";
+  import { baseFeatName } from "$lib/characters/features";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
@@ -52,7 +53,7 @@
       const [classFeatures, subFeatures, featRows, itemRows] = await Promise.all([
         m ? byExtra("classFeature", `${m.name}|${m.source}|`) : [],
         m && sub ? byExtra("subclassFeature", `${m.name}|${sub.shortName || sub.name}|`) : [],
-        Promise.all(feats.map(([name, source]) => findEntity("feat", name, source))),
+        Promise.all(feats.map(([name, source]) => findEntity("feat", baseFeatName(name), source))),
         Promise.all(items.map(([name, source]) => findEntity("item", name, source))),
       ]);
       const upTo = (rows: { name: string; data: Record<string, unknown> }[]) => rows.filter((r) => Number(r.data.level ?? 1) <= (m?.level ?? 0)).map((r) => ({ name: r.name, entries: r.data.entries }));

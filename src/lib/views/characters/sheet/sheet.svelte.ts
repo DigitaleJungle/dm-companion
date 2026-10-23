@@ -1,6 +1,8 @@
 import { getCharacter, saveCharacter, type Character } from "$lib/api/characters";
 import { catalogRows, findEntity, type CatalogRow } from "$lib/api/rules";
 import { errorMessage, type StorageError } from "$lib/api/storage";
+import { restUses } from "$lib/characters/features";
+import { SheetFeatures } from "./features.svelte";
 import { scoresWithLevels } from "$lib/characters/levelup";
 import { modifier, proficiencyBonus, type Ability, type Scores } from "$lib/characters/rules";
 import { castSlots, hpOf, pactSlots, spellDice, spellRow, spellSlots, type CastSlot, type Resources, type SpellRow, type Vitals } from "$lib/characters/sheet";
@@ -40,6 +42,8 @@ export class Sheet {
   spellDetails = $state<Map<string, CatalogRow> | null>(null);
   spellDetailsError = $state<string | null>(null);
   #spellsLoading = false;
+  /** Features, traits and feats with their texts, shared by the Features & traits and Actions tabs. */
+  readonly features = new SheetFeatures(this);
 
   #timer: ReturnType<typeof setTimeout> | undefined;
   #dirty = false;
@@ -118,6 +122,10 @@ export class Sheet {
     } catch (e) {
       this.rulesError = strings.characters.sheet.rulesError(errorMessage(e));
     }
+    // Started now, not awaited: the sheet shows at once, and the Spells, Features and Actions tabs find their data
+    // (spell details, feature texts, free casts) ready. Each loads once; the tabs' own calls then do nothing.
+    this.features.load();
+    if ((c.spells ?? []).length) void this.loadSpellDetails();
   }
 
   async loadSpellDetails() {
@@ -136,6 +144,32 @@ export class Sheet {
 
   spellDetail(spell: { name: string; source: string }): CatalogRow | null {
     return this.spellDetails?.get(spellKey(spell)) ?? null;
+  }
+
+  /** Sets how many uses of a feature are spent (0 to `max`); `short` is how a short rest gives them back. */
+  setFeatureUsed(key: string, used: number, max: number, short: "all" | "one" | null) {
+    this.change((x) => {
+      const spent = { ...(x.featureUses ?? {}) };
+      used = Math.min(max, Math.max(0, used));
+      if (used > 0) spent[key] = { used, ...(short ? { short } : {}) };
+      else delete spent[key];
+      x.featureUses = spent;
+    });
+  }
+
+  /** A feature's number of uses, set by hand (its text gives none); 0 clears it. */
+  setFeatureMax(key: string, max: number) {
+    this.change((x) => {
+      const next = { ...(x.featureUsesMax ?? {}) };
+      if (max > 0) next[key] = max;
+      else delete next[key];
+      x.featureUsesMax = next;
+    });
+  }
+
+  /** A short or long rest gives feature uses back (see restUses). */
+  restFeatures(rest: "short" | "long") {
+    this.change((x) => (x.featureUses = restUses(x.featureUses ?? {}, rest)));
   }
 
   /** The slots a spell of this level can be cast with now (see castSlots). */
@@ -198,6 +232,12 @@ export class Sheet {
       notes: listShort.format([[row.v && "V", row.s && "S", row.m && "M"].filter(Boolean).join(", "), ...(row.ritual ? [t.actions.ritual] : [])].filter(Boolean)),
       notesTitle: components(data),
     };
+  }
+
+  /** The class's spell save DC (8 + spellcasting modifier + proficiency); null without spellcasting or scores. */
+  spellSaveDc(): number | null {
+    const ability = typeof this.cls?.spellcastingAbility === "string" ? (this.cls.spellcastingAbility as Ability) : null;
+    return ability && this.scores ? 8 + modifier(this.scores[ability]) + proficiencyBonus(this.level) : null;
   }
 
   /** Hit/DC of a spell: "+5" for an attack, "WIS 13" for a save, "—" otherwise; with its own ability (Magic Initiate's pick), else the class's. */
