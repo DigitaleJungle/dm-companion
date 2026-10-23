@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  skillEdges,
+  skillAdvantages,
+  spellDice,
   spellRow,
   inUse,
   pay,
@@ -294,5 +297,64 @@ describe("spellRow", () => {
     const command = spellRow({ savingThrow: ["wisdom"], conditionInflict: ["prone"] });
     expect([command.save, command.effects]).toEqual(["wis", ["prone"]]);
     expect(spellRow({ meta: { ritual: true }, miscTags: ["HL"] })).toMatchObject({ ritual: true, healing: true });
+  });
+});
+
+describe("spellDice", () => {
+  it("a cantrip's dice scale with the character level", () => {
+    const fireBolt = { scalingLevelDice: { label: "Fire damage", scaling: { "1": "1d10", "5": "2d10", "11": "3d10", "17": "4d10" } }, entries: ["{@damage 1d10}"] };
+    expect([spellDice(fireBolt, 1), spellDice(fireBolt, 5), spellDice(fireBolt, 12)]).toEqual(["1d10", "2d10", "3d10"]);
+    const toll = { scalingLevelDice: [{ scaling: { "1": "1d8", "5": "2d8" } }, { scaling: { "1": "1d12" } }] };
+    expect(spellDice(toll, 6)).toBe("2d8");
+  });
+
+  it("else the first damage roll in its text; healing dice only for a healing spell", () => {
+    expect(spellDice({ entries: ["Deals {@damage 2d8} radiant, plus {@damage 1d8}."] }, 3)).toBe("2d8");
+    expect(spellDice({ entries: ["Regains {@dice 2d8} hit points."], miscTags: ["HL"] }, 3)).toBe("2d8");
+    expect(spellDice({ entries: ["Roll {@dice 1d4}."] }, 3)).toBeNull();
+  });
+});
+
+describe("skillAdvantages", () => {
+  const skills = [
+    { key: "perception", name: "Perception" },
+    { key: "stealth", name: "Stealth" },
+    { key: "sleight of hand", name: "Sleight of Hand" },
+  ];
+  it("finds the skills a text gives advantage on checks for", () => {
+    const entries = [{ entries: ["You have {@b Advantage} on Wisdom ({@skill Perception}) checks that rely on hearing.", "You are proficient in Stealth."] }];
+    expect([...skillAdvantages(entries, skills)]).toEqual(["perception"]);
+    expect([...skillAdvantages(["Advantage on Dexterity (Sleight of Hand) and Stealth checks."], skills)].sort()).toEqual(["sleight of hand", "stealth"]);
+  });
+
+  it("finds disadvantage the same way, and never mixes the two up", () => {
+    const text = ["You have Disadvantage on Dexterity (Stealth) checks.", "You have Advantage on Wisdom (Perception) checks."];
+    expect([...skillAdvantages(text, skills, "disadvantage")]).toEqual(["stealth"]);
+    expect([...skillAdvantages(text, skills)]).toEqual(["perception"]);
+  });
+
+  it("ignores disadvantage and advantage on things other than checks", () => {
+    expect(skillAdvantages(["You have Disadvantage on Dexterity (Stealth) checks."], skills).size).toBe(0);
+    expect(skillAdvantages(["You have Advantage on saving throws while hidden by Stealth."], skills).size).toBe(0);
+  });
+});
+
+describe("skillEdges", () => {
+  const skills = [
+    { key: "perception", name: "Perception" },
+    { key: "stealth", name: "Stealth" },
+  ];
+  it("names the sources of each skill's advantage and disadvantage, armor's Stealth flag included", () => {
+    const edges = skillEdges(
+      [
+        { name: "Elf", entries: ["You have Advantage on Wisdom (Perception) checks."] },
+        { name: "Cloak of Elvenkind", entries: ["You have Advantage on Dexterity (Stealth) checks."] },
+        { name: "Chain Mail", stealth: true },
+        { name: "Alert", entries: ["Advantage on Wisdom (Perception) checks."] },
+      ],
+      skills,
+    );
+    expect(Object.fromEntries(edges.advantage)).toEqual({ perception: ["Elf", "Alert"], stealth: ["Cloak of Elvenkind"] });
+    expect(Object.fromEntries(edges.disadvantage)).toEqual({ stealth: ["Chain Mail"] });
   });
 });

@@ -403,3 +403,53 @@ export function spellRow(spell: Data): SpellRow {
     m: !!parts.m,
   };
 }
+
+/**
+ * A spell's damage dice (healing dice for a healing spell) at a character level: a cantrip's from its scaling table,
+ * else the first damage roll in its text. Null when it has none.
+ */
+export function spellDice(spell: Data, level: number): string | null {
+  const scaling = obj(list(spell.scalingLevelDice)[0] ?? spell.scalingLevelDice).scaling;
+  const steps = Object.entries(obj(scaling))
+    .map(([at, dice]) => [Number(at), String(dice)] as const)
+    .filter(([at]) => at <= level)
+    .sort((a, b) => b[0] - a[0]);
+  if (steps.length) return steps[0][1];
+  const text = JSON.stringify(spell.entries ?? []);
+  const roll = (tag: string) => new RegExp(`\\{@${tag} ([^}|]+)`).exec(text)?.[1] ?? null;
+  return roll("damage") ?? (list(spell.miscTags).includes("HL") ? roll("dice") : null);
+}
+
+/**
+ * The skills (keys) that rules text gives advantage (or disadvantage) on: a sentence with that word and "check" that
+ * names the skill, e.g. "You have Advantage on Wisdom (Perception) checks". The one word never matches the other.
+ */
+// shortcut: found by wording, like the save advantages; a structured field in the data would replace this.
+export function skillAdvantages(entries: unknown[], skills: { key: string; name: string }[], kind: "advantage" | "disadvantage" = "advantage"): Set<string> {
+  const word = new RegExp(`\\b${kind}\\b`, "i");
+  const sentences = texts(entries)
+    .flatMap((text) => plainText(text).split(/(?<=\.)\s+/))
+    .filter((s) => word.test(s) && /\bchecks?\b/i.test(s));
+  // Skill names are plain words ("Sleight of Hand"), safe in a pattern as they are.
+  const named = (s: string, name: string) => new RegExp(`\\b${name}\\b`, "i").test(s);
+  return new Set(skills.filter((k) => sentences.some((s) => named(s, k.name))).map((k) => k.key));
+}
+
+/** Something that can give advantage or disadvantage on skills: a species, feat, feature or item, with its rules text. */
+export type EdgeSource = { name: string; entries?: unknown; stealth?: boolean };
+
+/**
+ * For each skill (key), the sources that give it advantage, and the ones that give it disadvantage. Armor whose data
+ * marks Stealth (`stealth`) gives disadvantage on Stealth checks.
+ */
+export function skillEdges(sources: EdgeSource[], skills: { key: string; name: string }[]): Record<"advantage" | "disadvantage", Map<string, string[]>> {
+  const result = { advantage: new Map<string, string[]>(), disadvantage: new Map<string, string[]>() };
+  const add = (kind: "advantage" | "disadvantage", key: string, name: string) => result[kind].set(key, [...new Set([...(result[kind].get(key) ?? []), name])]);
+  for (const source of sources) {
+    for (const kind of ["advantage", "disadvantage"] as const) {
+      for (const key of skillAdvantages([source.entries], skills, kind)) add(kind, key, source.name);
+    }
+    if (source.stealth && skills.some((s) => s.key === "stealth")) add("disadvantage", "stealth", source.name);
+  }
+  return result;
+}

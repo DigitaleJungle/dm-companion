@@ -2,14 +2,19 @@ import { getCharacter, saveCharacter, type Character } from "$lib/api/characters
 import { catalogRows, findEntity, type CatalogRow } from "$lib/api/rules";
 import { errorMessage, type StorageError } from "$lib/api/storage";
 import { scoresWithLevels } from "$lib/characters/levelup";
-import { type Ability, type Scores } from "$lib/characters/rules";
-import { hpOf, type Resources, type Vitals } from "$lib/characters/sheet";
+import { modifier, proficiencyBonus, type Ability, type Scores } from "$lib/characters/rules";
+import { hpOf, type Resources, type SpellRow, type Vitals } from "$lib/characters/sheet";
 import { strings } from "$lib/strings";
 
 type Data = Record<string, unknown>;
 export type Skill = { key: string; name: string; ability: Ability };
 
 const SAVE_DELAY_MS = 500;
+/** The spell fields the Spells and Actions tabs read (see spellRow and spellDice). */
+const SPELL_KEYS = ["level", "time", "range", "components", "duration", "meta", "spellAttack", "savingThrow", "damageInflict", "conditionInflict", "miscTags", "scalingLevelDice", "entries"];
+export const spellKey = (s: { name: string; source: string }) => `${s.name}|${s.source}`.toLowerCase();
+const plain = new Intl.NumberFormat();
+const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
 
 /** One open character sheet: the file, the rules entries it refers to, and saving every change shortly after it's made. */
 export class Sheet {
@@ -29,6 +34,10 @@ export class Sheet {
   properties = $state<Record<string, string>>({});
   conditions = $state<CatalogRow[]>([]);
   rulesError = $state<string | null>(null);
+  /** Spells' rules data by "name|source" key, for the Spells and Actions tabs; loaded once, on first use. */
+  spellDetails = $state<Map<string, CatalogRow> | null>(null);
+  spellDetailsError = $state<string | null>(null);
+  #spellsLoading = false;
 
   #timer: ReturnType<typeof setTimeout> | undefined;
   #dirty = false;
@@ -107,6 +116,36 @@ export class Sheet {
     } catch (e) {
       this.rulesError = strings.characters.sheet.rulesError(errorMessage(e));
     }
+  }
+
+  async loadSpellDetails() {
+    if (this.spellDetails || this.#spellsLoading) return;
+    this.#spellsLoading = true;
+    this.spellDetailsError = null;
+    try {
+      const rows = await catalogRows("spell", SPELL_KEYS);
+      this.spellDetails = new Map(rows.map((r) => [spellKey(r), r]));
+    } catch (e) {
+      this.spellDetailsError = errorMessage(e);
+    } finally {
+      this.#spellsLoading = false;
+    }
+  }
+
+  spellDetail(spell: { name: string; source: string }): CatalogRow | null {
+    return this.spellDetails?.get(spellKey(spell)) ?? null;
+  }
+
+  /** Hit/DC of a spell: "+5" for an attack, "WIS 13" for a save, "—" otherwise; with its own ability (Magic Initiate's pick), else the class's. */
+  spellHitOrDc(spell: { ability?: string }, row: SpellRow): string {
+    const t = strings.characters.sheet;
+    const classAbility = typeof this.cls?.spellcastingAbility === "string" ? this.cls.spellcastingAbility : null;
+    const own = (spell.ability ?? classAbility) as Ability | null;
+    const mod = own && this.scores ? modifier(this.scores[own]) : null;
+    const pb = proficiencyBonus(this.level);
+    if (row.attack) return mod === null ? t.unknown : signed.format(mod + pb);
+    if (row.save) return t.spells.dc(mod === null ? t.unknown : plain.format(8 + mod + pb), row.save.toUpperCase());
+    return t.spells.none;
   }
 
   /** Applies a change to the character and saves it shortly after. Does nothing for read-only characters. */

@@ -103,7 +103,10 @@
   --sheet-stat-width: 88px;
   --sheet-hp-width: 272px;
   --sheet-hp-amount-width: 108px;
-  --sheet-left-max: 600px;
+  /* The sheet's left column: abilities, saves and senses, then the skills; only as wide as those two, the tabs get the rest. */
+  --sheet-stats-width: 270px;
+  --sheet-skills-width: 270px;
+  --sheet-left-max: calc(var(--sheet-stats-width) + var(--space-5) + var(--sheet-skills-width));
   --spell-data-width: 72px;
   --sheet-bar-height: 10px;
   --sheet-glow-blur: 18px;

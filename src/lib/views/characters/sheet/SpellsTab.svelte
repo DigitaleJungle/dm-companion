@@ -1,15 +1,13 @@
 <script lang="ts">
   import InfoTip from "$lib/components/InfoTip.svelte";
   import { modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { catalogRows, type CatalogRow } from "$lib/api/rules";
-  import { errorMessage } from "$lib/api/storage";
   import { progressionAt, spellSources } from "$lib/characters/levelup";
   import { pactSlots, spellRow, spellSlots, type SpellRow } from "$lib/characters/sheet";
   import { capital, castingTime, components, spellRange } from "$lib/rules/format";
   import { openPreview } from "$lib/rules/preview.svelte";
   import { ordinal } from "$lib/rules/catalog";
   import { strings } from "$lib/strings";
-  import type { Sheet } from "./sheet.svelte";
+  import { spellKey, type Sheet } from "./sheet.svelte";
 
   // Spellcasting numbers, concentration, spell slots, and the spells the character has (picked when leveling up), by level.
   let { sheet }: { sheet: Sheet } = $props();
@@ -28,27 +26,15 @@
   const used = $derived(c.slotsUsed ?? []);
 
   // The table's details (and the level of spells saved without it, fixed spells from a feat) come from the rules data, loaded once.
-  let details = $state<Map<string, CatalogRow> | null>(null);
-  let detailsError = $state<string | null>(null);
-  const spellKey = (s: { name: string; source: string }) => `${s.name}|${s.source}`.toLowerCase();
   $effect(() => {
-    if (details || detailsError || !(c.spells ?? []).length) return;
-    catalogRows("spell", ["level", "time", "range", "components", "duration", "meta", "spellAttack", "savingThrow", "damageInflict", "conditionInflict", "miscTags"])
-      .then((rows) => (details = new Map(rows.map((r) => [spellKey(r), r]))))
-      .catch((e) => (detailsError = errorMessage(e)));
+    if ((c.spells ?? []).length) sheet.loadSpellDetails();
   });
-  const rowOf = (s: { name: string; source: string }) => details?.get(spellKey(s)) ?? null;
+  const details = $derived(sheet.spellDetails);
+  const detailsError = $derived(sheet.spellDetailsError);
+  const rowOf = (s: { name: string; source: string }) => sheet.spellDetail(s);
   const levelOf = (s: NonNullable<typeof c.spells>[number]) => (typeof s.level === "number" ? s.level : Number(rowOf(s)?.data.level ?? -1));
   const sources = $derived(spellSources(c, (cls, level) => tl.classLevel(cls, plain.format(level))));
 
-  // Hit/DC with the spell's own ability (Magic Initiate's pick), else the class's.
-  function hitOrDc(s: NonNullable<typeof c.spells>[number], row: SpellRow): string {
-    const own = (s.ability ?? ability) as Ability | null;
-    const m = own && sheet.scores ? modifier(sheet.scores[own]) : null;
-    if (row.attack) return m === null ? strings.characters.sheet.unknown : signed.format(m + pb);
-    if (row.save) return t.dc(m === null ? strings.characters.sheet.unknown : plain.format(8 + m + pb), row.save.toUpperCase());
-    return t.none;
-  }
   const effectOf = (row: SpellRow) => (row.effects.length ? row.effects.map(capital).join(", ") : row.healing ? t.healing : t.none);
   const componentsOf = (row: SpellRow) => [row.v && "V", row.s && "S", row.m && "M"].filter(Boolean).join(", ");
   const byLevel = $derived.by(() => {
@@ -189,7 +175,7 @@
                       {:else}<span class="cut" title={castingTime(data)}>{castingTime(data)}</span>{/if}
                     </td>
                     <td><span class="cut" title={spellRange(data)}>{spellRange(data)}</span></td>
-                    <td><span class="cut" title={hitOrDc(s, row)}>{hitOrDc(s, row)}</span></td>
+                    <td><span class="cut" title={sheet.spellHitOrDc(s, row)}>{sheet.spellHitOrDc(s, row)}</span></td>
                     <td><span class="cut" title={effectOf(row)}>{effectOf(row)}</span></td>
                     <td><span class="cut" title={components(data)}>{componentsOf(row)}</span></td>
                   {:else}

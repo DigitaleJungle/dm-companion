@@ -49,6 +49,10 @@ export type Character = {
   /** `bonuses`: from species and background; `levelBonuses`: from feats taken at levels (rebuilt from `levels`). */
   abilities?: { method?: string; base: Record<string, number>; bonuses?: Record<string, number>; levelBonuses?: Record<string, number> };
   skills?: string[];
+  /** Advantage on a skill set by hand (keys as in `skills`): true adds it, false takes away one the rules text gives. */
+  skillAdvantage?: Record<string, boolean>;
+  /** The same for disadvantage. Advantage and disadvantage on one skill cancel out. */
+  skillDisadvantage?: Record<string, boolean>;
   savingThrows?: string[];
   /**
    * Below, items with `gained` (the class level they came from) are rebuilt from `levels`; `origin` names where an

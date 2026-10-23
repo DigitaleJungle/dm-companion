@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { byExtra, findEntity } from "$lib/api/rules";
   import { ABILITIES, checkBonus, modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { proficiencyLists, speciesDefenses } from "$lib/characters/sheet";
+  import { inUse, proficiencyLists, skillEdges, speciesDefenses, type EdgeSource } from "$lib/characters/sheet";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
@@ -27,6 +28,60 @@
       bonus: scores ? checkBonus(scores[s.ability] ?? 10, proficient.has(s.key), pb) + (expert.has(s.key) ? pb : 0) : null,
     })),
   );
+  // Advantage and disadvantage on skills come from the species, feats, class and subclass features up to the level and
+  // the items in use (their text, or armor's Stealth flag); those are fixed. Others can be set by hand on the sheet.
+  // The sources are loaded again when the class, feats or items in use change.
+  let loaded = $state<EdgeSource[]>([]);
+  const main = $derived(sheet.character?.classes[0]);
+  // As text, so the effect below only runs again when the list really changes.
+  const featKeys = $derived(JSON.stringify((sheet.character?.feats ?? []).map((f) => [f.name, f.source])));
+  // An item that needs attunement only counts once attuned.
+  const itemKeys = $derived(
+    JSON.stringify(
+      (sheet.character?.inventory ?? []).filter((i) => i.source && inUse(i) && (!i.attunement || i.attuned)).map((i) => [i.name, i.source]),
+    ),
+  );
+  $effect(() => {
+    const m = main;
+    const refs = (keys: string) => JSON.parse(keys) as [string, string][];
+    const feats = refs(featKeys);
+    const items = refs(itemKeys);
+    const lower = (s: string) => s.toLowerCase();
+    (async () => {
+      const sub = m?.subclass;
+      const [classFeatures, subFeatures, featRows, itemRows] = await Promise.all([
+        m ? byExtra("classFeature", `${m.name}|${m.source}|`) : [],
+        m && sub ? byExtra("subclassFeature", `${m.name}|${sub.shortName || sub.name}|`) : [],
+        Promise.all(feats.map(([name, source]) => findEntity("feat", name, source))),
+        Promise.all(items.map(([name, source]) => findEntity("item", name, source))),
+      ]);
+      const upTo = (rows: { name: string; data: Record<string, unknown> }[]) => rows.filter((r) => Number(r.data.level ?? 1) <= (m?.level ?? 0)).map((r) => ({ name: r.name, entries: r.data.entries }));
+      loaded = [
+        ...upTo(classFeatures),
+        ...upTo(subFeatures.filter((r) => lower(String(r.data.subclassSource ?? "")) === lower(sub?.source ?? ""))),
+        ...featRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries }] : [])),
+        ...itemRows.flatMap((e) => (e ? [{ name: e.name, entries: e.data.entries, stealth: e.data.stealth === true }] : [])),
+      ];
+    })().catch(() => (loaded = [])); // without them, only the species and the hand-set ones count
+  });
+  type Edge = "advantage" | "disadvantage";
+  const EDGES: Edge[] = ["advantage", "disadvantage"];
+  const handSet = { advantage: "skillAdvantage", disadvantage: "skillDisadvantage" } as const;
+  const fixed = $derived(skillEdges([...(sheet.species ? [{ name: sheet.character?.species?.name ?? "", entries: sheet.species.entries }] : []), ...loaded], sheet.skills));
+  const sourcesOf = (edge: Edge, key: string) => fixed[edge].get(key) ?? [];
+  const has = (edge: Edge, key: string) => sourcesOf(edge, key).length > 0 || sheet.character?.[handSet[edge]]?.[key] === true;
+  // Both on one skill cancel out: neither applies.
+  const cancelled = (key: string) => has("advantage", key) && has("disadvantage", key);
+  // Only one without a source can be set by hand.
+  function toggle(edge: Edge, key: string) {
+    sheet.change((x) => {
+      const next = { ...(x[handSet[edge]] ?? {}) };
+      if (next[key] === true) delete next[key];
+      else next[key] = true;
+      x[handSet[edge]] = next;
+    });
+  }
+
   const passive = (key: string, ability: Ability) => {
     const bonus = skillRows.find((s) => s.key === key)?.bonus ?? (scores ? modifier(scores[ability]) : null);
     return bonus === null ? t.unknown : plain.format(10 + bonus);
@@ -113,7 +168,32 @@
           {#each skillRows as skill (skill.key)}
             <li class="line skill">
               <span class="dot" class:on={skill.proficient} class:expert={skill.expert} aria-hidden="true"></span>
-              <span class="grow">{skill.name}{#if skill.expert}<span class="sr-only"> ({t.expertise})</span>{:else if skill.proficient}<span class="sr-only"> ({t.proficient})</span>{/if}</span>
+              <span class="grow skill-name">
+                {skill.name}{#if skill.expert}<span class="sr-only"> ({t.expertise})</span>{:else if skill.proficient}<span class="sr-only"> ({t.proficient})</span>{/if}
+                {#each EDGES as edge (edge)}
+                  {@const e = t.edges[edge]}
+                  {@const on = has(edge, skill.key)}
+                  {@const off = cancelled(skill.key)}
+                  {@const from = sourcesOf(edge, skill.key)}
+                  {@const what = from.length ? e.from(skill.name, list.format(from)) : on ? e.byHand(skill.name) : e.toggle(skill.name)}
+                  {@const title = off ? `${t.edges.cancel(skill.name)} ${what}` : what}
+                  <!-- One that comes from a source is fixed: shown, not a toggle. -->
+                  {#if sheet.readOnly || from.length}
+                    {#if on}<span class="edge {edge}" class:on={!off} class:cancelled={off} {title}><span aria-hidden="true">{e.short}</span><span class="sr-only">({title})</span></span>{/if}
+                  {:else}
+                    <button
+                      type="button"
+                      class="edge {edge}"
+                      class:on={on && !off}
+                      class:cancelled={off}
+                      aria-pressed={on}
+                      aria-label={e.toggle(skill.name)}
+                      {title}
+                      onclick={() => toggle(edge, skill.key)}
+                    ><span aria-hidden="true">{e.short}</span></button>
+                  {/if}
+                {/each}
+              </span>
               <span class="muted small">{skill.ability.toUpperCase()}</span>
               <b class="bonus">{skill.bonus === null ? t.unknown : signed.format(skill.bonus)}</b>
             </li>
@@ -183,14 +263,21 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Abilities, saves and senses take the room; the skills box is a fixed width beside them (below them when narrow). */
   .split {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(10 * var(--space-6))), 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--space-5);
-    align-items: start;
+    align-items: flex-start;
+  }
+
+  .split > .skills {
+    flex: none;
+    width: min(100%, var(--sheet-skills-width));
   }
 
   .stack {
+    flex: 1 1 calc(10 * var(--space-6));
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -260,6 +347,66 @@
   .dot.on {
     border-color: var(--color-text);
     background: var(--color-text);
+  }
+
+  .skill-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* Advantage: a green dot with a white A; disadvantage a red one with a D. Off, the toggles only show on hover or focus. */
+  .edge {
+    display: inline-grid;
+    place-items: center;
+    width: var(--space-4);
+    height: var(--space-4);
+    padding: 0;
+    border: var(--border-width) dashed var(--color-text-muted);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .skill:hover .edge,
+  .edge:focus-visible,
+  .edge.on,
+  .edge.cancelled {
+    opacity: 1;
+  }
+
+  .edge.on {
+    border: none;
+    color: var(--color-accent-text);
+  }
+
+  .advantage.on {
+    background: var(--color-success-fill);
+  }
+
+  .disadvantage.on {
+    background: var(--color-danger-fill);
+  }
+
+  /* Both: they cancel out, so each shows only as its colored outline. */
+  .advantage.cancelled {
+    border: var(--border-width) solid var(--color-success);
+    color: var(--color-success);
+  }
+
+  .disadvantage.cancelled {
+    border: var(--border-width) solid var(--color-danger);
+    color: var(--color-danger);
+  }
+
+  .edge:focus-visible {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
   }
 
   /* Expertise: the filled dot with a ring around it. */
