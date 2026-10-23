@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { Gains, LevelRecord, SavedChoice } from "$lib/characters/levelup";
 import type { Weapon } from "$lib/characters/sheet";
 
@@ -6,7 +6,8 @@ import type { Weapon } from "$lib/characters/sheet";
 export type Subclass = { name: string; shortName: string; source: string };
 export type ClassLevel = { name: string; source: string; level: number; subclass?: Subclass };
 /** `campaignId` is null for a character without a campaign. */
-export type CharacterCard = { campaignId: string | null; archived: boolean; id: string; name: string; classes: ClassLevel[] };
+/** `avatar`: the character's own picture as a `data:image/…` URL, when it has one. */
+export type CharacterCard = { campaignId: string | null; archived: boolean; id: string; name: string; classes: ClassLevel[]; avatar?: string };
 export type CharacterList = { characters: CharacterCard[]; unreadable: string[] };
 
 type Ref = { name: string; source: string };
@@ -36,6 +37,8 @@ export type Character = {
   createdAt?: number;
   name: string;
   player?: string;
+  /** The character's own picture, downsized, as a `data:image/…` URL. */
+  avatar?: string;
   species?: Ref & { lineage?: string; subspecies?: Ref; size?: string };
   classes: ClassLevel[];
   background?: Ref;
@@ -123,4 +126,20 @@ export function deleteCharacter(campaign: string | null, id: string): Promise<vo
 /** Copies a character into another active campaign under a new id. */
 export function copyCharacter(fromCampaign: string | null, id: string, toCampaign: string): Promise<CharacterCard> {
   return invoke("copy_character", { fromCampaign, id, toCampaign });
+}
+
+/** A URL for the character's original picture, or null when only the small copy in the file exists. */
+export async function characterAvatar(campaign: string | null, id: string): Promise<string | null> {
+  const path = await invoke<string | null>("character_avatar", { campaign, id });
+  return path ? convertFileSrc(path) : null;
+}
+
+/** Keeps the original of a picked picture beside the character's file (sent as raw bytes; pictures are too big for JSON). */
+export async function saveCharacterAvatar(campaign: string | null, id: string, file: File): Promise<void> {
+  const ext = (file.name.split(".").pop() ?? "").toLowerCase() || file.type.split("/")[1] || "png";
+  await invoke("save_character_avatar", new Uint8Array(await file.arrayBuffer()), { headers: { campaign: campaign ?? "", id, ext } });
+}
+
+export function removeCharacterAvatar(campaign: string | null, id: string): Promise<void> {
+  return invoke("remove_character_avatar", { campaign, id });
 }

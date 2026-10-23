@@ -27,17 +27,27 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Writes atomically: temp file, flush to disk, rename over the old file. A crash leaves either the old or the new file.
 pub fn write_atomic(path: &Path, contents: &str) -> Result<(), StorageError> {
+    write_through(path, &path.with_extension("json.tmp"), contents.as_bytes())
+}
+
+/// `write_atomic` for any bytes (a picture); the temp file is the name plus ".tmp".
+pub fn write_atomic_bytes(path: &Path, contents: &[u8]) -> Result<(), StorageError> {
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
+    write_through(path, Path::new(&tmp), contents)
+}
+
+fn write_through(path: &Path, tmp: &Path, contents: &[u8]) -> Result<(), StorageError> {
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let tmp = path.with_extension("json.tmp");
     {
-        let mut file = fs::File::create(&tmp)?;
-        file.write_all(contents.as_bytes())?;
+        let mut file = fs::File::create(tmp)?;
+        file.write_all(contents)?;
         file.sync_all()?;
     }
-    fs::rename(&tmp, path)?;
+    fs::rename(tmp, path)?;
     Ok(())
 }
 

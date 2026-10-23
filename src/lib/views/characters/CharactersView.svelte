@@ -199,7 +199,7 @@
         <ul class="grid">
           {#each shown as character (`${character.campaignId}/${character.id}`)}
             <li class="card">
-              <CharacterAvatar candidates={avatarCandidates(character.classes)} alt={character.name} />
+              <CharacterAvatar own={character.avatar} candidates={avatarCandidates(character.classes)} alt={character.name} />
               <div class="info">
                 <h2 class="name"><a class="card-link" href={sheetHref(character)} aria-label={t.open(character.name)}>{character.name}</a></h2>
                 <p>{character.classes.length ? classLine(character.classes) : t.noClass}</p>

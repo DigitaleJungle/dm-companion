@@ -67,6 +67,8 @@ function blank() {
     reached: 0,
     name: "",
     player: "",
+    /** The character's own picture (a downsized data URL), or null for the class art. */
+    avatar: null as string | null,
     /** null: no campaign, every book. */
     campaignId: null as string | null,
     species: null as CatalogRow | null,
@@ -381,6 +383,8 @@ export function toCharacter() {
   return {
     name: draft.name.trim(),
     player: draft.player.trim(),
+    // Always set, so removing the picture while editing clears the saved one.
+    avatar: draft.avatar ?? undefined,
     species: {
       name: draft.species!.name,
       source: draft.species!.source,
@@ -430,6 +434,7 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
   draft.editing = true;
   draft.name = c.name;
   draft.player = c.player ?? "";
+  draft.avatar = c.avatar ?? null;
   draft.campaignId = campaignId;
   draft.species = options.species.find((r) => same(r, c.species)) ?? null;
   draft.lineage = c.species?.lineage ?? null;

@@ -5,6 +5,7 @@
   import { DEATH_SAVES, armorClass, deathStatus, setTemp, takeDamage, takeHealing, type Vitals } from "$lib/characters/sheet";
   import { strings } from "$lib/strings";
   import CharacterAvatar from "../CharacterAvatar.svelte";
+  import AvatarViewer from "./AvatarViewer.svelte";
   import { avatarCandidates, classLine } from "../format";
   import type { Sheet } from "./sheet.svelte";
 
@@ -17,6 +18,7 @@
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
 
   const c = $derived(sheet.character!);
+  let viewing = $state(false);
   const scores = $derived(sheet.scores);
   const vitals = $derived(sheet.vitals);
   const status = $derived(vitals.hp.current === 0 ? deathStatus(vitals.deathSaves) : null);
@@ -87,9 +89,10 @@
 </script>
 
 <section class="card" class:concentrating={!!c.concentrating} aria-label={c.name}>
-  <div class="avatar" class:inspired={!!c.inspiration}>
-    <CharacterAvatar candidates={avatarCandidates(c.classes)} alt={c.name} />
-  </div>
+  <button class="avatar" class:inspired={!!c.inspiration} aria-label={t.viewAvatar(c.name)} title={t.viewAvatar(c.name)} onclick={() => (viewing = true)}>
+    <CharacterAvatar own={c.avatar} candidates={avatarCandidates(c.classes)} alt={c.name} />
+  </button>
+  <AvatarViewer bind:open={viewing} campaign={sheet.campaign} id={sheet.id} name={c.name} own={c.avatar ?? null} candidates={avatarCandidates(c.classes)} />
 
   <div class="who">
     <h1>{c.name}</h1>
@@ -261,6 +264,9 @@
 
   .avatar {
     flex: none;
+    padding: 0;
+    background: none;
+    cursor: zoom-in;
     --avatar-size: var(--sheet-avatar-size);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-lg);

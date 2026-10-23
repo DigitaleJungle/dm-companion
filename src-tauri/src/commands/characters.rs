@@ -3,7 +3,7 @@
 //! Fields this module doesn't know are kept as they are.
 
 use super::campaigns::{check_id, now_ms, Dirs};
-use crate::storage::{to_json, write_atomic, StorageError};
+use crate::storage::{write_atomic_bytes, to_json, write_atomic, StorageError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -40,6 +40,8 @@ struct Summary {
     name: String,
     #[serde(default)]
     classes: Vec<ClassLevel>,
+    #[serde(default)]
+    avatar: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -51,7 +53,13 @@ pub struct CharacterCard {
     pub id: String,
     pub name: String,
     pub classes: Vec<ClassLevel>,
+    /// The character's own picture, as a `data:image/…` URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
 }
+
+/// An avatar is a small picture kept in the file itself (the app downsizes it first); anything else is refused.
+const MAX_AVATAR_LEN: usize = 512 * 1024;
 
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -81,7 +89,7 @@ fn read_folder(folder: &Path, campaign_id: Option<&str>, archived: bool, list: &
         }
         let parsed = fs::read_to_string(&path).ok().and_then(|text| serde_json::from_str::<Summary>(&text).ok());
         match parsed {
-            Some(c) => list.characters.push(CharacterCard { campaign_id: campaign_id.map(str::to_string), archived, id: c.id, name: c.name, classes: c.classes }),
+            Some(c) => list.characters.push(CharacterCard { campaign_id: campaign_id.map(str::to_string), archived, id: c.id, name: c.name, classes: c.classes, avatar: c.avatar }),
             None => {
                 let file = path.file_name().unwrap_or_default().to_string_lossy();
                 list.unreadable.push(match campaign_id {
@@ -140,7 +148,7 @@ fn write_new(folder: &Path, campaign: Option<&str>, mut value: Value, now: u64) 
     value["id"] = Value::String(id.clone());
     let summary: Summary = serde_json::from_value(value.clone()).map_err(|e| StorageError::Invalid(format!("The character is incomplete: {e}")))?;
     write_atomic(&folder.join(format!("{id}.json")), &to_json(&value)?)?;
-    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id, name: summary.name, classes: summary.classes })
+    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id, name: summary.name, classes: summary.classes, avatar: summary.avatar })
 }
 
 /// The character's fields with a trimmed, valid name, or why it can't be saved.
@@ -156,6 +164,11 @@ fn checked_fields(character: &mut Value) -> Result<&mut serde_json::Map<String, 
         return Err(StorageError::Invalid(format!("Keep the name under {MAX_NAME_LEN} characters.")));
     }
     fields.insert("name".into(), Value::String(name));
+    match fields.get("avatar") {
+        None | Some(Value::Null) => {}
+        Some(Value::String(a)) if a.starts_with("data:image/") && a.len() <= MAX_AVATAR_LEN => {}
+        Some(_) => return Err(StorageError::Invalid("The avatar must be a picture of at most 512 KB.".into())),
+    }
     Ok(fields)
 }
 
@@ -216,7 +229,7 @@ pub fn save(places: &Places, campaign: Option<&str>, id: &str, mut character: Va
     };
     let summary: Summary = serde_json::from_value(character.clone()).map_err(|e| StorageError::Invalid(format!("The character is incomplete: {e}")))?;
     write_atomic(&path, &to_json(&character)?)?;
-    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id: summary.id, name: summary.name, classes: summary.classes })
+    Ok(CharacterCard { campaign_id: campaign.map(str::to_string), archived: false, id: summary.id, name: summary.name, classes: summary.classes, avatar: summary.avatar })
 }
 
 /// Permanently deletes a character. Characters in an archived campaign stay as they are until it's restored.
@@ -225,7 +238,59 @@ pub fn delete(places: &Places, campaign: Option<&str>, id: &str) -> Result<(), S
     if archived {
         return Err(StorageError::Invalid("This character's campaign is archived. Restore the campaign to delete the character.".into()));
     }
+    for avatar in avatar_files(&path) {
+        fs::remove_file(avatar)?;
+    }
     fs::remove_file(path)?;
+    Ok(())
+}
+
+// --- The original avatar picture: `<id>.avatar.<ext>` next to the character's file -------------------------
+
+const AVATAR_TYPES: [&str; 5] = ["png", "jpg", "jpeg", "webp", "gif"];
+const MAX_AVATAR_FILE: usize = 20 * 1024 * 1024;
+
+/// The original pictures saved for the character whose file is `json` (at most one, in practice).
+fn avatar_files(json: &Path) -> Vec<PathBuf> {
+    let (Some(dir), Some(id)) = (json.parent(), json.file_stem().and_then(|s| s.to_str())) else { return Vec::new() };
+    AVATAR_TYPES.iter().map(|ext| dir.join(format!("{id}.avatar.{ext}"))).filter(|p| p.exists()).collect()
+}
+
+/// Where the character's original picture is, if it has one.
+pub fn avatar_path(places: &Places, campaign: Option<&str>, id: &str) -> Result<Option<PathBuf>, StorageError> {
+    let (path, _) = existing_file(places, campaign, id)?;
+    Ok(avatar_files(&path).into_iter().next())
+}
+
+/// Keeps the original of the character's picture (the file keeps only a small copy), replacing any earlier one.
+pub fn save_avatar(places: &Places, campaign: Option<&str>, id: &str, bytes: &[u8], ext: &str) -> Result<PathBuf, StorageError> {
+    let (path, archived) = existing_file(places, campaign, id)?;
+    if archived {
+        return Err(StorageError::Invalid("This character's campaign is archived. Restore the campaign to change the character.".into()));
+    }
+    let ext = ext.to_ascii_lowercase();
+    if !AVATAR_TYPES.contains(&ext.as_str()) {
+        return Err(StorageError::Invalid("Use a PNG, JPG, WebP or GIF picture.".into()));
+    }
+    if bytes.is_empty() || bytes.len() > MAX_AVATAR_FILE {
+        return Err(StorageError::Invalid("The picture must be at most 20 MB.".into()));
+    }
+    for old in avatar_files(&path) {
+        fs::remove_file(old)?;
+    }
+    let target = path.with_file_name(format!("{id}.avatar.{ext}"));
+    write_atomic_bytes(&target, bytes)?;
+    Ok(target)
+}
+
+pub fn remove_avatar(places: &Places, campaign: Option<&str>, id: &str) -> Result<(), StorageError> {
+    let (path, archived) = existing_file(places, campaign, id)?;
+    if archived {
+        return Err(StorageError::Invalid("This character's campaign is archived. Restore the campaign to change the character.".into()));
+    }
+    for old in avatar_files(&path) {
+        fs::remove_file(old)?;
+    }
     Ok(())
 }
 
@@ -237,7 +302,13 @@ pub fn copy(places: &Places, from_campaign: Option<&str>, id: &str, to_campaign:
     }
     let folder = target_folder(places, Some(to_campaign))?;
     let (source, _) = existing_file(places, from_campaign, id)?;
-    write_new(&folder, Some(to_campaign), read_value(&source)?, now)
+    let card = write_new(&folder, Some(to_campaign), read_value(&source)?, now)?;
+    // The copy gets its own copy of the original picture.
+    if let Some(avatar) = avatar_files(&source).into_iter().next() {
+        let ext = avatar.extension().and_then(|e| e.to_str()).unwrap_or("png");
+        fs::copy(&avatar, folder.join(format!("{}.avatar.{ext}", card.id)))?;
+    }
+    Ok(card)
 }
 
 fn places(app: &AppHandle) -> Result<Places, StorageError> {
@@ -273,6 +344,30 @@ pub async fn delete_character(app: AppHandle, campaign: Option<String>, id: Stri
 #[tauri::command]
 pub async fn copy_character(app: AppHandle, from_campaign: Option<String>, id: String, to_campaign: String) -> Result<CharacterCard, StorageError> {
     copy(&places(&app)?, from_campaign.as_deref(), &id, &to_campaign, now_ms())
+}
+
+/// Where the character's original picture is, as a path the window can show through the asset protocol.
+#[tauri::command]
+pub async fn character_avatar(app: AppHandle, campaign: Option<String>, id: String) -> Result<Option<String>, StorageError> {
+    Ok(avatar_path(&places(&app)?, campaign.as_deref(), &id)?.map(|p| p.to_string_lossy().into_owned()))
+}
+
+/// Saves the original picture. The body is the raw bytes (pictures are too big for JSON); `campaign` (empty for
+/// none), `id` and `ext` come as headers.
+#[tauri::command]
+pub async fn save_character_avatar(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<String, StorageError> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err(StorageError::Invalid("The picture didn't arrive.".into()));
+    };
+    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let campaign = Some(header("campaign")).filter(|c| !c.is_empty());
+    let path = save_avatar(&places(&app)?, campaign.as_deref(), &header("id"), bytes, &header("ext"))?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub async fn remove_character_avatar(app: AppHandle, campaign: Option<String>, id: String) -> Result<(), StorageError> {
+    remove_avatar(&places(&app)?, campaign.as_deref(), &id)
 }
 
 #[cfg(test)]
@@ -359,7 +454,43 @@ mod tests {
         assert!(matches!(create(&p, None, json!({ "name": "T", "classes": "Fighter" }), 1), Err(StorageError::Invalid(_))));
         assert!(matches!(create(&p, Some("old"), json!({ "name": "T" }), 1), Err(StorageError::Invalid(_))));
         assert!(matches!(create(&p, Some("../x"), json!({ "name": "T" }), 1), Err(StorageError::Invalid(_))));
+        // An avatar must be a small embedded picture.
+        assert!(matches!(create(&p, None, json!({ "name": "T", "avatar": "https://example.com/a.png" }), 1), Err(StorageError::Invalid(_))));
+        let huge = format!("data:image/webp;base64,{}", "A".repeat(MAX_AVATAR_LEN));
+        assert!(matches!(create(&p, None, json!({ "name": "T", "avatar": huge }), 1), Err(StorageError::Invalid(_))));
         assert!(!p.loose.exists());
+    }
+
+    #[test]
+    fn the_original_picture_is_kept_beside_the_file_and_follows_copy_and_delete() {
+        let p = temp_places("avatar-file");
+        campaign(&p.campaigns.active, "a");
+        let card = create(&p, None, json!({ "name": "Kira" }), 1).unwrap();
+        assert_eq!(avatar_path(&p, None, &card.id).unwrap(), None);
+        let saved = save_avatar(&p, None, &card.id, b"png bytes", "PNG").unwrap();
+        assert_eq!(saved, p.loose.join(format!("{}.avatar.png", card.id)));
+        // A new picture replaces the old one, in any of the allowed types only.
+        save_avatar(&p, None, &card.id, b"jpg bytes", "jpg").unwrap();
+        assert_eq!(avatar_path(&p, None, &card.id).unwrap(), Some(p.loose.join(format!("{}.avatar.jpg", card.id))));
+        assert!(!saved.exists());
+        assert!(matches!(save_avatar(&p, None, &card.id, b"x", "exe"), Err(StorageError::Invalid(_))));
+        assert!(matches!(save_avatar(&p, None, &card.id, b"", "png"), Err(StorageError::Invalid(_))));
+        assert!(matches!(save_avatar(&p, None, "../x", b"x", "png"), Err(StorageError::Invalid(_))));
+
+        let copy = copy(&p, None, &card.id, "a", 2).unwrap();
+        assert_eq!(fs::read(avatar_path(&p, Some("a"), &copy.id).unwrap().unwrap()).unwrap(), b"jpg bytes");
+        delete(&p, None, &card.id).unwrap();
+        assert!(fs::read_dir(&p.loose).unwrap().next().is_none());
+        remove_avatar(&p, Some("a"), &copy.id).unwrap();
+        assert_eq!(avatar_path(&p, Some("a"), &copy.id).unwrap(), None);
+    }
+
+    #[test]
+    fn the_avatar_comes_with_the_card() {
+        let p = temp_places("avatar");
+        let card = create(&p, None, json!({ "name": "Kira", "avatar": "data:image/webp;base64,AAAA" }), 1).unwrap();
+        assert_eq!(card.avatar.as_deref(), Some("data:image/webp;base64,AAAA"));
+        assert_eq!(list(&p).unwrap().characters[0].avatar.as_deref(), Some("data:image/webp;base64,AAAA"));
     }
 
     #[test]

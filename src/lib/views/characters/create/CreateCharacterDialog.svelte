@@ -3,7 +3,8 @@
   import CampaignSettingsDialog from "$lib/components/CampaignSettingsDialog.svelte";
   import InfoTip from "$lib/components/InfoTip.svelte";
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
-  import { createCharacter, saveCharacter, type Character, type CharacterCard } from "$lib/api/characters";
+  import { createCharacter, removeCharacterAvatar, saveCharacter, saveCharacterAvatar, type Character, type CharacterCard } from "$lib/api/characters";
+  import { notify } from "$lib/stores/notifications.svelte";
   import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows, getEntity, type CatalogRow } from "$lib/api/rules";
   import LevelsDialog from "../levelup/LevelsDialog.svelte";
@@ -13,6 +14,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import { entryChoices } from "$lib/characters/choices";
   import LanguagesPicker from "./LanguagesPicker.svelte";
+  import { avatarFrom, clamp01, defaultCrop, type Crop } from "../avatar";
   import { errorMessage } from "$lib/api/storage";
   import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
@@ -191,6 +193,7 @@
   $effect(() => {
     if (open && dialog && !dialog.open) {
       resetDraft();
+      forgetSource();
       loaded = null;
       saveError = null;
       saving = false;
@@ -225,6 +228,98 @@
     heading?.focus();
   }
 
+  // ---- Avatar: a picked picture, cropped where the user drags it, downsized to fit in the character file ----
+  let avatarError = $state<string | null>(null);
+  let avatarImage = $state.raw<ImageBitmap | null>(null);
+  /** The picked file itself, kept full size beside the character once it's saved. */
+  let avatarFile: File | null = null;
+  let avatarUrl = $state<string | null>(null);
+  let crop = $state<Crop>(defaultCrop());
+  let drag: { x: number; y: number; crop: Crop } | null = $state(null);
+
+  function forgetSource() {
+    avatarImage?.close();
+    if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    avatarImage = null;
+    avatarUrl = null;
+    avatarFile = null;
+  }
+
+  async function pickAvatar(e: Event & { currentTarget: HTMLInputElement }) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = "";
+    if (!file) return;
+    avatarError = null;
+    try {
+      const image = await createImageBitmap(file);
+      forgetSource();
+      avatarImage = image;
+      avatarFile = file;
+      avatarUrl = URL.createObjectURL(file);
+      crop = defaultCrop();
+      draft.avatar = avatarFrom(image, crop);
+    } catch {
+      avatarError = t.basics.avatarError;
+    }
+  }
+
+  function removeAvatar() {
+    forgetSource();
+    draft.avatar = null;
+  }
+
+  /**
+   * After the character is saved: keep the original of a newly picked picture beside it (shown full size from the
+   * sheet), or drop the old one when the picture was removed. The character itself is saved either way, so a failure
+   * here only shows a notification.
+   */
+  async function keepOriginal(campaign: string | null, id: string, had: boolean) {
+    try {
+      if (avatarFile && draft.avatar) await saveCharacterAvatar(campaign, id, avatarFile);
+      else if (!draft.avatar && had) await removeCharacterAvatar(campaign, id);
+    } catch (err) {
+      notify(t.basics.originalError(errorMessage(err)));
+    }
+  }
+
+  /** How far the picture overflows the square frame, in pixels on screen, along each axis. */
+  function overflow(frame: HTMLElement) {
+    const size = frame.clientWidth;
+    const w = avatarImage!.width;
+    const h = avatarImage!.height;
+    return { x: w > h ? (size * w) / h - size : 0, y: h > w ? (size * h) / w - size : 0 };
+  }
+
+  function startDrag(e: PointerEvent & { currentTarget: HTMLElement }) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag = { x: e.clientX, y: e.clientY, crop: { ...crop } };
+  }
+
+  function moveDrag(e: PointerEvent & { currentTarget: HTMLElement }) {
+    if (!drag || !avatarImage) return;
+    const over = overflow(e.currentTarget);
+    // Dragging the picture right shows more of its left side.
+    crop = {
+      x: over.x ? clamp01(drag.crop.x - (e.clientX - drag.x) / over.x) : crop.x,
+      y: over.y ? clamp01(drag.crop.y - (e.clientY - drag.y) / over.y) : crop.y,
+    };
+  }
+
+  function endDrag() {
+    if (!drag || !avatarImage) return;
+    drag = null;
+    draft.avatar = avatarFrom(avatarImage, crop);
+  }
+
+  function nudge(e: KeyboardEvent) {
+    const step = 0.05;
+    const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    const move = moves[e.key];
+    if (!move || !avatarImage) return;
+    e.preventDefault();
+    crop = { x: clamp01(crop.x + move[0]), y: clamp01(crop.y + move[1]) };
+    draft.avatar = avatarFrom(avatarImage, crop);
+  }
   // ---- Configure: the levels panel on the character being made ----
   let levelsOpen = $state(false);
   let configuring = $state(false);
@@ -254,11 +349,13 @@
     try {
       if (edit) {
         await saveCharacter(edit.campaign, edit.character.id, editedCharacter(edit.character, originFind ? originRecord(originFind) : undefined));
+        await keepOriginal(edit.campaign, edit.character.id, !!edit.character.avatar);
         open = false;
         onsaved?.();
       } else {
         const made = { ...toCharacter(), ...(await startingInventory(typeName)) };
         const card = await createCharacter(draft.campaignId, withConfiguredLevels({ id: "", ...made, ...(originFind ? { origin: originRecord(originFind) } : {}) } as Character));
+        await keepOriginal(draft.campaignId, card.id, false);
         open = false;
         oncreated?.(card);
       }
@@ -435,6 +532,53 @@
 
           <div class="body">
             {#if step === "basics"}
+              <div class="basics">
+              <div class="avatar-field">
+                <span class="label-text" id="wizard-avatar-label">{t.basics.avatar}</span>
+                <div class="avatar-frame">
+                  {#if avatarImage && avatarUrl}
+                    <!-- Drag (or use the arrow keys) to choose which part of the picture is the avatar. -->
+                    <div
+                      class="avatar-preview draggable"
+                      class:dragging={drag !== null}
+                      role="slider"
+                      tabindex="0"
+                      aria-labelledby="wizard-avatar-label"
+                      aria-valuetext={t.basics.avatarPosition(Math.round(crop.x * 100), Math.round(crop.y * 100))}
+                      aria-valuenow={Math.round((avatarImage.width >= avatarImage.height ? crop.x : crop.y) * 100)}
+                      title={t.basics.dragAvatar}
+                      style:background-image="url({avatarUrl})"
+                      style:background-position="{crop.x * 100}% {crop.y * 100}%"
+                      onpointerdown={startDrag}
+                      onpointermove={moveDrag}
+                      onpointerup={endDrag}
+                      onpointercancel={endDrag}
+                      onkeydown={nudge}
+                    ></div>
+                  {:else}
+                    <div class="avatar-preview">
+                      {#if draft.avatar}
+                        <img src={draft.avatar} alt={t.basics.avatarOf(draft.name.trim() || t.title)} />
+                      {:else}
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+                        </svg>
+                      {/if}
+                    </div>
+                  {/if}
+                  {#if draft.avatar}
+                    <button class="avatar-remove" aria-label={t.basics.removeAvatar} title={t.basics.removeAvatar} onclick={removeAvatar}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" /></svg>
+                    </button>
+                  {/if}
+                </div>
+                <label class="btn small avatar-pick">
+                  {draft.avatar ? t.basics.changeAvatar : t.basics.chooseAvatar}
+                  <input class="sr-only" type="file" accept="image/*" onchange={pickAvatar} />
+                </label>
+                {#if avatarImage}<p class="muted hint center">{t.basics.dragAvatar}</p>{/if}
+                {#if avatarError}<p class="error-text" role="alert">{avatarError}</p>{/if}
+              </div>
               <div class="fields">
                 <label class="field">
                   <span class="label-text">{t.basics.name} <span class="required" aria-hidden="true">*</span></span>
@@ -464,6 +608,7 @@
                   </select>
                   {#if edit}<p id="wizard-campaign-fixed" class="muted hint">{e.campaignFixed}</p>{/if}
                 </div>
+              </div>
               </div>
             {:else if step === "species"}
               <ChoiceList
@@ -699,6 +844,112 @@
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+  }
+
+  .basics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+
+  .avatar-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    width: var(--avatar-pick-size);
+  }
+
+  .avatar-frame {
+    position: relative;
+    width: 100%;
+  }
+
+  .avatar-preview {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-muted);
+  }
+
+  .avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-preview svg {
+    width: 50%;
+    height: 50%;
+  }
+
+  .avatar-preview.draggable {
+    background-repeat: no-repeat;
+    background-size: cover;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .avatar-preview.dragging {
+    cursor: grabbing;
+  }
+
+  .avatar-preview.draggable:focus-visible {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Remove: a red cross on the picture's top corner. */
+  .avatar-remove {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    display: grid;
+    place-items: center;
+    width: var(--control-height-sm);
+    height: var(--control-height-sm);
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-danger-fill);
+    color: var(--color-accent-text);
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+  }
+
+  .avatar-remove:hover {
+    filter: brightness(1.1);
+  }
+
+  .avatar-remove svg {
+    width: var(--space-4);
+    height: var(--space-4);
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .avatar-pick {
+    cursor: pointer;
+  }
+
+  /* The file input is hidden; its label is the button, so keyboard focus shows on the label. */
+  .avatar-pick:focus-within {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .error-text {
+    color: var(--color-danger);
+    font-size: var(--text-xs);
+    text-align: center;
   }
 
   .fields {
