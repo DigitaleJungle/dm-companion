@@ -7,7 +7,7 @@
   import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows, type CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
+  import { gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
@@ -223,16 +223,7 @@
   {/each}
 {/snippet}
 
-{#snippet classLead()}
-  <div class="inline-field">
-    <label class="label-text" for="wizard-level">{t.level.label} <span class="required" aria-hidden="true">*</span></label>
-    <select id="wizard-level" bind:value={draft.level} aria-describedby={draft.level > 1 ? "wizard-level-later" : undefined}>
-      {#each Array.from({ length: MAX_LEVEL }, (_, i) => i + 1) as n (n)}<option value={n}>{plain.format(n)}</option>{/each}
-    </select>
-    {#if draft.level > 1}<p id="wizard-level-later" class="muted hint">{t.level.later}</p>{/if}
-  </div>
-  {@render gearChooser("class", classGear, draft.classGear)}
-{/snippet}
+{#snippet classLead()}{@render gearChooser("class", classGear, draft.classGear)}{/snippet}
 {#snippet backgroundLead()}{@render gearChooser("background", backgroundGear, draft.backgroundGear)}{/snippet}
 
 {#snippet speciesLead()}
@@ -378,7 +369,7 @@
                 choices={hasSpeciesChoices ? speciesLead : undefined}
               />
             {:else if step === "class"}
-              <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
+              <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classGear.length ? classLead : undefined} />
             {:else if step === "background"}
               <ChoiceList
                 id="background"

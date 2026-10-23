@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { LevelRecord } from "$lib/characters/levelup";
 import type { Weapon } from "$lib/characters/sheet";
 
 /** Mirrors the types in src-tauri/src/commands/characters.rs. */
@@ -38,11 +39,30 @@ export type Character = {
   species?: Ref & { lineage?: string; subspecies?: Ref; size?: string };
   classes: ClassLevel[];
   background?: Ref;
-  abilities?: { method?: string; base: Record<string, number>; bonuses?: Record<string, number> };
+  /** `bonuses`: from species and background; `levelBonuses`: from feats taken at levels (rebuilt from `levels`). */
+  abilities?: { method?: string; base: Record<string, number>; bonuses?: Record<string, number>; levelBonuses?: Record<string, number> };
   skills?: string[];
   savingThrows?: string[];
-  feats?: Ref[];
+  /**
+   * Below, items with `gained` (the class level they came from) are rebuilt from `levels`; `origin` names where an
+   * item came from when it isn't the background or the class itself, e.g. "Fighter 4" or "Magic Initiate".
+   */
+  feats?: (Ref & { origin?: string; gained?: number })[];
   hp?: { max: number; current?: number; temp?: number };
+  /** One record per class level: its hit points and what was picked (see `src/lib/characters/levelup.ts`). */
+  levels?: LevelRecord[];
+  /** `prepared` for class spells; `always`: always prepared (from a subclass). */
+  spells?: (Ref & { origin: string; level?: number; prepared?: boolean; always?: boolean; gained?: number })[];
+  /** Invocations, maneuvers, metamagic…; `type` is the feature type codes ("EI"). */
+  optionalFeatures?: (Ref & { origin: string; type: string[]; gained?: number })[];
+  /** A pick in a feature with options, like Divine Order: Protector. */
+  featureChoices?: (Ref & { feature: string; gained?: number })[];
+  /** Skill keys with expertise. */
+  expertise?: string[];
+  weaponMasteries?: (Ref & { gained?: number })[];
+  /** What levels added to `skills` and `expertise`, so a rebuild can take them off again. */
+  levelSkills?: string[];
+  levelExpertise?: string[];
   deathSaves?: { successes: number; failures: number };
   hitDiceSpent?: number;
   /** Expended slots per spell level; index 0 is 1st level. */

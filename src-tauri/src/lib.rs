@@ -63,6 +63,8 @@ pub fn run() {
             commands::rules::rules_entity,
             commands::rules::rules_find,
             commands::rules::rules_catalog,
+            commands::rules::rules_by_extra,
+            commands::rules::rules_class_spells,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

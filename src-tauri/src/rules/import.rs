@@ -214,6 +214,7 @@ impl Import<'_> {
                 }
             }
             p if p.starts_with("data/book/book-") => self.book(&json)?,
+            "data/spells/sources.json" => self.spell_classes(&json)?,
             p => self.entities(p, &json)?,
         }
         Ok(())
@@ -245,6 +246,25 @@ impl Import<'_> {
             Value::Object(map) => map.values().try_for_each(|v| self.index_sections(book, idx, v)),
             _ => Ok(()),
         }
+    }
+
+    /// Class spell lists: `{ "PHB": { "Fireball": { "class": [{ "name": "Wizard", "source": "PHB" }] } } }`.
+    /// shortcut: only `class` lists; `classVariant` (optional extra spells, e.g. from TCE) is skipped until someone asks.
+    fn spell_classes(&self, json: &Value) -> Result<(), StorageError> {
+        for (spell_source, spells) in json.as_object().into_iter().flatten() {
+            if self.is_removed(spell_source) {
+                continue;
+            }
+            for (spell, lists) in spells.as_object().into_iter().flatten() {
+                for class in lists.get("class").and_then(Value::as_array).into_iter().flatten() {
+                    let (name, source) = (str_of(class, "name"), str_of(class, "source"));
+                    if !name.is_empty() && !source.is_empty() && !self.is_removed(source) {
+                        self.writer.spell_class(spell, spell_source, name, source)?;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     fn entities(&mut self, path: &str, json: &Value) -> Result<(), StorageError> {
@@ -306,7 +326,12 @@ fn build(archive: &Path, tmp: &Path, removed: &[String], now: u64, progress: &mu
                 return Err(StorageError::Invalid(WRONG_FOR_DATA.into()));
             }
         }
-        let wanted = rel == "package.json" || rel == "data/books.json" || rel == "data/adventures.json" || rel.starts_with("data/book/book-") || !entity_keys(&rel).is_empty();
+        let wanted = rel == "package.json"
+            || rel == "data/books.json"
+            || rel == "data/adventures.json"
+            || rel == "data/spells/sources.json"
+            || rel.starts_with("data/book/book-")
+            || !entity_keys(&rel).is_empty();
         if rel == "js/parser.js" {
             let mut text = String::new();
             entry.read_to_string(&mut text).map_err(not_archive)?;
@@ -381,8 +406,13 @@ pub mod tests {
                 "class": [{ "name": "Fighter", "source": "XPHB" }],
                 "classFeature": [
                     { "name": "Ability Score Improvement", "source": "XPHB", "className": "Fighter", "classSource": "XPHB", "level": 4, "entries": ["Improve."] },
-                    { "name": "Ability Score Improvement", "source": "XPHB", "className": "Fighter", "classSource": "XPHB", "level": 6, "entries": ["Again."] }
+                    { "name": "Ability Score Improvement", "source": "XPHB", "className": "Fighter", "classSource": "XPHB", "level": 6, "entries": ["Again."] },
+                    { "name": "Ability Score Improvement", "source": "PHB", "className": "Fighter", "classSource": "PHB", "level": 4, "entries": ["Old."] }
                 ]
+            })),
+            ("data/spells/sources.json", json!({
+                "XPHB": { "Fireball": { "class": [{ "name": "Wizard", "source": "XPHB" }, { "name": "Sorcerer", "source": "XPHB" }] } },
+                "PHB": { "Fireball": { "class": [{ "name": "Wizard", "source": "PHB" }] } }
             })),
             ("data/items-base.json", json!({ "itemProperty": [{ "abbreviation": "F", "source": "XPHB", "entries": [{ "name": "Finesse", "entries": ["Use Dex."] }] }] })),
             ("data/unrelated.json", json!({ "ignored": true })),
@@ -425,7 +455,7 @@ pub mod tests {
         assert_eq!(count(&conn, "SELECT count(*) FROM chapters"), 1);
         assert_eq!(count(&conn, "SELECT count(*) FROM entities WHERE kind = 'spell'"), 2);
         // Class features that share a name are kept apart by class and level.
-        assert_eq!(count(&conn, "SELECT count(*) FROM entities WHERE kind = 'classFeature'"), 2);
+        assert_eq!(count(&conn, "SELECT count(*) FROM entities WHERE kind = 'classFeature'"), 3);
         // Item properties take their name from their first entry.
         assert!(library::find(&conn, "itemProperty", "Finesse", Some("XPHB")).unwrap().is_some());
         // Both book sections are searchable, each with its own text only.
@@ -513,6 +543,40 @@ Parser.SOURCE_JSON_TO_FULL[Parser.SRC_TftYP] = `${Parser.MISSING}x`;
         assert_eq!(library::find(&conn, "spell", "fireball", Some("phb")).unwrap().unwrap().source, "PHB");
         assert_eq!(library::find(&conn, "spell", "Fireball", None).unwrap().unwrap().source, "XPHB");
         assert!(library::find(&conn, "spell", "Wish", None).unwrap().is_none());
+    }
+
+    #[test]
+    fn by_extra_finds_one_classes_features() {
+        let dir = temp_dir("by-extra");
+        let rules = dir.join("rules");
+        import_archive(&fixture(&dir, "1.0.0"), &rules, &[], 1, &mut |_| {}).unwrap();
+        let conn = library::open(&rules).unwrap().unwrap();
+        let levels: Vec<i64> = library::by_extra(&conn, "classFeature", "Fighter|XPHB|").unwrap().iter().map(|e| e.data["level"].as_i64().unwrap()).collect();
+        assert_eq!(levels, vec![4, 6]);
+        assert_eq!(library::by_extra(&conn, "classFeature", "Fighter|PHB|4").unwrap().len(), 1);
+        // LIKE wildcards in the prefix are literal.
+        assert!(library::by_extra(&conn, "classFeature", "Fighter|%").unwrap().is_empty());
+    }
+
+    #[test]
+    fn imports_class_spell_lists() {
+        let dir = temp_dir("class-spells");
+        let rules = dir.join("rules");
+        import_archive(&fixture(&dir, "1.0.0"), &rules, &[], 1, &mut |_| {}).unwrap();
+        let conn = library::open(&rules).unwrap().unwrap();
+        let wizard = library::class_spells(&conn, "Wizard", "XPHB", &["level".into()]).unwrap().unwrap();
+        assert_eq!(wizard.iter().map(|r| (r.name.as_str(), r.source.as_str(), r.data["level"].as_i64())).collect::<Vec<_>>(), vec![("Fireball", "XPHB", Some(3))]);
+        assert_eq!(library::class_spells(&conn, "wizard", "phb", &[]).unwrap().unwrap()[0].source, "PHB");
+        assert!(library::class_spells(&conn, "Cleric", "XPHB", &[]).unwrap().unwrap().is_empty());
+        drop(conn);
+
+        // Removing a book takes its spells off the lists; a library from before spell lists answers None.
+        library::remove_source(&library::open_write(&rules).unwrap(), "XPHB").unwrap();
+        let conn = library::open(&rules).unwrap().unwrap();
+        assert!(library::class_spells(&conn, "Wizard", "XPHB", &[]).unwrap().unwrap().is_empty());
+        drop(conn);
+        library::open_write(&rules).unwrap().execute_batch("DROP TABLE spell_classes").unwrap();
+        assert!(library::class_spells(&library::open(&rules).unwrap().unwrap(), "Wizard", "PHB", &[]).unwrap().is_none());
     }
 
     #[test]

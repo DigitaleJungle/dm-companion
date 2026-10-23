@@ -13,6 +13,7 @@
   const list = new Intl.ListFormat(undefined, { type: "unit", style: "narrow" });
 
   const pb = $derived(proficiencyBonus(sheet.level));
+  const masteries = $derived(new Set((sheet.character?.weaponMasteries ?? []).map((m) => m.name.toLowerCase())));
   const rows = $derived(
     (sheet.character?.inventory ?? []).flatMap((item) => {
       const weapon = item.weapon;
@@ -26,7 +27,11 @@
           range: weapon.range ? t.feet(weapon.range) : t.reach,
           hit: signed.format(attack.toHit),
           damage: attack.damage ? [attack.damage, DAMAGE_TYPES[weapon.dmgType ?? ""]].filter(Boolean).join(" ") : strings.characters.sheet.unknown,
-          notes: list.format([...props, ...(proficient ? [] : [t.notProficient])]),
+          notes: list.format([
+            ...props,
+            ...(masteries.has(item.name.toLowerCase()) ? [t.mastery(weapon.mastery?.join(", ") ?? "")] : []),
+            ...(proficient ? [] : [t.notProficient]),
+          ]),
         },
       ];
     }),

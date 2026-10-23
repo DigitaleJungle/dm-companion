@@ -30,6 +30,11 @@ const SCHEMA: &str = "
     );
     CREATE INDEX entities_by_name ON entities (kind, name);
     CREATE INDEX entities_by_source ON entities (source);
+    CREATE TABLE spell_classes (
+        spell TEXT NOT NULL COLLATE NOCASE, spell_source TEXT NOT NULL COLLATE NOCASE,
+        class TEXT NOT NULL COLLATE NOCASE, class_source TEXT NOT NULL COLLATE NOCASE,
+        PRIMARY KEY (class, class_source, spell, spell_source)
+    );
     CREATE VIRTUAL TABLE search USING fts5(
         title, body, kind UNINDEXED, source UNINDEXED, ref UNINDEXED,
         tokenize = 'unicode61 remove_diacritics 2', prefix = '2 3'
@@ -120,6 +125,14 @@ impl Writer {
         Ok((added == 1).then(|| self.conn.last_insert_rowid()))
     }
 
+    /// Puts a spell on a class's spell list.
+    pub fn spell_class(&self, spell: &str, spell_source: &str, class: &str, class_source: &str) -> Result<(), StorageError> {
+        self.conn
+            .execute("INSERT OR IGNORE INTO spell_classes VALUES (?1, ?2, ?3, ?4)", params![spell, spell_source, class, class_source])
+            .map_err(db_err)?;
+        Ok(())
+    }
+
     pub fn search_row(&self, title: &str, body: &str, kind: &str, source: &str, reference: &str) -> Result<(), StorageError> {
         self.conn
             .execute("INSERT INTO search VALUES (?1, ?2, ?3, ?4, ?5)", params![title, body, kind, source, reference])
@@ -188,6 +201,9 @@ pub fn remove_source(conn: &Connection, id: &str) -> Result<(), StorageError> {
         conn.execute("DELETE FROM search WHERE source = ?1 COLLATE NOCASE", [id])?;
         conn.execute("DELETE FROM chapters WHERE book_id = ?1", [id])?;
         conn.execute("DELETE FROM entities WHERE source = ?1", [id])?;
+        if has_table(conn, "spell_classes")? {
+            conn.execute("DELETE FROM spell_classes WHERE spell_source = ?1 OR class_source = ?1", [id])?;
+        }
         conn.execute("DELETE FROM sources WHERE id = ?1", [id])?;
         Ok(())
     })();
@@ -290,20 +306,58 @@ pub struct CatalogRow {
 /// Every entity of a kind (or of all kinds), alphabetical, with just the given top-level fields.
 /// SQLite extracts the fields, so a 4,500-creature table arrives as small rows, not megabytes of JSON.
 pub fn catalog(conn: &Connection, kind: Option<&str>, keys: &[String]) -> Result<Vec<CatalogRow>, StorageError> {
-    // Keys become part of the SQL, so only plain field names are allowed.
-    if let Some(bad) = keys.iter().find(|k| k.is_empty() || !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')) {
-        return Err(StorageError::Invalid(format!("\"{bad}\" is not a field name.")));
-    }
-    let fields = keys.iter().map(|k| format!("'{k}', json(json -> '$.{k}')")).collect::<Vec<_>>().join(", ");
+    check_keys(keys)?;
     let sql = format!(
-        "SELECT id, kind, source, name, json_object({fields}) FROM entities WHERE ?1 IS NULL OR kind = ?1 ORDER BY name, source"
+        "SELECT id, kind, source, name, json_object({}) FROM entities WHERE ?1 IS NULL OR kind = ?1 ORDER BY name, source",
+        fields(keys)
     );
     let mut stmt = conn.prepare(&sql).map_err(db_err)?;
-    stmt.query_map([kind], |r| {
-        let data: String = r.get(4)?;
-        Ok(CatalogRow { id: r.get(0)?, kind: r.get(1)?, source: r.get(2)?, name: r.get(3)?, data: serde_json::from_str(&data).unwrap_or(Value::Null) })
-    })
-    .map_err(db_err)?
-    .collect::<Result<_, _>>()
-    .map_err(db_err)
+    stmt.query_map([kind], catalog_row).map_err(db_err)?.collect::<Result<_, _>>().map_err(db_err)
+}
+
+/// Keys become part of the SQL, so only plain field names are allowed.
+fn check_keys(keys: &[String]) -> Result<(), StorageError> {
+    match keys.iter().find(|k| k.is_empty() || !k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')) {
+        Some(bad) => Err(StorageError::Invalid(format!("\"{bad}\" is not a field name."))),
+        None => Ok(()),
+    }
+}
+
+fn fields(keys: &[String]) -> String {
+    keys.iter().map(|k| format!("'{k}', json(json -> '$.{k}')")).collect::<Vec<_>>().join(", ")
+}
+
+fn catalog_row(r: &rusqlite::Row) -> rusqlite::Result<CatalogRow> {
+    let data: String = r.get(4)?;
+    Ok(CatalogRow { id: r.get(0)?, kind: r.get(1)?, source: r.get(2)?, name: r.get(3)?, data: serde_json::from_str(&data).unwrap_or(Value::Null) })
+}
+
+/// Every entity of a kind whose extra starts with prefix, like all of a class's features ("Fighter|XPHB|").
+pub fn by_extra(conn: &Connection, kind: &str, prefix: &str) -> Result<Vec<Entity>, StorageError> {
+    let escaped = prefix.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+    let mut stmt = conn
+        .prepare(&format!("SELECT {ENTITY_COLUMNS} FROM entities WHERE kind = ?1 AND extra LIKE ?2 ESCAPE '\\' ORDER BY id"))
+        .map_err(db_err)?;
+    stmt.query_map(params![kind, format!("{escaped}%")], row_to_entity).map_err(db_err)?.collect::<Result<_, _>>().map_err(db_err)
+}
+
+fn has_table(conn: &Connection, name: &str) -> rusqlite::Result<bool> {
+    conn.query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?1", [name], |r| r.get::<_, i64>(0)).map(|n| n > 0)
+}
+
+/// The spells on a class's list, like catalog rows. None when the library predates spell lists (re-import to get them).
+pub fn class_spells(conn: &Connection, class: &str, class_source: &str, keys: &[String]) -> Result<Option<Vec<CatalogRow>>, StorageError> {
+    if !has_table(conn, "spell_classes").map_err(db_err)? {
+        return Ok(None);
+    }
+    check_keys(keys)?;
+    let sql = format!(
+        "SELECT e.id, e.kind, e.source, e.name, json_object({}) FROM spell_classes c
+         JOIN entities e ON e.kind = 'spell' AND e.name = c.spell AND e.source = c.spell_source
+         WHERE c.class = ?1 AND c.class_source = ?2 ORDER BY e.name, e.source",
+        fields(keys)
+    );
+    let mut stmt = conn.prepare(&sql).map_err(db_err)?;
+    let rows = stmt.query_map(params![class, class_source], catalog_row).map_err(db_err)?.collect::<Result<_, _>>().map_err(db_err)?;
+    Ok(Some(rows))
 }

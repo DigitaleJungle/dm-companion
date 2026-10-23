@@ -1,5 +1,6 @@
 import type { Character, InventoryItem } from "$lib/api/characters";
 import { findEntity, type CatalogRow } from "$lib/api/rules";
+import { rebuild } from "$lib/characters/levelup";
 import { inventoryItem } from "$lib/characters/sheet";
 import type { Roll } from "$lib/api/dice";
 import {
@@ -379,24 +380,41 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
 
 /**
  * The saved character with the wizard's choices applied. Everything from play (hit point damage, temporary
- * hit points, conditions, inventory, notes…) stays; a new class resets spent spell slots, a new background
- * replaces the feats, and damage taken carries over to a changed maximum.
+ * hit points, conditions, inventory, notes…) stays; a new background replaces the background feat, and damage taken
+ * carries over to a changed maximum. What levels added (see Edit → Levels) is rebuilt from the level records: they
+ * stay with the class (a lower level drops the ones above it); a new class drops them all and resets spent slots.
  */
 export function editedCharacter(existing: Character): Character {
   const next = toCharacter();
   const sameClass = same(draft.cls!, existing.classes[0]);
   const sameBackground = same(draft.background!, existing.background);
-  // shortcut: max HP is the fixed value per level, recomputed; once level up records rolled HP per level, keep those.
-  const max = next.hp.max;
-  const oldMax = existing.hp?.max ?? max;
-  const damage = Math.max(0, oldMax - (existing.hp?.current ?? oldMax));
-  return {
+  const backgroundFeats = (existing.feats ?? []).filter((f) => f.gained === undefined && !f.origin);
+  const merged: Character = {
     ...existing,
     ...next,
     // Keeping the class keeps its subclass.
     classes: sameClass ? [{ ...existing.classes[0], level: draft.level }, ...existing.classes.slice(1)] : next.classes,
-    hp: { ...existing.hp, max, current: Math.max(0, max - damage) },
-    feats: sameBackground ? (existing.feats ?? next.feats) : next.feats,
-    ...(sameClass ? {} : { slotsUsed: [], pactSlotsUsed: 0 }),
+    hp: existing.hp ?? next.hp,
+    abilities: { ...next.abilities, levelBonuses: existing.abilities?.levelBonuses },
+    ...(sameClass
+      ? {
+          feats: [...(sameBackground ? backgroundFeats : next.feats), ...(existing.feats ?? []).filter((f) => f.gained !== undefined || f.origin)],
+          // The wizard's skills plus what levels added; the rebuild takes the level ones off and adds them back as they are now.
+          skills: [...new Set([...next.skills, ...(existing.levelSkills ?? [])])],
+        }
+      : {
+          feats: sameBackground ? backgroundFeats : next.feats,
+          levels: [],
+          spells: [],
+          optionalFeatures: [],
+          featureChoices: [],
+          weaponMasteries: [],
+          expertise: [],
+          levelSkills: [],
+          levelExpertise: [],
+          slotsUsed: [],
+          pactSlotsUsed: 0,
+        }),
   };
+  return rebuild(merged, hitDie());
 }

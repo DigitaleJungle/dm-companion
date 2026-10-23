@@ -104,11 +104,17 @@ export function hitDieRoll(faces: number, con: number): string {
 // --- Weapons --------------------------------------------------------------------------------
 
 /** What the sheet keeps of a weapon from the rules data. `properties` are codes without their book ("F", "2H"). */
-export type Weapon = { category?: string; dmg?: string; dmgType?: string; properties?: string[]; ranged?: boolean; range?: string };
+/** `mastery`: its Weapon Mastery property names ("Sap"). */
+export type Weapon = { category?: string; dmg?: string; dmgType?: string; properties?: string[]; ranged?: boolean; range?: string; mastery?: string[] };
 
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const obj = (v: unknown): Data => (v && typeof v === "object" && !Array.isArray(v) ? (v as Data) : {});
-const propertyCode = (p: unknown) => String(p ?? "").split("|")[0].toUpperCase();
+/** A reference in item data: a "Name|Source" string, or an object with that as its `uid` (properties and masteries can be either). */
+const refName = (v: unknown) => String(typeof v === "string" ? v : (obj(v).uid ?? "")).split("|")[0];
+const propertyCode = (p: unknown) => refName(p).toUpperCase();
+
+/** The Weapon Mastery property names of an item entry ("Sap"). */
+export const masteryNames = (raw: unknown): string[] => list(raw).map(refName).filter(Boolean);
 
 /** The weapon fields of an item entry, or undefined when it isn't a weapon. */
 export function weaponOf(item: Data): Weapon | undefined {
@@ -120,6 +126,7 @@ export function weaponOf(item: Data): Weapon | undefined {
     properties: list(item.property).map(propertyCode),
     ...(String(item.type ?? "").split("|")[0] === "R" ? { ranged: true } : {}),
     ...(item.range ? { range: String(item.range) } : {}),
+    ...(masteryNames(item.mastery).length ? { mastery: masteryNames(item.mastery) } : {}),
   };
 }
 

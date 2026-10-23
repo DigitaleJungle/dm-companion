@@ -17,7 +17,7 @@
   const COINS: Coin[] = ["cp", "sp", "ep", "gp", "pp"];
   const MAX_RESULTS = 30;
   // Item fields kept on the character, so the sheet never needs a lookup for armor class, weight or attacks.
-  const ITEM_KEYS = ["type", "weight", "ac", "reqAttune", "weapon", "weaponCategory", "dmg1", "dmgType", "property", "range"];
+  const ITEM_KEYS = ["type", "weight", "ac", "reqAttune", "weapon", "weaponCategory", "dmg1", "dmgType", "property", "range", "mastery"];
 
   const items = $derived(sheet.character?.inventory ?? []);
   const coins = $derived(sheet.character?.coins ?? {});

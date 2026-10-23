@@ -1,7 +1,8 @@
 import { getCharacter, saveCharacter, type Character } from "$lib/api/characters";
 import { catalogRows, findEntity, type CatalogRow } from "$lib/api/rules";
 import { errorMessage, type StorageError } from "$lib/api/storage";
-import { ABILITIES, type Ability, type Scores } from "$lib/characters/rules";
+import { scoresWithLevels } from "$lib/characters/levelup";
+import { type Ability, type Scores } from "$lib/characters/rules";
 import { hpOf, type Resources, type Vitals } from "$lib/characters/sheet";
 import { strings } from "$lib/strings";
 
@@ -46,11 +47,9 @@ export class Sheet {
     return (this.character?.classes ?? []).reduce((sum, c) => sum + c.level, 0);
   }
 
-  /** Base scores plus their saved bonuses. */
+  /** Base scores plus their saved bonuses and the increases from feats taken at levels. */
   get scores(): Scores | null {
-    const a = this.character?.abilities;
-    if (!a?.base) return null;
-    return Object.fromEntries(ABILITIES.map((k) => [k, (a.base[k] ?? 10) + (a.bonuses?.[k] ?? 0)])) as Scores;
+    return this.character ? scoresWithLevels(this.character) : null;
   }
 
   get vitals(): Vitals {

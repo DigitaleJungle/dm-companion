@@ -16,9 +16,16 @@
   const scores = $derived(sheet.scores);
   const pb = $derived(proficiencyBonus(sheet.level));
   const proficient = $derived(new Set(sheet.character?.skills ?? []));
+  const expert = $derived(new Set(sheet.character?.expertise ?? []));
   const saves = $derived(new Set((sheet.character?.savingThrows ?? []) as Ability[]));
   const skillRows = $derived(
-    sheet.skills.map((s) => ({ ...s, proficient: proficient.has(s.key), bonus: scores ? checkBonus(scores[s.ability] ?? 10, proficient.has(s.key), pb) : null })),
+    sheet.skills.map((s) => ({
+      ...s,
+      proficient: proficient.has(s.key),
+      expert: expert.has(s.key),
+      // Expertise doubles the proficiency bonus.
+      bonus: scores ? checkBonus(scores[s.ability] ?? 10, proficient.has(s.key), pb) + (expert.has(s.key) ? pb : 0) : null,
+    })),
   );
   const passive = (key: string, ability: Ability) => {
     const bonus = skillRows.find((s) => s.key === key)?.bonus ?? (scores ? modifier(scores[ability]) : null);
@@ -105,8 +112,8 @@
         <ul>
           {#each skillRows as skill (skill.key)}
             <li class="line skill">
-              <span class="dot" class:on={skill.proficient} aria-hidden="true"></span>
-              <span class="grow">{skill.name}{#if skill.proficient}<span class="sr-only"> ({t.proficient})</span>{/if}</span>
+              <span class="dot" class:on={skill.proficient} class:expert={skill.expert} aria-hidden="true"></span>
+              <span class="grow">{skill.name}{#if skill.expert}<span class="sr-only"> ({t.expertise})</span>{:else if skill.proficient}<span class="sr-only"> ({t.proficient})</span>{/if}</span>
               <span class="muted small">{skill.ability.toUpperCase()}</span>
               <b class="bonus">{skill.bonus === null ? t.unknown : signed.format(skill.bonus)}</b>
             </li>
@@ -253,6 +260,11 @@
   .dot.on {
     border-color: var(--color-text);
     background: var(--color-text);
+  }
+
+  /* Expertise: the filled dot with a ring around it. */
+  .dot.expert {
+    box-shadow: 0 0 0 var(--border-width) var(--color-surface), 0 0 0 calc(2.5 * var(--border-width)) var(--color-text);
   }
 
   b,

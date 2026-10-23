@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  masteryNames,
   armorClass,
   armorKind,
   carryingCapacity,
@@ -237,5 +238,12 @@ describe("armor class", () => {
     expect(armorKind("HA|XPHB")).toBe("heavy");
     expect(armorKind("S")).toBe("shield");
     expect(armorKind("M|XPHB")).toBeUndefined();
+  });
+});
+
+describe("item references", () => {
+  it("reads masteries and properties as strings or { uid } objects", () => {
+    expect(masteryNames(["Sap|XPHB", { uid: "Vex|XPHB" }])).toEqual(["Sap", "Vex"]);
+    expect(weaponOf({ weaponCategory: "martial", property: [{ uid: "F|XPHB", note: "x" }, "2H|XPHB"] })?.properties).toEqual(["F", "2H"]);
   });
 });

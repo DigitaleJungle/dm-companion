@@ -185,3 +185,14 @@ pub async fn rules_catalog(app: AppHandle, kind: Option<String>, keys: Vec<Strin
     with_library(&app, |conn| library::catalog(conn, kind.as_deref(), &keys))
 }
 
+/// Entities of a kind whose extra key starts with `prefix`: a class's features ("Fighter|XPHB|") or a subclass's.
+#[tauri::command]
+pub async fn rules_by_extra(app: AppHandle, kind: String, prefix: String) -> Result<Vec<Entity>, StorageError> {
+    with_library(&app, |conn| library::by_extra(conn, &kind, &prefix))
+}
+
+/// The spells on a class's list with the given fields; None when the library was imported before spell lists existed.
+#[tauri::command]
+pub async fn rules_class_spells(app: AppHandle, class: String, class_source: String, keys: Vec<String>) -> Result<Option<Vec<CatalogRow>>, StorageError> {
+    with_library(&app, |conn| library::class_spells(conn, &class, &class_source, &keys))
+}

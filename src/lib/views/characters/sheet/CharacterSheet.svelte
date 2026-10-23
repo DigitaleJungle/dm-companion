@@ -6,7 +6,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { afterNavigate, beforeNavigate, goto } from "$app/navigation";
-  import Menu from "$lib/components/Menu.svelte";
+  import Menu, { type MenuItem } from "$lib/components/Menu.svelte";
+  import LevelUpDialog from "../levelup/LevelUpDialog.svelte";
+  import LevelsDialog from "../levelup/LevelsDialog.svelte";
+  import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
+  import { enablePreviews } from "$lib/rules/preview.svelte";
+  import { MAX_LEVEL } from "$lib/characters/rules";
   import SettingsButton from "$lib/components/SettingsButton.svelte";
   import { listCharacters, type Character, type CharacterCard } from "$lib/api/characters";
   import CreateCharacterDialog from "../create/CreateCharacterDialog.svelte";
@@ -38,6 +43,8 @@
   // The route is keyed on campaign and id, so a different character gets a fresh component.
   // svelte-ignore state_referenced_locally
   const sheet = new Sheet(campaign, id);
+  // Rule references in feature texts and spell names open a preview card.
+  enablePreviews();
   let tab = $state<Tab>("actions");
   let party = $state<CharacterCard[]>([]);
   let rolling = $state(false);
@@ -118,6 +125,20 @@
     },
   ]);
 
+  // ---- Level up: in the current class, or into a new one ----
+  // shortcut: Multiclass does nothing yet; it gets its own brief.
+  let levelingUp = $state(false);
+  let editingLevels = $state(false);
+  // Edit → Character is the creation wizard filled in; Edit → Levels changes what each level picked (view-only when archived).
+  const editItems = $derived<MenuItem[]>([
+    { label: t.editMenu.character, disabled: sheet.readOnly, onselect: () => startEdit() },
+    { label: t.editMenu.levels, onselect: () => (editingLevels = true) },
+  ]);
+  const levelUpItems = $derived<MenuItem[]>([
+    { label: sheet.character?.classes[0]?.name ?? "", disabled: sheet.readOnly || sheet.level >= MAX_LEVEL, onselect: () => (levelingUp = true) },
+    { label: t.levelUp.multiclass, disabled: sheet.readOnly || sheet.level >= MAX_LEVEL },
+  ]);
+
   // ---- Edit sheet: the creation wizard, filled in with this character ----
   let editing = $state(false);
   let editTarget = $state<{ campaign: string | null; character: Character } | null>(null);
@@ -168,6 +189,9 @@
           {/snippet}
         </Menu>
       </div>
+      <Menu id="edit-menu" label={t.editMenu.label} align="start" triggerClass="btn" items={editItems}>
+        {#snippet trigger()}{t.editMenu.label}{/snippet}
+      </Menu>
     {/if}
     {#if c && !sheet.archived}
       <span class="save-state" role="status">
@@ -190,7 +214,12 @@
         {#snippet trigger()}{t.rest.short}{/snippet}
       </Menu>
       <button class="btn" disabled={sheet.readOnly} onclick={takeLongRest}>{t.rest.long}</button>
-      <button class="btn btn-primary" disabled={sheet.readOnly} onclick={startEdit}>{t.edit}</button>
+      <Menu id="level-up" label={t.levelUp.label} triggerClass="btn level-up" items={levelUpItems}>
+        {#snippet trigger()}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          {t.levelUp.label}
+        {/snippet}
+      </Menu>
     {/if}
   </header>
 
@@ -275,6 +304,11 @@
 </div>
 
 <CreateCharacterDialog bind:open={editing} edit={editTarget} onsaved={onEdited} />
+{#if sheet.character}
+  <LevelUpDialog bind:open={levelingUp} {sheet} {sources} />
+  <LevelsDialog bind:open={editingLevels} {sheet} {sources} />
+{/if}
+<EntityPopover />
 
 <style>
   .sheet {
@@ -350,6 +384,29 @@
 
   .spacer {
     flex: 1;
+  }
+
+  /* The sheet's main action: an attractive green button. */
+  .top :global(.level-up) {
+    gap: var(--space-2);
+    min-height: var(--control-height);
+    padding: 0 var(--space-5);
+    border-color: var(--color-success-fill);
+    background: var(--color-success-fill);
+    color: var(--color-accent-text);
+    font-weight: var(--weight-semibold);
+    box-shadow: var(--shadow-card);
+  }
+
+  .top :global(.level-up:hover),
+  .top :global(.level-up[aria-expanded="true"]) {
+    border-color: var(--color-success-fill-hover);
+    background: var(--color-success-fill-hover);
+  }
+
+  .top :global(.level-up svg) {
+    width: var(--icon-size);
+    height: var(--icon-size);
   }
 
   /* Styled like the campaign switcher in the campaign sidebar. */

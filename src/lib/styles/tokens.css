@@ -22,6 +22,7 @@
   --color-danger-soft: #fdecea;
   --color-success: #1a7f37; /* ≥ 5:1 on surface */
   --color-success-fill: #1a7f37; /* button fill, white text ≥ 5:1 */
+  --color-success-fill-hover: #156b2e;
   --color-danger-fill: #b42318; /* button fill, white text ≥ 6:1 */
   /* Heroic Inspiration (gold) and Concentration (violet) highlights on the character sheet. */
   --color-inspiration: #f2c230;
@@ -94,6 +95,7 @@
   --character-card-width: 300px;
   --choice-card-width: 260px;
   --choice-hero-art-width: 280px;
+  --picklist-height: 320px;
   --sheet-avatar-size: 72px;
   --sheet-stat-width: 88px;
   --sheet-hp-width: 272px;
@@ -139,6 +141,7 @@
   --color-danger-soft: #3a1d1b;
   --color-success: #4ac26b;
   --color-success-fill: #1f7a3a;
+  --color-success-fill-hover: #18682f;
   --color-danger-fill: #c23a2c;
   --color-inspiration: #e0b22a;
   --color-inspiration-strong: #f0c94c;

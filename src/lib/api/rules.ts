@@ -65,3 +65,13 @@ export type CatalogRow = { id: number; kind: string; source: string; name: strin
 export function catalogRows(kind: string | null, keys: string[]): Promise<CatalogRow[]> {
   return invoke("rules_catalog", { kind, keys });
 }
+
+/** Entities of a kind whose extra key starts with `prefix`: a class's features ("Fighter|XPHB|") or a subclass's ("Fighter|Champion|"). */
+export function byExtra(kind: string, prefix: string): Promise<Entity[]> {
+  return invoke("rules_by_extra", { kind, prefix });
+}
+
+/** The spells on a class's list with the given fields; null when the rules data was imported before spell lists (re-import). */
+export function classSpells(cls: string, classSource: string, keys: string[]): Promise<CatalogRow[] | null> {
+  return invoke("rules_class_spells", { class: cls, classSource, keys });
+}

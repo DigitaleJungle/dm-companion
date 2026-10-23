@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
+import { rebuild } from "$lib/characters/levelup";
 import { chooseBackground, draft, editedCharacter, loadCharacter, scores, skillGroups, stepComplete, type Options } from "./draft.svelte";
 
 let nextId = 1;
@@ -71,6 +72,52 @@ describe("editing a saved character", () => {
     expect(saved.classes).toEqual([{ name: "Wizard", source: "XPHB", level: 1 }]);
   });
 
+  it("rebuilds what levels added: kept with the class, dropped above a lower level and with a new class", () => {
+    const leveled = (): Character =>
+      rebuild(
+        {
+          ...thalia(),
+          classes: [{ name: "Fighter", source: "XPHB", level: 2 }],
+          hp: { max: 20, current: 20 },
+          levels: [
+            {
+              class: "Fighter",
+              level: 2,
+              hp: { how: "roll", value: 9 }, // 9 + CON 2 = 11, more than the fixed 8
+              gains: { feats: [{ name: "Keen Mind", source: "XPHB", skills: ["arcana"], bonus: { int: 1 } }], spells: [], optional: [], options: [], masteries: [], expertise: [] },
+            },
+          ],
+        },
+        10,
+      );
+    const start = leveled();
+    expect([start.hp?.max, start.abilities?.levelBonuses, start.skills?.includes("arcana")]).toEqual([23, { int: 1 }, true]);
+
+    loadCharacter(start, "a", options);
+    const kept = editedCharacter(start);
+    expect(kept.hp?.max).toBe(23);
+    expect(kept.feats?.map((f) => f.name)).toEqual(["Savage Attacker", "Keen Mind"]);
+    expect(kept.skills).toContain("arcana");
+
+    // A new background redoes the background picks; the level feat stays, with its +1 INT kept apart.
+    chooseBackground(sage);
+    draft.backgroundPick = { option: 0, picks: [["str", "con"]] };
+    draft.skillPicks = { "class-0": ["history", "insight"], "species-0": ["perception"] };
+    const rebuilt = editedCharacter(start);
+    expect(rebuilt.abilities?.levelBonuses).toEqual({ int: 1 });
+    expect(rebuilt.feats?.map((f) => f.name)).toEqual(["Magic Initiate (Wizard)", "Keen Mind"]);
+
+    loadCharacter(start, "a", options);
+    draft.level = 1;
+    const lower = editedCharacter(start);
+    expect([lower.levels, lower.feats?.map((f) => f.name), lower.hp?.max, lower.skills?.includes("arcana")]).toEqual([[], ["Savage Attacker"], 12, false]);
+
+    loadCharacter(start, "a", options);
+    draft.cls = wizard;
+    draft.skillPicks = { "class-0": ["arcana", "history"], "species-0": ["perception"] };
+    const changed = editedCharacter(start);
+    expect([changed.levels, changed.feats?.map((f) => f.name)]).toEqual([[], ["Savage Attacker"]]);
+  });
   it("a new level keeps the class and recomputes max HP", () => {
     loadCharacter(thalia(), "a", options);
     expect(draft.level).toBe(1);
