@@ -1,6 +1,7 @@
 // Character sheet rules for play: hit points, death saves, hit dice, spell slots, rests and armor class.
 // Class numbers (hit die, slots) come from the class entry in the rules data, never from tables in code.
 
+import type { InventoryItem } from "$lib/api/characters";
 import { ABILITY_NAMES, capital } from "$lib/rules/format";
 import { plainText } from "$lib/rules/tags";
 import { modifier, type Ability, type Scores } from "./rules";
@@ -266,6 +267,21 @@ export type ArmorPiece = { armor?: ArmorKind; ac?: number; equipped?: boolean };
 export function armorKind(type: unknown): ArmorKind | undefined {
   const code = String(type ?? "").split("|")[0];
   return ({ LA: "light", MA: "medium", HA: "heavy", S: "shield" } as const)[code as "LA" | "MA" | "HA" | "S"];
+}
+
+/** An inventory line for a rules item, keeping what the sheet needs for armor class, weight and attacks. */
+export function inventoryItem(row: { name: string; source: string; data: Data }, quantity = 1): InventoryItem {
+  const armor = armorKind(row.data.type);
+  const weapon = weaponOf(row.data);
+  return {
+    name: row.name,
+    source: row.source,
+    quantity,
+    ...(typeof row.data.weight === "number" ? { weight: row.data.weight } : {}),
+    ...(row.data.reqAttune ? { attunement: true } : {}),
+    ...(armor ? { armor, ...(typeof row.data.ac === "number" ? { ac: row.data.ac } : {}) } : {}),
+    ...(weapon ? { weapon } : {}),
+  };
 }
 
 /**

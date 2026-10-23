@@ -546,9 +546,9 @@ export const strings = {
           species:
             "Changing the species asks for its skill choices again, and for its ability bonuses where the species gives them. Size, lineage and subspecies are chosen again; speed, languages and traits update by themselves.",
           class:
-            "Changing the class changes the saving throws, the class's skill choices and the maximum hit points (damage already taken is kept), and resets spent spell slots. Proficiencies, spellcasting and features update by themselves. Check a hand-set armor class afterwards.",
+            "Changing the class changes the saving throws, the class's skill choices and the maximum hit points (damage already taken is kept), and resets spent spell slots. Proficiencies, spellcasting and features update by themselves. Check a hand-set armor class afterwards. Starting equipment isn't added again; change the inventory on the sheet.",
           background:
-            "Changing the background asks for its ability bonuses and skill choices again and replaces its feat. Tools and languages update by themselves.",
+            "Changing the background asks for its ability bonuses and skill choices again and replaces its feat. Tools and languages update by themselves. Starting equipment isn't added again; change the inventory on the sheet.",
         },
         keptBonuses: (bonuses: string) => `Your saved ability bonuses are kept: ${bonuses}.`,
         noKeptBonuses: "Your saved scores have no ability bonuses.",
@@ -583,6 +583,28 @@ export const strings = {
         subspecies: "Subspecies",
         size: "Size",
         choose: "Choose…",
+      },
+      gear: {
+        label: "Starting equipment",
+        option: (key: string) => `Option ${key}`,
+        always: (list: string) => `With either option: ${list}`,
+        count: (name: string, n: string) => `${n} × ${name}`,
+        gp: (amount: string) => `${amount} GP`,
+        nothing: "Nothing",
+        /** "Any musical instrument or artisan's tools" for an equipment entry you pick yourself. */
+        anyOf: (types: string[]) => `Any ${types.join(" or ")}`,
+        types: {
+          weaponSimple: "simple weapon",
+          weaponSimpleMelee: "simple melee weapon",
+          weaponMartial: "martial weapon",
+          weaponMartialMelee: "martial melee weapon",
+          instrumentMusical: "musical instrument",
+          toolArtisan: "artisan's tools",
+          setGaming: "gaming set",
+          focusSpellcastingArcane: "arcane focus",
+          focusSpellcastingDruidic: "druidic focus",
+          focusSpellcastingHoly: "holy symbol",
+        } as Record<string, string>,
       },
       abilities: {
         method: "Method",

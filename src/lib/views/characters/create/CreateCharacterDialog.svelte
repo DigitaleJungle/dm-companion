@@ -7,7 +7,7 @@
   import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { inSources, lineageTarget } from "$lib/characters/rules";
+  import { gearOf, gearOptions, inSources, lineageTarget, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
@@ -19,17 +19,20 @@
   import {
     OPTION_KEYS,
     STEPS,
+    backgroundGroups,
     chooseBackground,
     chooseCampaign,
     chooseClass,
     chooseSpecies,
     chooseSubspecies,
+    classGroups,
     draft,
     editedCharacter,
     lineagesOf,
     loadCharacter,
     resetDraft,
     sizesOf,
+    startingInventory,
     stepComplete,
     subspeciesOf,
     toCharacter,
@@ -55,6 +58,9 @@
   const t = strings.characters.wizard;
   const e = t.edit;
   const plain = new Intl.NumberFormat();
+  const gold = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+  const list = new Intl.ListFormat(undefined, { type: "conjunction" });
+  const g = t.gear;
 
   let dialog: HTMLDialogElement | undefined = $state();
   let leaveDialog: HTMLDialogElement | undefined = $state();
@@ -93,6 +99,15 @@
   const sizes = $derived(sizesOf(draft.species));
   const hasLead = $derived(sizes.length > 1 || subs.length > 0 || (lineages.length > 0 && !lineageKey));
   const speciesChoices = $derived(lineages.length && lineageKey ? { [lineageKey]: lineageSelect } : {});
+  // Starting equipment is chosen when creating; editing leaves the inventory to the sheet.
+  const classGear = $derived(edit ? [] : classGroups());
+  const backgroundGear = $derived(edit ? [] : backgroundGroups());
+  const typeName = (types: string[]) => g.anyOf(types.map((type) => g.types[type] ?? type));
+  function gearText(entries: GearEntry[]) {
+    const { gear, copper } = gearOf(entries, typeName);
+    const parts = [...gear.map((x) => (x.quantity > 1 ? g.count(x.name, plain.format(x.quantity)) : x.name)), ...(copper ? [g.gp(gold.format(copper / 100))] : [])];
+    return parts.length ? list.format(parts) : g.nothing;
+  }
 
   async function load() {
     loadError = null;
@@ -165,7 +180,7 @@
         open = false;
         onsaved?.();
       } else {
-        const card = await createCharacter(draft.campaignId, toCharacter());
+        const card = await createCharacter(draft.campaignId, { ...toCharacter(), ...(await startingInventory(typeName)) });
         open = false;
         oncreated?.(card);
       }
@@ -186,6 +201,29 @@
     </select>
   </label>
 {/snippet}
+
+{#snippet gearChooser(origin: string, groups: GearGroup[], picks: (string | null)[])}
+  {#each groups as group, i (i)}
+    {@const keys = gearOptions(group)}
+    {#if keys.length}
+      <fieldset class="gear">
+        <legend class="label-text">{g.label} <span class="required" aria-hidden="true">*</span></legend>
+        {#each keys as key (key)}
+          <label class="gear-option">
+            <input type="radio" name="gear-{origin}-{i}" checked={picks[i] === key} onchange={() => (picks[i] = key)} />
+            <span><b>{g.option(key.toUpperCase())}:</b> {gearText(group[key])}</span>
+          </label>
+        {/each}
+        {#if group._?.length}<p class="muted hint">{g.always(gearText(group._))}</p>{/if}
+      </fieldset>
+    {:else if group._?.length}
+      <p class="muted hint">{g.label}: {gearText(group._)}</p>
+    {/if}
+  {/each}
+{/snippet}
+
+{#snippet classLead()}{@render gearChooser("class", classGear, draft.classGear)}{/snippet}
+{#snippet backgroundLead()}{@render gearChooser("background", backgroundGear, draft.backgroundGear)}{/snippet}
 
 {#snippet speciesLead()}
   {#if lineages.length && !lineageKey}{@render lineageSelect()}{/if}
@@ -329,9 +367,16 @@
                 choices={speciesChoices}
               />
             {:else if step === "class"}
-              <ChoiceList id="class" label={t.steps.class} rows={classRows} selected={draft.cls} onselect={chooseClass} />
+              <ChoiceList id="class" label={t.steps.class} rows={classRows} selected={draft.cls} onselect={chooseClass} lead={classGear.length ? classLead : undefined} />
             {:else if step === "background"}
-              <ChoiceList id="background" label={t.steps.background} rows={backgroundRows} selected={draft.background} onselect={chooseBackground} />
+              <ChoiceList
+                id="background"
+                label={t.steps.background}
+                rows={backgroundRows}
+                selected={draft.background}
+                onselect={chooseBackground}
+                lead={backgroundGear.length ? backgroundLead : undefined}
+              />
             {:else if step === "abilities"}
               <AbilitiesStep />
             {:else if step === "skills"}
@@ -538,6 +583,27 @@
 
   .inline-field {
     align-items: flex-start;
+  }
+
+  .gear {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .gear legend {
+    margin-bottom: var(--space-1);
+  }
+
+  .gear-option {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    cursor: pointer;
   }
 
   .inline-field select {

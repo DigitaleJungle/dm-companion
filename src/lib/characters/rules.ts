@@ -178,3 +178,61 @@ export function lineageTarget(versions: unknown, entries: unknown): string | nul
 /** "Dragonborn (Black)" stays as is; "Drow Lineage" for an Elf becomes "Elf (Drow Lineage)". */
 export const speciesLabel = (species: string, variant: string | null | undefined) =>
   !variant ? species : variant.toLowerCase().includes(species.toLowerCase()) ? variant : `${species} (${variant})`;
+
+// --- Starting equipment ---------------------------------------------------------------------
+
+/** One line of starting equipment: an item key ("chain mail|xphb"), coins in copper, or a thing named in words. */
+export type GearEntry =
+  | string
+  | { item?: string; displayName?: string; quantity?: number; value?: number; containsValue?: number; special?: string; equipmentType?: string; equipmentTypes?: string[] };
+/** One choice, by option key ("A", "B"…); `_` is what comes whichever option is picked. */
+export type GearGroup = Record<string, GearEntry[]>;
+/** `item` is set when the gear is a rules item to look up. */
+export type Gear = { name: string; quantity: number; item?: { name: string; source: string } };
+
+/** A class keeps its starting equipment under `defaultData`; a background lists the groups directly. */
+export function equipmentGroups(raw: unknown): GearGroup[] {
+  const groups = Array.isArray(raw) ? raw : record(raw)?.defaultData;
+  return Array.isArray(groups) ? groups.filter((g): g is GearGroup => !!record(g)) : [];
+}
+
+export const gearOptions = (group: GearGroup) => Object.keys(group).filter((key) => key !== "_");
+
+/** "dungeoneer's pack|xphb" → Dungeoneer's Pack from XPHB. */
+function itemRef(key: string) {
+  const [name, source = ""] = key.split("|");
+  return { name: name.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()), source: source.toUpperCase() };
+}
+
+/** What a list of entries gives. `typeName` names a "your choice" entry, like any musical instrument. */
+export function gearOf(entries: GearEntry[], typeName: (types: string[]) => string): { gear: Gear[]; copper: number } {
+  const gear: Gear[] = [];
+  let copper = 0;
+  for (const entry of entries) {
+    if (typeof entry === "string") {
+      const item = itemRef(entry);
+      gear.push({ name: item.name, quantity: 1, item });
+      continue;
+    }
+    const quantity = entry.quantity ?? 1;
+    copper += (entry.value ?? 0) + (entry.containsValue ?? 0);
+    const types = entry.equipmentTypes ?? (entry.equipmentType ? [entry.equipmentType] : []);
+    if (entry.item) {
+      const item = itemRef(entry.item);
+      gear.push({ name: entry.displayName ?? item.name, quantity, item });
+    } else if (entry.special) gear.push({ name: entry.special, quantity });
+    else if (types.length) gear.push({ name: entry.displayName ?? typeName(types), quantity });
+  }
+  return { gear, copper };
+}
+
+/** Everything the picks give: each group's `_` part plus its picked option (none while unpicked). */
+export function startingGear(groups: GearGroup[], picks: (string | null)[], typeName: (types: string[]) => string) {
+  return gearOf(groups.flatMap((group, i) => [...(group._ ?? []), ...(picks[i] ? (group[picks[i]] ?? []) : [])]), typeName);
+}
+
+/** Copper as the fewest coins in gold, silver and copper (no electrum or platinum, as the books hand them out). */
+export function coinsOf(copper: number): Partial<Record<"gp" | "sp" | "cp", number>> {
+  const coins = { gp: Math.floor(copper / 100), sp: Math.floor((copper % 100) / 10), cp: copper % 10 };
+  return Object.fromEntries(Object.entries(coins).filter(([, n]) => n > 0));
+}

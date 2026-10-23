@@ -3,7 +3,7 @@
   import { catalogRows, type CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { inSources } from "$lib/characters/rules";
-  import { ATTUNEMENT_LIMIT, armorKind, carryingCapacity, weaponOf } from "$lib/characters/sheet";
+  import { ATTUNEMENT_LIMIT, carryingCapacity, inventoryItem } from "$lib/characters/sheet";
   import { DAMAGE_TYPES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
@@ -79,17 +79,7 @@
   }
 
   function addFromCatalog(row: CatalogRow) {
-    const armor = armorKind(row.data.type);
-    const weapon = weaponOf(row.data);
-    add({
-      name: row.name,
-      source: row.source,
-      quantity: 1,
-      ...(typeof row.data.weight === "number" ? { weight: row.data.weight } : {}),
-      ...(row.data.reqAttune ? { attunement: true } : {}),
-      ...(armor ? { armor, ...(typeof row.data.ac === "number" ? { ac: row.data.ac } : {}) } : {}),
-      ...(weapon ? { weapon } : {}),
-    });
+    add(inventoryItem(row));
     search = "";
   }
 

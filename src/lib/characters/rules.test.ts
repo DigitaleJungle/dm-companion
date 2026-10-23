@@ -4,7 +4,12 @@ import {
   bonusComplete,
   bonusOptions,
   bonusTotals,
+  coinsOf,
   emptyAssignment,
+  equipmentGroups,
+  gearOf,
+  gearOptions,
+  startingGear,
   emptyPick,
   finalScores,
   inSources,
@@ -112,5 +117,57 @@ describe("species versions", () => {
     expect(speciesLabel("Dragonborn", "Dragonborn (Black)")).toBe("Dragonborn (Black)");
     expect(speciesLabel("Elf", "Drow Lineage")).toBe("Elf (Drow Lineage)");
     expect(speciesLabel("Human", null)).toBe("Human");
+  });
+});
+
+describe("starting equipment", () => {
+  const typeName = (types: string[]) => types.join(" or ");
+  const fighter = {
+    additionalFromBackground: true,
+    defaultData: [{ A: [{ item: "chain mail|xphb" }, { item: "javelin|xphb", quantity: 8 }, { value: 400 }], B: [{ value: 15500 }] }],
+  };
+
+  it("reads a class's and a background's groups", () => {
+    expect(equipmentGroups(fighter)).toHaveLength(1);
+    expect(equipmentGroups([{ A: [], B: [] }])).toHaveLength(1);
+    expect(equipmentGroups(undefined)).toEqual([]);
+    expect(gearOptions({ _: [], a: [], b: [] })).toEqual(["a", "b"]);
+  });
+
+  it("turns entries into gear and copper", () => {
+    expect(
+      gearOf(
+        [
+          "dungeoneer's pack|xphb",
+          { item: "book|xphb", displayName: "Book (Prayers)" },
+          { item: "pouch|phb", containsValue: 1500 },
+          { special: "Spellbook" },
+          { equipmentTypes: ["instrumentMusical", "toolArtisan"] },
+          { value: 50 },
+        ],
+        typeName,
+      ),
+    ).toEqual({
+      gear: [
+        { name: "Dungeoneer's Pack", quantity: 1, item: { name: "Dungeoneer's Pack", source: "XPHB" } },
+        { name: "Book (Prayers)", quantity: 1, item: { name: "Book", source: "XPHB" } },
+        { name: "Pouch", quantity: 1, item: { name: "Pouch", source: "PHB" } },
+        { name: "Spellbook", quantity: 1 },
+        { name: "instrumentMusical or toolArtisan", quantity: 1 },
+      ],
+      copper: 1550,
+    });
+  });
+
+  it("takes the picked option plus what every option gives", () => {
+    const groups = [{ _: ["arrows (20)|xphb"], a: [{ value: 100 }], b: [{ value: 200 }] }, ...equipmentGroups(fighter)];
+    expect(startingGear(groups, ["b", "A"], typeName).copper).toBe(600);
+    expect(startingGear(groups, [null, null], typeName)).toEqual({ gear: [{ name: "Arrows (20)", quantity: 1, item: { name: "Arrows (20)", source: "XPHB" } }], copper: 0 });
+  });
+
+  it("pays copper in the fewest coins", () => {
+    expect(coinsOf(1550)).toEqual({ gp: 15, sp: 5 });
+    expect(coinsOf(7)).toEqual({ cp: 7 });
+    expect(coinsOf(0)).toEqual({});
   });
 });

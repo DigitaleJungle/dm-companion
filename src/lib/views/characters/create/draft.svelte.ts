@@ -1,5 +1,6 @@
-import type { Character } from "$lib/api/characters";
-import type { CatalogRow } from "$lib/api/rules";
+import type { Character, InventoryItem } from "$lib/api/characters";
+import { findEntity, type CatalogRow } from "$lib/api/rules";
+import { inventoryItem } from "$lib/characters/sheet";
 import type { Roll } from "$lib/api/dice";
 import {
   ABILITIES,
@@ -9,7 +10,11 @@ import {
   bonusComplete,
   bonusOptions,
   bonusTotals,
+  coinsOf,
   emptyAssignment,
+  equipmentGroups,
+  gearOptions,
+  startingGear,
   emptyPick,
   finalScores,
   inSources,
@@ -21,6 +26,7 @@ import {
   type Assignment,
   type BonusOption,
   type BonusPick,
+  type GearGroup,
   type Scores,
   type SkillChoice,
 } from "$lib/characters/rules";
@@ -35,8 +41,8 @@ export type Options = { species: CatalogRow[]; subspecies: CatalogRow[]; classes
 export const OPTION_KEYS = {
   species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "entries"],
   subspecies: ["raceName", "raceSource", "skillProficiencies", "ability"],
-  class: ["startingProficiencies", "proficiency", "hd", "isSidekick"],
-  background: ["skillProficiencies", "ability", "feats"],
+  class: ["startingProficiencies", "proficiency", "hd", "isSidekick", "startingEquipment"],
+  background: ["skillProficiencies", "ability", "feats", "startingEquipment"],
   skill: ["ability"],
 };
 
@@ -70,6 +76,11 @@ function blank() {
     keptBonuses: null as Partial<Scores> | null,
     /** Picked skills per choice group (see `skillGroups`). */
     skillPicks: {} as Record<string, string[]>,
+    /** Picked starting equipment option ("A", "B"…) per group of the class and the background. */
+    classGear: [] as (string | null)[],
+    backgroundGear: [] as (string | null)[],
+    /** Editing a saved character: starting equipment isn't asked for or added. */
+    editing: false,
   };
 }
 
@@ -109,11 +120,13 @@ export function chooseSubspecies(row: CatalogRow | null) {
 export function chooseClass(row: CatalogRow | null) {
   draft.cls = row;
   draft.skillPicks = {};
+  draft.classGear = [];
 }
 
 export function chooseBackground(row: CatalogRow | null) {
   draft.background = row;
   draft.skillPicks = {};
+  draft.backgroundGear = [];
   draft.backgroundPick = emptyPick(undefined);
   draft.keptBonuses = null;
 }
@@ -152,6 +165,33 @@ export function backgroundFeats(): { name: string; source: string }[] {
     const title = name.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()).replace(/; (.+)$/, " ($1)");
     return first?.[key] === true ? [{ name: title, source: source.toUpperCase() }] : [];
   });
+}
+
+// --- Starting equipment ---------------------------------------------------------------------
+
+export const classGroups = (): GearGroup[] => equipmentGroups(draft.cls?.data.startingEquipment);
+export const backgroundGroups = (): GearGroup[] => equipmentGroups(draft.background?.data.startingEquipment);
+const gearPicked = (groups: GearGroup[], picks: (string | null)[]) => draft.editing || groups.every((g, i) => gearOptions(g).length === 0 || !!picks[i]);
+
+/**
+ * The new character's inventory and coins from the picked starting equipment. Rules items are looked up for
+ * weight, armor and attacks; one that isn't in the library is kept by name.
+ */
+export async function startingInventory(typeName: (types: string[]) => string): Promise<{ inventory: InventoryItem[]; coins: Partial<Record<"gp" | "sp" | "cp", number>> }> {
+  const picked = [startingGear(classGroups(), draft.classGear, typeName), startingGear(backgroundGroups(), draft.backgroundGear, typeName)];
+  const inventory: InventoryItem[] = [];
+  const looked = await Promise.all(picked.flatMap((p) => p.gear).map(async (g) => ({ g, found: g.item ? await findEntity("item", g.item.name, g.item.source) : null })));
+  for (const { g, found } of looked) {
+    // The library's name, unless the equipment names it its own way ("Book (Prayers)").
+    const item: InventoryItem = found
+      ? { ...inventoryItem(found, g.quantity), ...(g.name !== g.item?.name ? { name: g.name } : {}) }
+      : { name: g.name, quantity: g.quantity };
+    // The same item from the class and the background is one line.
+    const same = inventory.find((i) => i.name === item.name && i.source === item.source);
+    if (same) same.quantity += item.quantity;
+    else inventory.push(item);
+  }
+  return { inventory, coins: coinsOf(picked.reduce((sum, p) => sum + p.copper, 0)) };
 }
 
 // --- Skills -----------------------------------------------------------------------------------
@@ -226,9 +266,9 @@ export function stepComplete(step: Step, options: Options | null): boolean {
         (sizesOf(draft.species).length <= 1 || !!draft.size)
       );
     case "class":
-      return !!draft.cls;
+      return !!draft.cls && gearPicked(classGroups(), draft.classGear);
     case "background":
-      return !!draft.background;
+      return !!draft.background && gearPicked(backgroundGroups(), draft.backgroundGear);
     case "abilities":
       return (
         baseScores() !== null &&
@@ -295,6 +335,7 @@ function assignmentFor(values: number[], base: Scores): Assignment | null {
  */
 export function loadCharacter(c: Character, campaignId: string | null, options: Options) {
   resetDraft();
+  draft.editing = true;
   draft.name = c.name;
   draft.player = c.player ?? "";
   draft.campaignId = campaignId;
