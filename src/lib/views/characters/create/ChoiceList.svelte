@@ -18,6 +18,7 @@
     onselect,
     facts,
     art,
+    tall = false,
     choices,
   }: {
     id: string;
@@ -29,6 +30,8 @@
     facts: (row: CatalogRow) => string[];
     /** The entry's picture in the imported images. */
     art: (row: CatalogRow) => string;
+    /** Tall pictures (subclass art is about 2:5): narrower cards with 1:2 picture frames, cropped around the center. */
+    tall?: boolean;
     /** The choices the picked entry asks for. */
     choices?: Snippet;
   } = $props();
@@ -95,12 +98,12 @@
     {:else if visible.length === 0}
       <p class="muted">{t.none}</p>
     {:else}
-      <ul class="grid" bind:this={grid} aria-label="{label} ({strings.characters.wizard.basics.required})">
+      <ul class="grid" class:tall bind:this={grid} aria-label="{label} ({strings.characters.wizard.basics.required})">
         {#each visible as g (g.main.id)}
           {@const row = pickedIn(g) ?? g.main}
           <li>
             <button class="card" aria-pressed={pickedIn(g) !== null} onclick={() => pick(row)}>
-              <span class="card-art"><ChoiceArt path={art(row)} name={row.name} /></span>
+              <span class="card-art"><ChoiceArt path={art(row)} name={row.name} focus={tall ? "center" : "top"} frame={tall ? 1 / 2 : null} /></span>
               <span class="card-body">
                 <span class="name">{row.name}</span>
                 <span class="source">
@@ -116,8 +119,8 @@
   </div>
 {:else}
   <section class="overview" aria-labelledby="{id}-picked">
-    <div class="hero">
-      <div class="hero-art"><ChoiceArt path={art(selected)} name={selected.name} /></div>
+    <div class="hero" class:tall>
+      <div class="hero-art"><ChoiceArt path={art(selected)} name={selected.name} focus={tall ? "center" : "top"} frame={tall ? 1 / 2 : null} /></div>
       <div class="hero-text">
         <div class="name-row">
           <h3 id="{id}-picked" class="hero-name" bind:this={heading} tabindex="-1">{selected.name}</h3>
@@ -229,6 +232,22 @@
   .card[aria-pressed="true"] {
     border-color: var(--color-link);
     box-shadow: 0 0 0 var(--focus-ring) var(--color-link);
+  }
+
+  .grid.tall {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--choice-card-tall-width)), 1fr));
+  }
+
+  .grid.tall .card-art {
+    aspect-ratio: 1 / 2;
+  }
+
+  .hero.tall {
+    grid-template-columns: var(--choice-hero-tall-width) 1fr;
+  }
+
+  .hero.tall .hero-art {
+    aspect-ratio: 1 / 2;
   }
 
   .card-art {
@@ -400,8 +419,13 @@
   }
 
   @media (max-width: 720px) {
-    .hero {
+    .hero,
+    .hero.tall {
       grid-template-columns: 1fr;
+    }
+
+    .hero.tall .hero-art {
+      width: min(100%, var(--choice-hero-tall-width));
     }
 
     .hero-art {

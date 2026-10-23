@@ -142,6 +142,7 @@
       onselect={(row) => (picks.subclass = { name: row.name, source: row.source, shortName: String(row.data.shortName ?? row.name) })}
       facts={() => []}
       art={subclassArt}
+      tall
     />
   {:else if d.kind === "feat" && picks.feats[d.id]}
     <ChoicePicker id="levelup-{level}-{d.id}" label={t.feat} {level} candidates={featCandidates(d.categories, input, asiFirst(d))} bind:pick={picks.feats[d.id]} ctx={cctx} />
