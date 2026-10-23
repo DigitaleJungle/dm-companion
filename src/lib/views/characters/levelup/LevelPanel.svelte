@@ -4,20 +4,8 @@
   import { rollDice } from "$lib/api/dice";
   import type { CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import {
-    decisionComplete,
-    emptyFeat,
-    hpGain,
-    levelHp,
-    prerequisite,
-    refKey,
-    scoresWithLevels,
-    spellMatches,
-    type Decision,
-    type Feature,
-    type LevelPicks,
-    type SpellFilter,
-  } from "$lib/characters/levelup";
+  import { emptyChoice, entryChoices } from "$lib/characters/choices";
+  import { decisionComplete, hpGain, levelHp, refKey, scoresWithLevels, type Decision, type Feature, type LevelPicks } from "$lib/characters/levelup";
   import { inSources, modifier } from "$lib/characters/rules";
   import { masteryNames } from "$lib/characters/sheet";
   import { ordinal } from "$lib/rules/catalog";
@@ -25,8 +13,9 @@
   import { strings } from "$lib/strings";
   import ChoiceList from "../create/ChoiceList.svelte";
   import { versionGroups } from "../create/cards";
-  import FeatPicker from "./FeatPicker.svelte";
+  import ChoicePicker, { type Candidate } from "./ChoicePicker.svelte";
   import PickList, { type PickItem } from "./PickList.svelte";
+  import { candidatesOf, choiceContext, featCandidates } from "./choiceContext";
   import { alwaysSpellsAt, lookup, planFor, prereqContext, stateBefore, subclassAt, type LevelData } from "./levelData";
 
   // One class level: its hit points, its features with their rules text, and every decision they ask for, filled in
@@ -62,12 +51,19 @@
   const subclass = $derived(subclassAt(character, data, level, picks));
   const plan = $derived(planFor(data, level, subclass));
   const before = $derived(stateBefore(character, level, faces));
-  const ctx = $derived(prereqContext(before, level));
+  const prereq = $derived(prereqContext(before, level, data, picks.keys.cantrips ?? []));
+  const input = $derived({ data, before, prereq, sources, published, skills, alsoKnown: picks.keys.cantrips ?? [] });
+  const cctx = $derived(choiceContext(input));
   const con = $derived(scoresWithLevels(character)?.con ?? 10);
 
-  // Every feat decision gets an empty pick to fill in.
+  // Every feat decision gets an empty pick, every invocation-style decision one empty pick per slot.
   $effect(() => {
-    for (const d of plan.decisions) if (d.kind === "feat" && !picks.feats[d.id]) picks.feats[d.id] = emptyFeat();
+    for (const d of plan.decisions) {
+      if (d.kind === "feat" && !picks.feats[d.id]) picks.feats[d.id] = emptyChoice();
+      if (d.kind === "optional" && (picks.choices[d.id]?.length ?? 0) !== d.count) {
+        picks.choices[d.id] = Array.from({ length: d.count }, (_, i) => picks.choices[d.id]?.[i] ?? emptyChoice());
+      }
+    }
   });
 
   // ---- Hit points ----
@@ -90,46 +86,21 @@
 
   // ---- What each decision offers ----
 
-  const known = $derived(new Set((before.spells ?? []).map(refKey)));
-  const spellItem = (r: CatalogRow): PickItem => ({
-    key: refKey(r),
-    name: r.name,
-    group: Number(r.data.level) === 0 ? t.cantrips : t.spellLevel(ordinal(Number(r.data.level))),
-    preview: { kind: "spell", name: r.name, source: r.source },
-  });
-  const byLevelThenName = (a: CatalogRow, b: CatalogRow) => Number(a.data.level) - Number(b.data.level) || a.name.localeCompare(b.name);
-
-  function spellItems(filter: SpellFilter): PickItem[] {
-    const lists = data.lists ?? new Map();
-    return data.spells.filter((r) => allowed(r.source) && !known.has(refKey(r)) && spellMatches(r, filter, lists)).sort(byLevelThenName).map(spellItem);
-  }
-
   function classSpellItems(d: Extract<Decision, { kind: "cantrips" | "spells" }>): PickItem[] {
     const levels = d.kind === "cantrips" ? [0] : Array.from({ length: d.maxLevel }, (_, i) => i + 1);
-    return spellItems({ levels, classes: [d.list.name.toLowerCase()], schools: [], ritual: false });
+    return cctx.spellItems({ levels, classes: [d.list.name.toLowerCase()], schools: [], ritual: false });
   }
 
-  function featCandidates(d: Extract<Decision, { kind: "feat" }>) {
-    const taken = new Set((before.feats ?? []).map((f) => f.name.toLowerCase()));
-    const rows = data.feats.filter((r) => d.categories.includes(String(r.data.category ?? "")) && (!taken.has(r.name.toLowerCase()) || r.data.repeatable === true));
-    const asi = (r: CatalogRow) => Number(d.asi && r.name === "Ability Score Improvement");
-    return versionGroups(rows, allowed, published)
-      .map((g) => ({ row: g.main, prereq: prerequisite(g.main.data.prerequisite, ctx) }))
-      .filter((x) => x.prereq !== "unmet")
-      .sort((a, b) => asi(b.row) - asi(a.row) || a.row.name.localeCompare(b.row.name))
-      .map((x) => ({ row: x.row, check: x.prereq === "check" }));
-  }
+  const asiFirst = (d: Extract<Decision, { kind: "feat" }>) => (r: CatalogRow) => d.asi && r.name === "Ability Score Improvement";
 
-  function optionalItems(d: Extract<Decision, { kind: "optional" }>): PickItem[] {
+  /** One invocation-style slot's candidates: not known before (unless repeatable); taken in another slot is greyed out unless repeatable. */
+  function optionalCandidates(d: Extract<Decision, { kind: "optional" }>, slot: number): Candidate[] {
     const mine = new Set((before.optionalFeatures ?? []).map(refKey));
-    const rows = data.optional.filter((r) => (r.data.featureType as string[] | undefined)?.some((ft) => d.types.includes(ft)) && !mine.has(refKey(r)));
-    return versionGroups(rows, allowed, published)
-      .map((g) => ({ row: g.main, prereq: prerequisite(g.main.data.prerequisite, ctx) }))
-      .filter((x) => x.prereq !== "unmet")
-      .sort((a, b) => a.row.name.localeCompare(b.row.name))
-      .map((x) => ({ key: refKey(x.row), name: x.row.name, note: x.prereq === "check" ? t.checkPrereq : undefined, preview: { kind: "optionalfeature", name: x.row.name, source: x.row.source } }));
+    const repeatable = (r: CatalogRow) => entryChoices(r.data, level).repeatable;
+    const rows = data.optional.filter((r) => (r.data.featureType as string[] | undefined)?.some((ft) => d.types.includes(ft)) && (!mine.has(refKey(r)) || repeatable(r)));
+    const others = new Set((picks.choices[d.id] ?? []).filter((_, i) => i !== slot).flatMap((s) => (s.ref ? [refKey(s.ref)] : [])));
+    return candidatesOf(rows, input).map((c) => ({ ...c, disabled: others.has(refKey(c.row)) && !repeatable(c.row) }));
   }
-
   const masteryItems = $derived.by((): PickItem[] => {
     const mine = new Set((before.weaponMasteries ?? []).map(refKey));
     return versionGroups(
@@ -173,16 +144,7 @@
       art={subclassArt}
     />
   {:else if d.kind === "feat" && picks.feats[d.id]}
-    <FeatPicker
-      id="levelup-{level}-{d.id}"
-      candidates={featCandidates(d)}
-      bind:pick={picks.feats[d.id]}
-      {level}
-      {skills}
-      proficient={before.skills ?? []}
-      expertise={before.expertise ?? []}
-      {spellItems}
-    />
+    <ChoicePicker id="levelup-{level}-{d.id}" label={t.feat} {level} candidates={featCandidates(d.categories, input, asiFirst(d))} bind:pick={picks.feats[d.id]} ctx={cctx} />
   {:else if d.kind === "options"}
     <fieldset class="options">
       <legend class="label-text">{t.chooseOne}</legend>
@@ -195,7 +157,18 @@
       {/each}
     </fieldset>
   {:else if d.kind === "optional"}
-    <PickList id="levelup-{level}-{d.id}" label={d.feature} items={optionalItems(d)} max={d.count} bind:selected={() => keysOf(d.id), (v) => setKeys(d.id, v)} />
+    <div class="slots">
+      {#each picks.choices[d.id] ?? [] as _, i (i)}
+        <ChoicePicker
+          id="levelup-{level}-{d.id}-{i}"
+          label={d.count > 1 ? t.pickOf(d.feature, plain.format(i + 1), plain.format(d.count)) : d.feature}
+          {level}
+          candidates={optionalCandidates(d, i)}
+          bind:pick={picks.choices[d.id][i]}
+          ctx={cctx}
+        />
+      {/each}
+    </div>
   {:else if d.kind === "cantrips" || d.kind === "spells"}
     {#if data.lists === null}
       <p class="note">{t.reimport}</p>
@@ -249,11 +222,13 @@
           <input
             type="number"
             min="1"
+            max={faces}
             inputmode="numeric"
+            aria-label={t.manualOf(plain.format(faces))}
             value={picks.hp?.how === "manual" ? picks.hp.value : ""}
             onchange={(e) => {
               const n = Number(e.currentTarget.value);
-              if (Number.isInteger(n) && n >= 1) picks.hp = { how: "manual", value: n };
+              if (Number.isInteger(n) && n >= 1 && n <= faces) picks.hp = { how: "manual", value: n };
             }}
           />
         </label>
@@ -381,6 +356,12 @@
 
   .hp-result {
     font-weight: var(--weight-semibold);
+  }
+
+  .slots {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
   }
 
   .options {

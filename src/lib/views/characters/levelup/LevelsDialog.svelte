@@ -3,7 +3,7 @@
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import { errorMessage } from "$lib/api/storage";
-  import { emptyLevelPicks, type LevelPicks, type LevelRecord } from "$lib/characters/levelup";
+  import { emptyLevelPicks, normalizePicks, type LevelPicks, type LevelRecord } from "$lib/characters/levelup";
   import { hitDieFaces } from "$lib/characters/sheet";
   import { enablePreviews } from "$lib/rules/preview.svelte";
   import { notify } from "$lib/stores/notifications.svelte";
@@ -64,7 +64,8 @@
   const normalized = (p: LevelPicks) =>
     JSON.stringify({
       ...p,
-      feats: Object.fromEntries(Object.entries(p.feats).filter(([, f]) => f.feat)),
+      feats: Object.fromEntries(Object.entries(p.feats).filter(([, f]) => f.ref)),
+      choices: Object.fromEntries(Object.entries(p.choices ?? {}).filter(([, slots]) => slots.some((s) => s.ref))),
       keys: Object.fromEntries(Object.entries(p.keys).filter(([, v]) => v.length)),
     });
   const dirty = $derived(normalized(picks) !== original);
@@ -89,8 +90,7 @@
     selected = level;
     const record = recordOf(level);
     // Saved picks, or for a level without a record the fixed hit points to start from.
-    picks = record?.picks ? structuredClone($state.snapshot(record.picks)) : { ...emptyLevelPicks(), hp: level > 1 ? { how: "average", value: faces / 2 + 1 } : null };
-    if (!record?.picks && typeof record?.hp === "number") picks.hp = { how: "manual", value: record.hp };
+    picks = record?.picks ? normalizePicks(structuredClone($state.snapshot(record.picks))) : { ...emptyLevelPicks(), hp: level > 1 ? { how: "average", value: faces / 2 + 1 } : null };
     original = normalized(picks);
   }
 

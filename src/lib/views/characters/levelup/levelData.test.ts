@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
-import { emptyLevelPicks, type LevelPicks } from "$lib/characters/levelup";
+import { emptyChoice, emptyLevelPicks, type LevelPicks } from "$lib/characters/levelup";
 import { levelNeedsChoice, saveLevel, type LevelData } from "./levelData";
 
 let id = 1;
@@ -31,6 +31,8 @@ const data = (over: Partial<LevelData>): LevelData => ({
   optional: [],
   spells: [],
   items: [],
+  tools: [],
+  languages: [],
   lists: new Map(),
   ...over,
 });
@@ -83,5 +85,30 @@ describe("saving a level", () => {
     const d = data({ cls: { name: "Fighter", source: "XPHB", data: { hd: { faces: 10 }, itemMasteriesProgression: { "1": 3 } } } });
     const c = base("Fighter", 2);
     expect([levelNeedsChoice(c, d, 1), levelNeedsChoice(c, d, 2)]).toEqual([true, false]);
+  });
+
+  it("invocations with sub-choices: two Agonizing Blasts on different cantrips, Lessons of the First Ones with a feat and its spells", () => {
+    const repeatable = [{ type: "entries", entries: [{ type: "entries", name: "Repeatable", entries: ["…"] }] }];
+    const d = data({
+      cls: { name: "Warlock", source: "XPHB", data: { hd: { faces: 8 }, optionalfeatureProgression: [{ name: "Eldritch Invocations", featureType: ["EI"], progression: [0, 3] }] } },
+      optional: [
+        row("optionalfeature", "Agonizing Blast", { featureType: ["EI"], prerequisite: [{ spell: [{ choose: "level=0|class=Warlock" }] }], entries: repeatable }),
+        row("optionalfeature", "Lessons of the First Ones", { featureType: ["EI"], featProgression: [{ category: ["O"], progression: { "*": 1 } }], entries: repeatable }),
+      ],
+      feats: [row("feat", "Magic Initiate", { category: "O", additionalSpells: [{ name: "Wizard Spells", known: { _: [{ choose: "level=0|class=Wizard", count: 1 }] } }] })],
+      spells: [row("spell", "Eldritch Blast", { level: 0 }), row("spell", "Chill Touch", { level: 0 }), row("spell", "Light", { level: 0 })],
+    });
+    const c = base("Warlock", 1, { classes: [{ name: "Warlock", source: "XPHB", level: 1 }], spells: [{ name: "Eldritch Blast", source: "XPHB", origin: "Warlock", level: 0 }] });
+    const blast = (target: string) => ({ ...emptyChoice({ name: "Agonizing Blast", source: "XPHB" }), target });
+    const lessons = { ...emptyChoice({ name: "Lessons of the First Ones", source: "XPHB" }), feats: [{ ...emptyChoice({ name: "Magic Initiate", source: "XPHB" }), spells: [["light|xphb"]] }] };
+    const { character } = saveLevel(c, d, 2, picks({ choices: { "op:Eldritch Invocations": [blast("eldritch blast|xphb"), blast("chill touch|xphb"), lessons] } }), 8);
+    expect(character.optionalFeatures?.map((o) => [o.name, o.target])).toEqual([
+      ["Agonizing Blast", "Eldritch Blast"],
+      ["Agonizing Blast", "Chill Touch"],
+      ["Lessons of the First Ones", undefined],
+    ]);
+    expect(character.feats?.map((f) => [f.name, f.origin])).toEqual([["Magic Initiate", "Lessons of the First Ones"]]);
+    expect(character.spells?.map((s) => [s.name, s.origin])).toEqual([["Eldritch Blast", "Warlock"], ["Light", "Magic Initiate"]]);
+    expect(levelNeedsChoice(character, d, 2)).toBe(false);
   });
 });

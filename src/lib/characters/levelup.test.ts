@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import {
   complete,
-  emptyFeat,
+  emptyChoice,
   emptyLevelPicks,
-  featChoices,
+  entryChoices,
   gainsOf,
   hpGain,
   levelHp,
@@ -123,7 +123,7 @@ describe("feats", () => {
       4,
     );
     expect(grants[0].choose.map((c) => [c.filter.levels, c.filter.classes, c.count])).toEqual([[[0], ["wizard"], 2], [[1], ["wizard"], 1]]);
-    expect(grants[1].fixed).toEqual([{ name: "misty step", source: "XPHB" }]);
+    expect(grants[1].fixed).toEqual([{ name: "misty step", source: "XPHB", atLevel: 1 }]);
     const lists = new Map([["wizard", new Set(["fire bolt|xphb"])]]);
     expect(spellMatches(entry("Fire Bolt", { level: 0 }), parseSpellFilter("level=0|class=Wizard"), lists)).toBe(true);
     expect(spellMatches(entry("Sacred Flame", { level: 0 }), parseSpellFilter("level=0|class=Wizard"), lists)).toBe(false);
@@ -132,10 +132,10 @@ describe("feats", () => {
   });
 
   it("knows what a feat asks: ASI's +2 or +1/+1, skills, expertise", () => {
-    const asi = featChoices(entry("Ability Score Improvement", { ability: [{ choose: { from: ["str", "dex"], amount: 2 } }, { choose: { from: ["str", "dex"], count: 2 } }] }), 4);
+    const asi = entryChoices({ ability: [{ choose: { from: ["str", "dex"], amount: 2 } }, { choose: { from: ["str", "dex"], count: 2 } }] }, 4);
     expect(asi.bonus.map((o) => o.choices[0].amounts)).toEqual([[2], [1, 1]]);
-    const expert = featChoices(entry("Skill Expert", { skillProficiencies: [{ any: 1 }], expertise: [{ anyProficientSkill: 1 }] }), 4);
-    expect([expert.skills.choices[0].count, expert.expertise]).toEqual([1, 1]);
+    const expert = entryChoices({ skillProficiencies: [{ any: 1 }], expertise: [{ anyProficientSkill: 1 }] }, 4);
+    expect([expert.profs[0].count, expert.expertise]).toEqual([1, 1]);
   });
 });
 
@@ -154,7 +154,7 @@ describe("picks and gains", () => {
     const p = plan(4, champion);
     const picks = emptyLevelPicks();
     picks.hp = { how: "roll", value: 7 };
-    picks.feats["c:Ability Score Improvement"] = { ...emptyFeat(), feat: { name: "Magic Initiate", source: "XPHB" } };
+    picks.feats["c:Ability Score Improvement"] = emptyChoice({ name: "Magic Initiate", source: "XPHB" });
     picks.keys.masteries = ["greatsword|xphb"];
     expect(complete(p, picks, find)).toBe(false); // the feat's spells are missing
     picks.feats["c:Ability Score Improvement"].spells = [["fire bolt|xphb", "light|xphb"], ["shield|xphb"]];
@@ -167,14 +167,14 @@ describe("picks and gains", () => {
 
   it("level 1 has no hit point choice", () => {
     const picks = emptyLevelPicks();
-    picks.feats["fp:Fighting Style:0"] = { ...emptyFeat(), feat: { name: "Magic Initiate", source: "XPHB" }, spells: [["fire bolt|xphb", "light|xphb"], ["shield|xphb"]] };
+    picks.feats["fp:Fighting Style:0"] = { ...emptyChoice({ name: "Magic Initiate", source: "XPHB" }), spells: [["fire bolt|xphb", "light|xphb"], ["shield|xphb"]] };
     picks.keys.masteries = ["a", "b", "c"];
     expect(complete(plan(1), picks, find)).toBe(true);
   });
 });
 
 describe("rebuild from level records", () => {
-  it("hit points: level 1's, then each record (rolled, typed or the fixed value when missing)", () => {
+  it("hit points: level 1's, then each record (rolled, a manual roll, or the fixed value when missing)", () => {
     const c = character("Fighter", 4, {
       hp: { max: 30, current: 25 },
       levels: [
@@ -183,7 +183,7 @@ describe("rebuild from level records", () => {
       ],
     });
     const r = rebuild(c, 10);
-    expect(r.hp).toEqual({ max: 12 + 11 + 8 + 3, current: 34 - 5 }); // level 3 has no record: 6 + 2
+    expect(r.hp).toEqual({ max: 12 + 11 + 8 + 5, current: 36 - 5 }); // level 3 has no record: 6 + 2; level 4 a manual roll of 3 + 2
     expect(levelHp(5, 10, 14)).toBe(5); // records from before levels could be edited
     expect(hpGain(6, 3)).toBe(1);
   });
@@ -214,6 +214,33 @@ describe("rebuild from level records", () => {
   it("a new level through withLevel raises the class level and takes the subclass from its record", () => {
     const c = withLevel(character("Fighter", 2), { class: "Fighter", level: 3, hp: { how: "average", value: 6 }, gains: { ...noGains(), subclass: { name: "Champion", source: "XPHB", shortName: "Champion" } } }, 10);
     expect([c.classes[0].level, c.classes[0].subclass?.name, c.hp?.max]).toEqual([3, "Champion", 12 + 8 + 8]);
+  });
+});
+
+describe("rebuild from the origin choices", () => {
+  it("adds the species and background picks: feat, spells with their level, tools, languages, saving throws", () => {
+    const c = rebuild(
+      character("Fighter", 1, {
+        savingThrows: ["str", "con"],
+        origin: {
+          gains: {
+            ...noGains(),
+            feats: [{ name: "Alert", source: "XPHB", origin: "Human" }],
+            spells: [{ name: "Faerie Fire", source: "XPHB", origin: "Elf", atLevel: 3 }],
+            tools: ["thieves' tools"],
+            languages: ["common", "elvish"],
+            saves: ["wis"],
+          },
+        },
+      }),
+      10,
+    );
+    expect(c.feats).toEqual([{ name: "Alert", source: "XPHB", origin: "Human", gained: 0 }]);
+    expect(c.spells?.map((s) => [s.name, s.atLevel])).toEqual([["Faerie Fire", 3]]);
+    expect([c.tools, c.languages, c.savingThrows]).toEqual([["thieves' tools"], ["common", "elvish"], ["str", "con", "wis"]]);
+    // A rebuild without the origin takes them off again, and keeps the class saves.
+    const without = rebuild({ ...c, origin: undefined }, 10);
+    expect([without.feats, without.tools, without.savingThrows]).toEqual([[], [], ["str", "con"]]);
   });
 });
 

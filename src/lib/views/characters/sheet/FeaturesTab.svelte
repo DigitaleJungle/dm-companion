@@ -83,8 +83,14 @@
       const entry = e as Data;
       return typeof entry?.name === "string" ? [{ key: `t:${entry.name}`, name: entry.name, from: c.species?.name ?? "", text: entry.entries }] : [];
     });
-    const feats = (c.feats ?? []).map((f) => ({ key: `f:${f.name}|${f.source}`, name: f.name, from: f.origin ? t.featFrom(f.origin) : t.feat, text: extras[`feat:${f.name}|${f.source}`] ?? undefined }));
-    const optional = (c.optionalFeatures ?? []).map((o) => ({ key: `o:${o.name}|${o.source}`, name: o.name, from: o.origin, text: extras[`optionalfeature:${o.name}|${o.source}`] ?? undefined }));
+    const feats = (c.feats ?? []).map((f, i) => ({ key: `f:${i}:${f.name}|${f.source}`, name: f.name, from: f.origin ? t.featFrom(f.origin) : t.feat, text: extras[`feat:${f.name}|${f.source}`] ?? undefined }));
+    // A repeatable invocation can be there twice (on different cantrips), so the card key includes its place.
+    const optional = (c.optionalFeatures ?? []).map((o, i) => ({
+      key: `o:${i}:${o.name}|${o.source}`,
+      name: o.target ? t.withTarget(o.name, o.target) : o.name,
+      from: o.origin,
+      text: extras[`optionalfeature:${o.name}|${o.source}`] ?? undefined,
+    }));
     return [...byLevel, ...traits, ...feats, ...optional];
   });
 </script>

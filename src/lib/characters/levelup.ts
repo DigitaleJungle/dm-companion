@@ -2,24 +2,47 @@
 // (`applyLevel`). Everything comes from the class, subclass, feature and feat entries in the rules data.
 
 import type { Character } from "$lib/api/characters";
-import { ABILITIES, SCORE_CAP, bonusOptions, bonusTotals, level1Hp, modifier, skillGrant, type Ability, type BonusOption, type BonusPick, type Scores } from "./rules";
+import {
+  choiceComplete,
+  emptyGains,
+  mergeGains,
+  parseRef,
+  refKey,
+  resolveChoice,
+  sameRef,
+  toChoice,
+  type ChoiceGains,
+  type Entry,
+  type Lookup,
+  type Ref,
+  type SavedChoice,
+} from "./choices";
+import { ABILITIES, SCORE_CAP, level1Hp, modifier, type BonusOption, type Scores } from "./rules";
+
+export {
+  emptyChoice,
+  entryChoices,
+  parseRef,
+  parseSpellFilter,
+  prerequisite,
+  refKey,
+  spellGrants,
+  spellMatches,
+  type Entry,
+  type Lookup,
+  type Prereq,
+  type Ref,
+  type SavedChoice,
+  type SpellFilter,
+  type SpellGrant,
+} from "./choices";
 import { pactSlots, spellSlots } from "./sheet";
 
 type Data = Record<string, unknown>;
-export type Ref = { name: string; source: string };
-/** A rules entry as the dialog loaded it. */
-export type Entry = Ref & { data: Data };
 
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const obj = (v: unknown): Data => (v && typeof v === "object" && !Array.isArray(v) ? (v as Data) : {});
 const lower = (s: string) => s.toLowerCase();
-const sameRef = (a: Ref, b: Ref) => lower(a.name) === lower(b.name) && lower(a.source) === lower(b.source);
-
-/** "dungeoneer's pack|xphb" → { name, source }; "#c" style suffixes are dropped. */
-export function parseRef(key: string, fallbackSource = ""): Ref {
-  const [name, source] = key.split("#")[0].split("|");
-  return { name: name.trim(), source: (source || fallbackSource).toUpperCase() };
-}
 
 /** Class feature refs: "Name|Class|ClassSrc|level[|src]"; subclass ones: "Name|Class|ClassSrc|Short|SubSrc|level[|src]". */
 export function featureRef(ref: string, subclass = false): Ref & { level: number } {
@@ -166,129 +189,58 @@ export function levelPlan({ level, cls, subclass, classFeatures, subclassFeature
 
   return { level, features, decisions };
 }
-// --- Feats ----------------------------------------------------------------------------------
-
-export type Prereq = "met" | "unmet" | "check";
-
-/**
- * Prerequisites are alternatives (any one will do); inside one, everything must hold. Level, ability scores and other
- * feats are checked; anything else (a feature, a spellcasting ability…) comes back as "check" for the DM to judge.
- */
-export function prerequisite(raw: unknown, ctx: { level: number; scores: Scores | null; feats: Ref[]; optional?: Ref[] }): Prereq {
-  const alternatives = list(raw);
-  if (!alternatives.length) return "met";
-  let best: Prereq = "unmet";
-  for (const alt of alternatives) {
-    let result: Prereq = "met";
-    for (const [key, value] of Object.entries(obj(alt))) {
-      let ok: boolean | null = null;
-      if (key === "level") ok = ctx.level >= Number(typeof value === "number" ? value : obj(value).level);
-      // Without scores yet (a character still being created), ability prerequisites are for the DM to check.
-      else if (key === "ability") ok = ctx.scores ? list(value).some((a) => Object.entries(obj(a)).every(([ab, min]) => (ctx.scores![ab as Ability] ?? 0) >= Number(min))) : null;
-      else if (key === "feat") ok = list(value).every((f) => ctx.feats.some((x) => sameRef(x, parseRef(String(f)))));
-      else if (key === "optionalfeature") ok = list(value).every((f) => (ctx.optional ?? []).some((x) => sameRef(x, parseRef(String(f)))));
-      else if (key === "pact") ok = (ctx.optional ?? []).some((x) => lower(x.name) === `pact of the ${lower(String(value))}`);
-      if (ok === false) result = "unmet";
-      else if (ok === null && result === "met") result = "check";
-      if (result === "unmet") break;
-    }
-    if (result === "met") return "met";
-    if (result === "check") best = "check";
-  }
-  return best;
-}
-
-/** A spell filter like "level=0|class=Wizard", "level=1|school=E;D" or "level=1|components & miscellaneous=ritual". */
-export type SpellFilter = { levels: number[]; classes: string[]; schools: string[]; ritual: boolean };
-
-export function parseSpellFilter(text: string): SpellFilter {
-  const f: SpellFilter = { levels: [], classes: [], schools: [], ritual: false };
-  for (const part of text.split("|")) {
-    const [key, value = ""] = part.split("=");
-    const values = value.split(";").map((v) => v.trim()).filter(Boolean);
-    if (lower(key) === "level") f.levels = values.map(Number);
-    else if (lower(key) === "class") f.classes = values.map(lower);
-    else if (lower(key) === "school") f.schools = values.map((v) => v.toUpperCase());
-    else if (lower(key).includes("miscellaneous")) f.ritual = values.some((v) => lower(v) === "ritual");
-  }
-  return f;
-}
-
-/** `classLists` maps a lowercase class name to the spells on its list ("fireball|xphb"). */
-export function spellMatches(spell: Entry, f: SpellFilter, classLists: Map<string, Set<string>>): boolean {
-  const key = lower(`${spell.name}|${spell.source}`);
-  return (
-    (!f.levels.length || f.levels.includes(Number(spell.data.level))) &&
-    (!f.schools.length || f.schools.includes(String(spell.data.school ?? "").toUpperCase())) &&
-    (!f.ritual || obj(spell.data.meta).ritual === true) &&
-    f.classes.every((c) => classLists.get(c)?.has(key) ?? false)
-  );
-}
-
-/** One way a feat grants spells (Magic Initiate has one per class): fixed spells and choices. */
-export type SpellGrant = { name: string; fixed: Ref[]; choose: { filter: SpellFilter; count: number }[] };
-
-/** The spells in a feat's (or species') `additionalSpells`, up to a character level. */
-export function spellGrants(raw: unknown, level: number): SpellGrant[] {
-  return list(raw).map((option, i) => {
-    const o = obj(option);
-    const grant: SpellGrant = { name: typeof o.name === "string" ? o.name : String(i + 1), fixed: [], choose: [] };
-    const collect = (v: unknown): void => {
-      if (typeof v === "string") grant.fixed.push(parseRef(v));
-      else if (Array.isArray(v)) v.forEach(collect);
-      else if (typeof obj(v).choose === "string") grant.choose.push({ filter: parseSpellFilter(String(obj(v).choose)), count: Number(obj(v).count ?? 1) });
-      else Object.values(obj(v)).forEach(collect);
-    };
-    for (const kind of ["known", "innate", "prepared"]) {
-      for (const [key, value] of Object.entries(obj(o[kind]))) if (key === "_" || Number.parseInt(key) <= level) collect(value);
-    }
-    return grant;
-  });
-}
-
-/** What a picked feat asks for itself. */
-export function featChoices(feat: Entry, level: number) {
-  const skills = skillGrant(feat.data.skillProficiencies);
-  return {
-    bonus: bonusOptions(feat.data.ability),
-    skills,
-    expertise: list(feat.data.expertise).reduce<number>((n, e) => n + Number(obj(e).anyProficientSkill ?? 0), 0),
-    spells: spellGrants(feat.data.additionalSpells, level),
-  };
-}
-
 // --- Picks, level records and rebuilding the character ------------------------------------
 
-/** Hit points of a level: the fixed average, a roll (the die's result, so CON changes still count) or a typed total. */
+/** Hit points of a level: the fixed average, or a die result (rolled in the app, or a real die typed in as a manual roll); CON is added on top, so CON changes still count. */
 export type HpChoice = { how: "average" | "roll" | "manual"; value: number };
 
 /** A level's picks as the dialog keeps them, to open the level again. List keys are lowercase "name|source". */
-export type SavedFeat = { feat: Ref | null; bonus: BonusPick; skills: string[]; expertise: string[]; grant: number; spells: string[][] };
 export type LevelPicks = {
   hp: HpChoice | null;
   subclass: (Ref & { shortName: string }) | null;
-  feats: Record<string, SavedFeat>;
-  /** Picked keys per decision id: options, invocations, cantrips, spells, masteries, expertise. */
+  /** A feat per feat decision, with its sub-choices. */
+  feats: Record<string, SavedChoice>;
+  /** One pick per slot of an optional-feature decision (invocations, maneuvers…), with its sub-choices. */
+  choices: Record<string, SavedChoice[]>;
+  /** Picked keys per decision id: options, cantrips, spells, masteries, expertise. */
   keys: Record<string, string[]>;
 };
 
-/** What a level gave, resolved, so the sheet and Edit character can rebuild without the rules data. */
+/** What a level (or the character's origin) gave, resolved, so the sheet and Edit character can rebuild without the rules data. */
 export type Gains = {
   subclass?: Ref & { shortName: string };
-  feats: (Ref & { bonus?: Record<string, number>; skills?: string[]; epic?: boolean })[];
-  spells: (Ref & { origin: string; level?: number; prepared?: boolean; always?: boolean })[];
-  optional: (Ref & { type: string[] })[];
+  /** `origin` when a feat came through something else (Lessons of the First Ones); `bonus`/`skills` on records from before `bonus`/`skills` below. */
+  feats: (Ref & { origin?: string; bonus?: Record<string, number>; skills?: string[]; epic?: boolean })[];
+  /** `atLevel`: the character level from which a spell applies (species spells). */
+  spells: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean })[];
+  /** `target`: the known spell it applies to ("Eldritch Blast" for Agonizing Blast). */
+  optional: (Ref & { type: string[]; target?: string })[];
   options: (Ref & { feature: string })[];
   masteries: Ref[];
   expertise: string[];
+  skills?: string[];
+  tools?: string[];
+  languages?: string[];
+  saves?: string[];
+  bonus?: Record<string, number>;
 };
 
 /** One class level. Older records (from before levels could be edited) have a plain number for `hp` and nothing else. */
 export type LevelRecord = { class: string; level: number; hp?: HpChoice | number; how?: string; picks?: LevelPicks; gains?: Gains };
 
-export const emptyLevelPicks = (): LevelPicks => ({ hp: null, subclass: null, feats: {}, keys: {} });
-export const emptyFeat = (): SavedFeat => ({ feat: null, bonus: { option: 0, picks: [] }, skills: [], expertise: [], grant: 0, spells: [] });
-export const refKey = (r: Ref) => lower(`${r.name}|${r.source}`);
+export const emptyLevelPicks = (): LevelPicks => ({ hp: null, subclass: null, feats: {}, choices: {}, keys: {} });
+
+/** Saved picks in today's shape: feats from before sub-choices, and invocations kept as a list of keys. */
+export function normalizePicks(raw: LevelPicks): LevelPicks {
+  const keys = { ...raw.keys };
+  const choices = { ...(raw.choices ?? {}) };
+  for (const id of Object.keys(keys).filter((k) => k.startsWith("op:") && !choices[k])) {
+    choices[id] = keys[id].map((k) => ({ ...emptyChoiceFor(k) }));
+    delete keys[id];
+  }
+  return { ...raw, feats: Object.fromEntries(Object.entries(raw.feats ?? {}).map(([id, f]) => [id, toChoice(f)])), choices, keys };
+}
+const emptyChoiceFor = (key: string): SavedChoice => toChoice({ ref: { name: key.split("|")[0], source: (key.split("|")[1] ?? "").toUpperCase() } });
 
 /** Hit points for a level after the first: the fixed value (half the die + 1) or a roll, plus CON, at least 1. */
 export const hpGain = (faces: number, con: number, roll?: number) => Math.max(1, (roll ?? faces / 2 + 1) + modifier(con));
@@ -297,11 +249,8 @@ export const hpGain = (faces: number, con: number, roll?: number) => Math.max(1,
 export function levelHp(hp: LevelRecord["hp"] | null | undefined, faces: number, con: number): number {
   if (typeof hp === "number") return hp;
   if (!hp || hp.how === "average") return hpGain(faces, con);
-  return hp.how === "roll" ? hpGain(faces, con, hp.value) : Math.max(1, hp.value);
+  return hpGain(faces, con, hp.value);
 }
-
-/** The rules entries behind the picked keys, from what the dialog loaded. */
-export type Lookup = { feat: (r: Ref) => Entry | null; spell: (key: string) => Entry | null; optional: (key: string) => Entry | null; item: (key: string) => Entry | null };
 
 /** Whether every decision of the plan has its picks. Level 1 has no hit point choice. */
 export function complete(plan: Plan, picks: LevelPicks, find: Lookup): boolean {
@@ -310,53 +259,59 @@ export function complete(plan: Plan, picks: LevelPicks, find: Lookup): boolean {
 }
 
 export function decisionComplete(d: Decision, level: number, picks: LevelPicks, find: Lookup): boolean {
-  const n = (picks.keys[d.id] ?? []).length;
   switch (d.kind) {
     case "subclass":
       return !!picks.subclass;
     case "feat": {
       const p = picks.feats[d.id];
-      const feat = p?.feat ? find.feat(p.feat) : null;
-      if (!p || !feat) return false;
-      const c = featChoices(feat, level);
-      const grant = c.spells[p.grant];
-      const spellsDone = !grant || grant.choose.every((x, i) => (p.spells[i] ?? []).length === x.count);
-      const bonusDone = !c.bonus.length || (c.bonus[p.bonus.option]?.choices ?? []).every((ch, i) => (p.bonus.picks[i] ?? []).filter(Boolean).length === ch.amounts.length);
-      return bonusDone && spellsDone && p.skills.length === c.skills.choices.reduce((x, y) => x + y.count, 0) && p.expertise.length === c.expertise;
+      return !!p?.ref && choiceComplete(find.feat(p.ref), p, level, find);
+    }
+    case "optional": {
+      const slots = picks.choices?.[d.id] ?? [];
+      return slots.length === d.count && slots.every((s) => !!s.ref && choiceComplete(find.optional(refKey(s.ref)), s, level, find));
     }
     case "options":
-    case "optional":
     case "cantrips":
     case "spells":
     case "masteries":
     case "expertise":
-      return n === d.count;
+      return (picks.keys[d.id] ?? []).length === d.count;
   }
+}
+
+const emptyLevelGains = (): Gains => ({ feats: [], spells: [], optional: [], options: [], masteries: [], expertise: [], skills: [], tools: [], languages: [], saves: [], bonus: {} });
+
+/** Adds what a pick's sub-choices gave to a level's gains. */
+function addChoice(g: Gains, sub: ChoiceGains) {
+  const merged = mergeGains({ ...emptyGains(), skills: g.skills ?? [], tools: g.tools ?? [], languages: g.languages ?? [], saves: g.saves ?? [], bonus: g.bonus ?? {} }, sub);
+  g.feats.push(...sub.feats);
+  g.spells.push(...sub.spells);
+  g.expertise.push(...sub.expertise);
+  Object.assign(g, { skills: merged.skills, tools: merged.tools, languages: merged.languages, saves: merged.saves, bonus: merged.bonus });
 }
 
 /** The resolved gains of a level's picks; `always` are the subclass's always-prepared spells reached at this level. */
 export function gainsOf(plan: Plan, picks: LevelPicks, find: Lookup, cls: Entry, always: Entry[] = []): Gains {
-  const g: Gains = { feats: [], spells: [], optional: [], options: [], masteries: [], expertise: [] };
+  const g = emptyLevelGains();
   const spell = (s: Entry, origin: string, extra: { prepared?: boolean; always?: boolean } = {}) => ({ name: s.name, source: s.source, origin, level: Number(s.data.level ?? 1), ...extra });
   const keys = (id: string) => picks.keys[id] ?? [];
   for (const d of plan.decisions) {
     if (d.kind === "subclass" && picks.subclass) g.subclass = { name: picks.subclass.name, source: picks.subclass.source, shortName: picks.subclass.shortName };
     else if (d.kind === "feat") {
       const p = picks.feats[d.id];
-      const feat = p?.feat ? find.feat(p.feat) : null;
+      const feat = p?.ref ? find.feat(p.ref) : null;
       if (!p || !feat) continue;
-      const choices = featChoices(feat, plan.level);
-      const bonus = bonusTotals(choices.bonus, p.bonus);
-      const skills = [...choices.skills.fixed, ...p.skills];
-      g.feats.push({ name: feat.name, source: feat.source, ...(Object.keys(bonus).length ? { bonus } : {}), ...(skills.length ? { skills } : {}), ...(d.categories.includes("EB") ? { epic: true } : {}) });
-      g.expertise.push(...p.expertise);
-      const grant = choices.spells[p.grant];
-      if (grant) {
-        g.spells.push(...grant.fixed.map((r) => ({ ...r, origin: feat.name })));
-        g.spells.push(...p.spells.flat().flatMap((k) => find.spell(k) ?? []).map((s) => spell(s, feat.name)));
+      g.feats.push({ name: feat.name, source: feat.source, ...(d.categories.includes("EB") ? { epic: true } : {}) });
+      addChoice(g, resolveChoice(feat, p, plan.level, find, feat.name));
+    } else if (d.kind === "optional") {
+      for (const slot of picks.choices?.[d.id] ?? []) {
+        const entry = slot.ref ? find.optional(refKey(slot.ref)) : null;
+        if (!entry) continue;
+        const target = slot.target ? find.spell(slot.target)?.name : undefined;
+        g.optional.push({ name: entry.name, source: entry.source, type: d.types, ...(target ? { target } : {}) });
+        addChoice(g, resolveChoice(entry, slot, plan.level, find, entry.name));
       }
     } else if (d.kind === "options") g.options.push(...d.refs.filter((r) => keys(d.id).includes(refKey(r))).map((r) => ({ name: r.name, source: r.source, feature: d.feature })));
-    else if (d.kind === "optional") g.optional.push(...keys(d.id).flatMap((k) => find.optional(k) ?? []).map((o) => ({ name: o.name, source: o.source, type: d.types })));
     else if (d.kind === "cantrips" || d.kind === "spells") g.spells.push(...keys(d.id).flatMap((k) => find.spell(k) ?? []).map((s) => spell(s, d.origin, { prepared: true })));
     else if (d.kind === "masteries") g.masteries.push(...keys(d.id).flatMap((k) => find.item(k) ?? []).map((r) => ({ name: r.name, source: r.source })));
     else if (d.kind === "expertise") g.expertise.push(...keys(d.id));
@@ -371,9 +326,17 @@ const copy = (c: Character): Character => JSON.parse(JSON.stringify(c));
 
 const unique = <T>(items: T[], key: (t: T) => string) => [...new Map(items.map((i) => [key(i), i])).values()];
 
+/** Takes off what a rebuild added last time (`added`), then adds what it adds now. */
+function swap(current: string[] | undefined, added: string[] | undefined, now: string[]): { all: string[]; added: string[] } {
+  const base = (current ?? []).filter((s) => !(added ?? []).includes(s));
+  const fresh = [...new Set(now.filter((s) => !base.includes(s)))];
+  return { all: [...base, ...fresh], added: fresh };
+}
+
 /**
- * Everything that comes from levels, recomputed from the level records: feats, spells, invocations, option picks,
- * weapon masteries, expertise, the skills and ability increases feats gave, the subclass and maximum hit points.
+ * Everything that comes from levels and from the origin choices (species and background sub-choices, languages),
+ * recomputed from their records: feats, spells, invocations, option picks, weapon masteries, expertise, the skills,
+ * tools, languages, saving throws and ability increases picks gave, the subclass and maximum hit points.
  * Items saved before levels had records (no `gained`) are left as they are. Damage taken carries over.
  */
 export function rebuild(character: Character, faces: number): Character {
@@ -382,28 +345,31 @@ export function rebuild(character: Character, faces: number): Character {
   if (!main) return c;
   const records = (c.levels ?? []).filter((r) => r.level <= main.level).sort((a, b) => a.level - b.level);
   c.levels = records;
-  const tagged = records.flatMap((r) => (r.gains ? [{ level: r.level, origin: `${r.class} ${r.level}`, gains: r.gains }] : []));
+  // The origin's gains count as level 0.
+  const originGains = c.origin?.gains ? [{ level: 0, origin: "", gains: { ...emptyLevelGains(), ...c.origin.gains } as Gains }] : [];
+  const tagged = [...originGains, ...records.flatMap((r) => (r.gains ? [{ level: r.level, origin: `${r.class} ${r.level}`, gains: r.gains }] : []))];
   const untagged = <T extends { gained?: number }>(items: T[] | undefined) => (items ?? []).filter((i) => i.gained === undefined);
-  const each = <T>(pick: (g: Gains) => T[]) => tagged.flatMap((t) => pick(t.gains).map((x) => ({ ...x, gained: t.level, origin: t.origin })));
+  const all = <T>(pick: (g: Gains) => T[] | undefined) => tagged.flatMap((t) => pick(t.gains) ?? []);
 
-  c.feats = [...untagged(c.feats), ...each((g) => g.feats).map(({ name, source, origin, gained }) => ({ name, source, origin, gained }))];
+  c.feats = [...untagged(c.feats), ...tagged.flatMap((t) => t.gains.feats.map((f) => ({ name: f.name, source: f.source, origin: f.origin || t.origin || undefined, gained: t.level })))];
   c.spells = unique([...untagged(c.spells), ...tagged.flatMap((t) => t.gains.spells.map((s) => ({ ...s, gained: t.level })))], refKey);
   c.optionalFeatures = [...untagged(c.optionalFeatures), ...tagged.flatMap((t) => t.gains.optional.map((o) => ({ ...o, origin: main.name, gained: t.level })))];
   c.featureChoices = [...untagged(c.featureChoices), ...tagged.flatMap((t) => t.gains.options.map((o) => ({ ...o, gained: t.level })))];
   c.weaponMasteries = unique([...untagged(c.weaponMasteries), ...tagged.flatMap((t) => t.gains.masteries.map((m) => ({ ...m, gained: t.level })))], refKey);
 
-  // Skills and expertise: take off what levels added last time, then add what they add now.
-  const featSkills = tagged.flatMap((t) => t.gains.feats.flatMap((f) => f.skills ?? []));
-  const baseSkills = (c.skills ?? []).filter((s) => !(c.levelSkills ?? []).includes(s));
-  c.levelSkills = [...new Set(featSkills.filter((s) => !baseSkills.includes(s)))];
-  c.skills = [...baseSkills, ...c.levelSkills].sort();
-  const levelExpertise = tagged.flatMap((t) => t.gains.expertise);
-  const baseExpertise = (c.expertise ?? []).filter((s) => !(c.levelExpertise ?? []).includes(s));
-  c.levelExpertise = [...new Set(levelExpertise.filter((s) => !baseExpertise.includes(s)))];
-  c.expertise = [...baseExpertise, ...c.levelExpertise];
+  const skills = swap(c.skills, c.levelSkills, [...all((g) => g.skills), ...all((g) => g.feats.flatMap((f) => f.skills ?? []))]);
+  c.skills = skills.all.sort();
+  c.levelSkills = skills.added;
+  const expertise = swap(c.expertise, c.levelExpertise, all((g) => g.expertise));
+  [c.expertise, c.levelExpertise] = [expertise.all, expertise.added];
+  const saves = swap(c.savingThrows, c.levelSaves, all((g) => g.saves));
+  [c.savingThrows, c.levelSaves] = [saves.all, saves.added];
+  c.tools = [...new Set(all((g) => g.tools))];
+  c.languages = [...new Set(all((g) => g.languages))];
 
   const levelBonuses: Record<string, number> = {};
-  for (const f of tagged.flatMap((t) => t.gains.feats)) for (const [a, n] of Object.entries(f.bonus ?? {})) levelBonuses[a] = (levelBonuses[a] ?? 0) + n;
+  const bonuses = [...all((g) => (g.bonus ? [g.bonus] : [])), ...all((g) => g.feats.flatMap((f) => (f.bonus ? [f.bonus] : [])))];
+  for (const b of bonuses) for (const [a, n] of Object.entries(b)) levelBonuses[a] = (levelBonuses[a] ?? 0) + n;
   if (c.abilities) c.abilities = { ...c.abilities, levelBonuses };
 
   const subclass = [...tagged].reverse().find((t) => t.gains.subclass)?.gains.subclass;
@@ -421,7 +387,6 @@ export function rebuild(character: Character, faces: number): Character {
   }
   return c;
 }
-
 /** Base scores plus species/background bonuses plus feat increases from levels, each at most 20 (30 with an Epic Boon). */
 export function scoresWithLevels(c: Character): Scores | null {
   const a = c.abilities;

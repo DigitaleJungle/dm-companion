@@ -1,13 +1,16 @@
 import type { Character, ClassLevel } from "$lib/api/characters";
+import type { PrereqContext } from "$lib/characters/choices";
 import { byExtra, catalogRows, classSpells, type CatalogRow } from "$lib/api/rules";
 import {
   complete,
   gainsOf,
   levelPlan,
+  normalizePicks,
   prerequisite,
   rebuild,
   refKey,
   scoresWithLevels,
+  spellMatches,
   subclassSpells,
   withLevel,
   type Entry,
@@ -20,32 +23,56 @@ import {
 
 // The rules a class's levels need, loaded once per dialog, and the level-by-level bookkeeping both level dialogs share.
 
-const FEAT_KEYS = ["category", "prerequisite", "repeatable", "ability", "skillProficiencies", "expertise", "additionalSpells", "reprintedAs"];
+// Fields of feats and optional features that choices read (see entryChoices in $lib/characters/choices).
+const CHOICE_KEYS = [
+  "prerequisite",
+  "repeatable",
+  "ability",
+  "skillProficiencies",
+  "toolProficiencies",
+  "languageProficiencies",
+  "skillToolLanguageProficiencies",
+  "savingThrowProficiencies",
+  "expertise",
+  "additionalSpells",
+  "featProgression",
+  "feats",
+  "reprintedAs",
+];
 
-export type LevelData = {
+/** What any choice may pick from: feats, invocations and other optional features, spells, tools and languages. */
+export type ChoiceData = {
+  feats: CatalogRow[];
+  optional: CatalogRow[];
+  spells: CatalogRow[];
+  /** Tools by kind: "tool" (all), "artisan", "instrument". */
+  tools: CatalogRow[];
+  languages: CatalogRow[];
+  /** Lowercase class name → its spells ("fireball|xphb"); null when the rules data predates spell lists. */
+  lists: Map<string, Set<string>> | null;
+};
+
+export type LevelData = ChoiceData & {
   cls: Entry;
   classFeatures: Entry[];
   subclasses: CatalogRow[];
   /** Every subclass's features for this class; filter by `subclassShortName` and `subclassSource`. */
   subclassFeatures: Entry[];
-  feats: CatalogRow[];
-  optional: CatalogRow[];
-  spells: CatalogRow[];
   /** Weapons with a mastery property. */
   items: CatalogRow[];
-  /** Lowercase class name → its spells ("fireball|xphb"); null when the rules data predates spell lists. */
-  lists: Map<string, Set<string>> | null;
 };
 
-export async function loadLevelData(main: ClassLevel, clsData: Record<string, unknown>, published: (source: string) => string): Promise<LevelData> {
-  const [classFeatures, subclasses, subclassFeatures, feats, optional, spells, items, classes] = await Promise.all([
-    byExtra("classFeature", `${main.name}|${main.source}|`),
-    byExtra("subclass", `${main.name}|${main.source}`),
-    byExtra("subclassFeature", `${main.name}|`),
-    catalogRows("feat", FEAT_KEYS),
-    catalogRows("optionalfeature", ["featureType", "prerequisite"]),
+const TOOL_TYPES = ["AT", "INS", "GS", "T"];
+const itemType = (r: CatalogRow) => String(r.data.type ?? "").split("|")[0];
+
+/** Loads what choices pick from; `classSource` picks which printing of each class's spell list to use. */
+export async function loadChoiceData(classSource: string, published: (source: string) => string): Promise<ChoiceData & { allItems: CatalogRow[] }> {
+  const [feats, optional, spells, items, languages, classes] = await Promise.all([
+    catalogRows("feat", ["category", ...CHOICE_KEYS]),
+    catalogRows("optionalfeature", ["featureType", "entries", ...CHOICE_KEYS]),
     catalogRows("spell", ["level", "school", "meta"]),
-    catalogRows("item", ["mastery", "reprintedAs"]),
+    catalogRows("item", ["type", "mastery", "reprintedAs"]),
+    catalogRows("language", ["type"]),
     catalogRows("class", ["isSidekick"]),
   ]);
   // One spell list per class name: the printing in the character's own book when there is one, else the newest.
@@ -53,28 +80,43 @@ export async function loadLevelData(main: ClassLevel, clsData: Record<string, un
   for (const row of classes.filter((r) => !r.data.isSidekick)) {
     const name = row.name.toLowerCase();
     const current = pick.get(name);
-    if (!current || row.source === main.source || (current.source !== main.source && published(row.source) > published(current.source))) pick.set(name, row);
+    if (!current || row.source === classSource || (current.source !== classSource && published(row.source) > published(current.source))) pick.set(name, row);
   }
   const lists = await Promise.all([...pick.values()].map(async (r) => [r.name.toLowerCase(), await classSpells(r.name, r.source, [])] as const));
   return {
-    cls: { name: main.name, source: main.source, data: clsData },
-    classFeatures,
-    subclasses,
-    subclassFeatures,
     feats,
     optional,
     spells,
-    items: items.filter((i) => Array.isArray(i.data.mastery) && i.data.mastery.length > 0),
+    tools: items.filter((i) => TOOL_TYPES.includes(itemType(i))),
+    languages,
+    allItems: items,
     lists: lists.some(([, l]) => l === null) ? null : new Map(lists.map(([name, l]) => [name, new Set((l ?? []).map(refKey))])),
   };
 }
 
-export function lookup(data: LevelData): Lookup {
+export async function loadLevelData(main: ClassLevel, clsData: Record<string, unknown>, published: (source: string) => string): Promise<LevelData> {
+  const [classFeatures, subclasses, subclassFeatures, choices] = await Promise.all([
+    byExtra("classFeature", `${main.name}|${main.source}|`),
+    byExtra("subclass", `${main.name}|${main.source}`),
+    byExtra("subclassFeature", `${main.name}|`),
+    loadChoiceData(main.source, published),
+  ]);
+  const { allItems, ...rest } = choices;
+  return {
+    ...rest,
+    cls: { name: main.name, source: main.source, data: clsData },
+    classFeatures,
+    subclasses,
+    subclassFeatures,
+    items: allItems.filter((i) => Array.isArray(i.data.mastery) && i.data.mastery.length > 0),
+  };
+}
+export function lookup(data: ChoiceData & { items?: CatalogRow[] }): Lookup {
   const index = (rows: CatalogRow[]) => new Map(rows.map((r) => [refKey(r), r]));
   const feats = index(data.feats);
   const spells = index(data.spells);
   const optional = index(data.optional);
-  const items = index(data.items);
+  const items = index(data.items ?? []);
   return {
     feat: (r) => feats.get(refKey(r)) ?? null,
     spell: (k) => spells.get(k) ?? null,
@@ -121,16 +163,25 @@ export function alwaysSpellsAt(data: LevelData, subclass: CatalogRow | null, lev
   return now.filter((r) => !before.has(refKey(r))).flatMap((r) => spells.get(refKey(r)) ?? []);
 }
 
-/** Prerequisite context from a character state. */
-export const prereqContext = (before: Character, level: number) => ({
-  level,
-  scores: scoresWithLevels(before),
-  feats: before.feats ?? [],
-  optional: before.optionalFeatures ?? [],
-});
+/** Prerequisite context from a character state; `extraSpells` are spells picked in the same level (its cantrips). */
+export function prereqContext(before: Character, level: number, data: ChoiceData, extraSpells: string[] = []): PrereqContext {
+  const known = [...(before.spells ?? []).map(refKey), ...extraSpells];
+  const find = lookup(data);
+  return {
+    level,
+    scores: scoresWithLevels(before),
+    feats: before.feats ?? [],
+    optional: before.optionalFeatures ?? [],
+    knowsSpell: (filter) => known.some((k) => {
+      const spell = find.spell(k);
+      return !!spell && spellMatches(spell, filter, data.lists ?? new Map());
+    }),
+  };
+}
 
 /** The record for a level from its picks, ready to save. */
-export function recordFor(c: Character, data: LevelData, level: number, picks: LevelPicks): LevelRecord {
+export function recordFor(c: Character, data: LevelData, level: number, saved: LevelPicks): LevelRecord {
+  const picks = normalizePicks(saved);
   const subclass = subclassAt(c, data, level, picks);
   const plan = planFor(data, level, subclass);
   return { class: data.cls.name, level, ...(level > 1 && picks.hp ? { hp: picks.hp } : {}), picks, gains: gainsOf(plan, picks, lookup(data), data.cls, alwaysSpellsAt(data, subclass, level)) };
@@ -139,20 +190,17 @@ export function recordFor(c: Character, data: LevelData, level: number, picks: L
 /** A level's picks without what its plan no longer asks for, or what no longer meets its prerequisites. */
 export function prune(plan: Plan, picks: LevelPicks, data: LevelData, before: Character): LevelPicks {
   const ids = new Set(plan.decisions.map((d) => d.id));
-  const ctx = prereqContext(before, plan.level);
+  const ctx = prereqContext(before, plan.level, data, picks.keys.cantrips ?? []);
   const find = lookup(data);
-  const feats = Object.fromEntries(
-    Object.entries(picks.feats).filter(([id, p]) => {
-      const feat = p.feat ? find.feat(p.feat) : null;
-      return ids.has(id) && (!feat || prerequisite(feat.data.prerequisite, ctx) !== "unmet");
-    }),
-  );
-  const keys = Object.fromEntries(
-    Object.entries(picks.keys)
+  const fits = (entry: { data: Record<string, unknown> } | null) => !entry || prerequisite(entry.data.prerequisite, ctx) !== "unmet";
+  const feats = Object.fromEntries(Object.entries(picks.feats).filter(([id, p]) => ids.has(id) && fits(p.ref ? find.feat(p.ref) : null)));
+  const choices = Object.fromEntries(
+    Object.entries(picks.choices ?? {})
       .filter(([id]) => ids.has(id))
-      .map(([id, list]) => [id, id.startsWith("op:") ? list.filter((k) => prerequisite(find.optional(k)?.data.prerequisite, ctx) !== "unmet") : list]),
+      .map(([id, slots]) => [id, slots.filter((s) => fits(s.ref ? find.optional(refKey(s.ref)) : null))]),
   );
-  return { ...picks, subclass: plan.decisions.some((d) => d.kind === "subclass") ? picks.subclass : null, feats, keys };
+  const keys = Object.fromEntries(Object.entries(picks.keys).filter(([id]) => ids.has(id)));
+  return { ...picks, subclass: plan.decisions.some((d) => d.kind === "subclass") ? picks.subclass : null, feats, choices, keys };
 }
 
 /**
@@ -164,9 +212,10 @@ export function saveLevel(c: Character, data: LevelData, level: number, picks: L
   const reopened: number[] = [];
   for (const r of (current.levels ?? []).filter((x) => x.level > level && x.picks).sort((a, b) => a.level - b.level)) {
     const before = stateBefore(current, r.level, faces);
-    const plan = planFor(data, r.level, subclassAt(current, data, r.level, r.picks!));
-    const kept = prune(plan, r.picks!, data, before);
-    if (JSON.stringify(kept) !== JSON.stringify(r.picks) && !complete(plan, kept, lookup(data))) reopened.push(r.level);
+    const saved = normalizePicks(r.picks!);
+    const plan = planFor(data, r.level, subclassAt(current, data, r.level, saved));
+    const kept = prune(plan, saved, data, before);
+    if (JSON.stringify(kept) !== JSON.stringify(saved) && !complete(plan, kept, lookup(data))) reopened.push(r.level);
     current = withLevel(current, recordFor(current, data, r.level, kept), faces);
   }
   return { character: current, reopened };
@@ -177,5 +226,5 @@ export function levelNeedsChoice(c: Character, data: LevelData, level: number): 
   const record = (c.levels ?? []).find((r) => r.level === level);
   const plan = planFor(data, level, subclassAt(c, data, level, record?.picks ?? null));
   if (!record?.picks) return plan.decisions.length > 0;
-  return !complete(plan, record.picks, lookup(data));
+  return !complete(plan, normalizePicks(record.picks), lookup(data));
 }

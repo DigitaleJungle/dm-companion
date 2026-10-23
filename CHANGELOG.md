@@ -3,6 +3,24 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.10] - 2026-10-23
+
+### Added
+
+- Invocations and other optional features ask their own choices: Pact of the Tome's spells, Lessons of the First Ones' feat, the cantrip Agonizing Blast applies to; their spells reach the Spells tab; repeatable ones can be taken again
+- Species and background choices in the wizard: a species' feat and lineage spells, background tool choices and the background feat's choices
+- Languages: Common plus two standard languages (given ones count), and extra languages; chosen tools and languages show on the sheet
+
+### Changed
+
+- Edit character: every step can be opened directly and saved from any step; steps that need changes get a red dot
+- Hit points: Manual roll replaces Type a number and adds CON like a roll
+
+### Fixed
+
+- Editing a character kept its background, ability bonuses and skills
+- Weapon masteries and properties stored as objects broke the levels panel
+
 ## [0.5.9] - 2026-10-23
 
 ### Added

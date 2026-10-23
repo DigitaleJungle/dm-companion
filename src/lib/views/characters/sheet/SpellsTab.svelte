@@ -37,7 +37,8 @@
   const levelOf = (s: NonNullable<typeof c.spells>[number]) => (typeof s.level === "number" ? s.level : (levels[spellKey(s)] ?? -1));
   const byLevel = $derived.by(() => {
     const groups = new Map<number, NonNullable<typeof c.spells>>();
-    for (const s of [...(c.spells ?? [])].sort((a, b) => a.name.localeCompare(b.name))) {
+    // Species spells that come at a later character level (Drow: Faerie Fire at 3) show from that level on.
+    for (const s of [...(c.spells ?? [])].filter((x) => (x.atLevel ?? 1) <= sheet.level).sort((a, b) => a.name.localeCompare(b.name))) {
       const l = levelOf(s);
       groups.set(l, [...(groups.get(l) ?? []), s]);
     }

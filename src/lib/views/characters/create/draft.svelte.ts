@@ -1,5 +1,16 @@
 import type { Character, InventoryItem } from "$lib/api/characters";
 import { findEntity, type CatalogRow } from "$lib/api/rules";
+import {
+  choiceComplete,
+  emptyChoice,
+  emptyGains,
+  mergeGains,
+  resolveChoice,
+  toChoice,
+  type Entry,
+  type Lookup,
+  type SavedChoice,
+} from "$lib/characters/choices";
 import { rebuild, type LevelRecord } from "$lib/characters/levelup";
 import { inventoryItem } from "$lib/characters/sheet";
 import type { Roll } from "$lib/api/dice";
@@ -40,10 +51,10 @@ export type Method = "standard" | "manual" | "roll";
 export type Options = { species: CatalogRow[]; subspecies: CatalogRow[]; classes: CatalogRow[]; backgrounds: CatalogRow[]; skills: CatalogRow[] };
 
 export const OPTION_KEYS = {
-  species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "speed", "darkvision", "reprintedAs"],
+  species: ["size", "_versions", "skillProficiencies", "ability", "lineage", "speed", "darkvision", "reprintedAs", "feats", "additionalSpells", "toolProficiencies", "languageProficiencies"],
   subspecies: ["raceName", "raceSource", "skillProficiencies", "ability"],
   class: ["startingProficiencies", "proficiency", "hd", "isSidekick", "startingEquipment", "primaryAbility", "reprintedAs"],
-  background: ["skillProficiencies", "ability", "feats", "startingEquipment", "reprintedAs"],
+  background: ["skillProficiencies", "ability", "feats", "startingEquipment", "reprintedAs", "toolProficiencies", "languageProficiencies"],
   skill: ["ability"],
 };
 
@@ -85,6 +96,13 @@ function blank() {
     backgroundGear: [] as (string | null)[],
     /** Editing a saved character: starting equipment isn't asked for or added. */
     editing: false,
+    /** Sub-choices of the species itself (its feat, its spells, tools) and of the background and its feat. */
+    speciesChoice: emptyChoice() as SavedChoice,
+    backgroundChoice: emptyChoice() as SavedChoice,
+    backgroundFeatChoice: emptyChoice() as SavedChoice,
+    /** The standard languages picked for the open slots, and any extra ones. */
+    languages: [] as string[],
+    extraLanguages: [] as string[],
   };
 }
 
@@ -112,6 +130,8 @@ export function chooseSpecies(row: CatalogRow | null) {
   draft.skillPicks = {};
   draft.speciesPick = emptyPick(undefined);
   draft.keptBonuses = null;
+  draft.speciesChoice = emptyChoice();
+  draft.languages = [];
 }
 
 export function chooseSubspecies(row: CatalogRow | null) {
@@ -134,6 +154,9 @@ export function chooseBackground(row: CatalogRow | null) {
   draft.backgroundGear = [];
   draft.backgroundPick = emptyPick(undefined);
   draft.keptBonuses = null;
+  draft.backgroundChoice = emptyChoice();
+  draft.backgroundFeatChoice = emptyChoice(backgroundFeatRef(row));
+  draft.languages = [];
 }
 
 export function chooseMethod(method: Method) {
@@ -159,6 +182,70 @@ export const backgroundBonuses = (): BonusOption[] => bonusOptions(draft.backgro
 
 export const savingThrows = (): Ability[] => ((draft.cls?.data.proficiency as string[] | undefined) ?? []).filter((a): a is Ability => (ABILITIES as readonly string[]).includes(a));
 export const hitDie = (): number => Number((draft.cls?.data.hd as { faces?: number } | undefined)?.faces ?? 0);
+
+/**
+ * The background's feat as a rules entry reference, and the option it presets: "magic initiate; cleric|xphb" is
+ * Magic Initiate with the Cleric spell list.
+ */
+export function backgroundFeatRef(row: CatalogRow | null = draft.background): (Ref & { preset: string | null }) | null {
+  const first = Array.isArray(row?.data.feats) ? (row.data.feats[0] as Record<string, unknown>) : null;
+  const key = Object.keys(first ?? {}).find((k) => first?.[k] === true);
+  if (!key) return null;
+  const [name, source = ""] = key.split("|");
+  const [feat, preset] = name.split("; ");
+  return { name: feat.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()), source: source.toUpperCase(), preset: preset ?? null };
+}
+
+// What the species and background ask on top of skills and ability bonuses (those have their own steps).
+const ORIGIN_SKIP = ["skillProficiencies", "ability", "languageProficiencies"];
+/** A species or background entry for its own choices: its feat, spells and tools (skills, ability bonuses and languages are asked elsewhere). */
+export const originEntry = (row: CatalogRow | null): Entry | null =>
+  row ? { name: row.name, source: row.source, data: Object.fromEntries(Object.entries(row.data).filter(([k]) => !ORIGIN_SKIP.includes(k))) } : null;
+
+/** Languages a species or background grants outright (older books), besides Common. */
+export function grantedLanguages(): string[] {
+  const fixed = (row: CatalogRow | null) =>
+    Object.entries((Array.isArray(row?.data.languageProficiencies) ? row.data.languageProficiencies[0] : null) ?? {}).flatMap(([k, v]) => (v === true ? [k.toLowerCase()] : []));
+  return [...new Set([...fixed(draft.species), ...fixed(draft.subspecies), ...fixed(draft.background)])].filter((l) => l !== "common");
+}
+
+/** Every character knows Common and two standard languages; granted languages fill those two first. */
+export const STANDARD_LANGUAGES = 2;
+export const openLanguageSlots = () => Math.max(0, STANDARD_LANGUAGES - grantedLanguages().length);
+export const allLanguages = () => [...new Set(["common", ...grantedLanguages(), ...draft.languages, ...draft.extraLanguages])];
+
+/** Whether the origin's own choices are made (needs the loaded choice data to check feats and spells). */
+export function originComplete(step: "species" | "background", find: Lookup): boolean {
+  if (step === "species") {
+    const entry = originEntry(draft.species);
+    return !entry || choiceComplete(entry, draft.speciesChoice, draft.level, find);
+  }
+  const entry = originEntry(draft.background);
+  const featRef = backgroundFeatRef();
+  const feat = featRef ? find.feat(featRef) : null;
+  return (!entry || choiceComplete(entry, draft.backgroundChoice, draft.level, find)) && (!featRef || !feat || choiceComplete(feat, draft.backgroundFeatChoice, draft.level, find));
+}
+
+/** The origin choices for the character file, with what they give (rebuilt into feats, spells, tools, languages…). */
+export function originRecord(find: Lookup): NonNullable<Character["origin"]> {
+  const species = originEntry(draft.species);
+  const background = originEntry(draft.background);
+  const featRef = backgroundFeatRef();
+  const feat = featRef ? find.feat(featRef) : null;
+  let gains = emptyGains();
+  if (species) gains = mergeGains(gains, resolveChoice(species, draft.speciesChoice, draft.level, find, draft.species!.name));
+  if (background) gains = mergeGains(gains, resolveChoice(background, draft.backgroundChoice, draft.level, find, draft.background!.name));
+  if (feat) gains = mergeGains(gains, resolveChoice(feat, draft.backgroundFeatChoice, draft.level, find, feat.name));
+  gains.languages = [...gains.languages, ...allLanguages()];
+  return {
+    species: $state.snapshot(draft.speciesChoice) as SavedChoice,
+    background: $state.snapshot(draft.backgroundChoice) as SavedChoice,
+    backgroundFeat: $state.snapshot(draft.backgroundFeatChoice) as SavedChoice,
+    languages: [...draft.languages],
+    extraLanguages: [...draft.extraLanguages],
+    gains: { ...gains, optional: [], options: [], masteries: [] },
+  };
+}
 
 /** Feats a background grants, from keys like "magic initiate; cleric|xphb". */
 export function backgroundFeats(): { name: string; source: string }[] {
@@ -351,8 +438,15 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
   draft.size = c.species?.size ?? (sizes.length === 1 ? sizes[0] : null);
   draft.cls = options.classes.find((r) => same(r, c.classes[0])) ?? null;
   draft.level = c.classes[0]?.level ?? 1;
-  draft.levels = structuredClone(c.levels ?? []);
+  // A snapshot: the character may come in as reactive state, which structuredClone can't copy.
+  draft.levels = $state.snapshot(c.levels ?? []) as LevelRecord[];
   draft.background = options.backgrounds.find((r) => same(r, c.background)) ?? null;
+  const origin = $state.snapshot(c.origin ?? {}) as NonNullable<Character["origin"]>;
+  draft.speciesChoice = toChoice(origin.species ?? emptyChoice());
+  draft.backgroundChoice = toChoice(origin.background ?? emptyChoice());
+  draft.backgroundFeatChoice = toChoice(origin.backgroundFeat ?? emptyChoice(backgroundFeatRef()));
+  draft.languages = origin.languages ?? [];
+  draft.extraLanguages = origin.extraLanguages ?? [];
 
   const saved = c.abilities;
   const base = saved?.base && ABILITIES.every((a) => typeof saved.base[a] === "number") ? (saved.base as Scores) : null;
@@ -388,8 +482,8 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
  * carries over to a changed maximum. What levels added (see Edit → Levels) is rebuilt from the level records: they
  * stay with the class (a lower level drops the ones above it); a new class drops them all and resets spent slots.
  */
-export function editedCharacter(existing: Character): Character {
-  const next = toCharacter();
+export function editedCharacter(existing: Character, origin?: Character["origin"]): Character {
+  const next = { ...toCharacter(), ...(origin ? { origin } : {}) };
   const sameClass = same(draft.cls!, existing.classes[0]);
   const sameBackground = same(draft.background!, existing.background);
   const backgroundFeats = (existing.feats ?? []).filter((f) => f.gained === undefined && !f.origin);

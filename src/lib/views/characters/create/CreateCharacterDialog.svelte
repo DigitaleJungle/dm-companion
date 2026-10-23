@@ -7,6 +7,12 @@
   import type { Campaign } from "$lib/api/campaigns";
   import { catalogRows, getEntity, type CatalogRow } from "$lib/api/rules";
   import LevelsDialog from "../levelup/LevelsDialog.svelte";
+  import ChoicePicker from "../levelup/ChoicePicker.svelte";
+  import { choiceContext } from "../levelup/choiceContext";
+  import { loadChoiceData, lookup, type ChoiceData } from "../levelup/levelData";
+  import Spinner from "$lib/components/Spinner.svelte";
+  import { entryChoices } from "$lib/characters/choices";
+  import LanguagesPicker from "./LanguagesPicker.svelte";
   import { errorMessage } from "$lib/api/storage";
   import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
@@ -34,6 +40,13 @@
     loadCharacter,
     resetDraft,
     draftCharacter,
+    backgroundFeatRef,
+    openLanguageSlots,
+    originComplete,
+    originEntry,
+    originRecord,
+    scores,
+    type Step,
     sizesOf,
     withConfiguredLevels,
     startingInventory,
@@ -91,7 +104,38 @@
     for (const row of options?.skills ?? []) byKey.set(row.name.toLowerCase(), { key: row.name.toLowerCase(), name: row.name, ability: String(row.data.ability ?? "") });
     return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
   });
-  const complete = $derived(stepComplete(step, options));
+  // ---- Origin choices: the species' and background's own picks (a feat, spells, tools) and languages ----
+  let choiceData = $state<ChoiceData | null>(null);
+  const originFind = $derived(choiceData ? lookup(choiceData) : null);
+  const originCtx = $derived.by(() => {
+    if (!choiceData) return null;
+    const before = draftCharacter();
+    const prereq = { level: draft.level, scores: scores(), feats: before.feats ?? [], optional: [] };
+    return choiceContext({ data: choiceData, before, prereq, sources, published, skills });
+  });
+  const speciesEntry = $derived(originEntry(draft.species));
+  const backgroundEntry = $derived(originEntry(draft.background));
+  const featRef = $derived(backgroundFeatRef());
+  const backgroundFeat = $derived(featRef && originFind ? originFind.feat(featRef) : null);
+  const asks = (e: { data: Record<string, unknown> } | null) => {
+    const c = e ? entryChoices(e.data, draft.level) : null;
+    return !!c && (c.profs.length > 0 || c.spells.length > 0 || c.feats.length > 0 || c.saves.length > 0 || c.expertise > 0 || c.bonus.length > 0 || !!c.target);
+  };
+  const languagesComplete = () => draft.languages.filter(Boolean).length >= openLanguageSlots();
+
+  /** A step is done when its own picks are, plus (once the choice data is in) its origin sub-choices and languages. */
+  function stepDone(s: Step): boolean {
+    if (!stepComplete(s, options)) return false;
+    if ((s === "species" || s === "background") && originFind) return originComplete(s, originFind);
+    if (s === "skills") return languagesComplete();
+    if (s === "review") return STEPS.slice(0, -1).every(stepDone);
+    return true;
+  }
+  const complete = $derived(stepDone(step));
+  const allComplete = $derived(stepDone("review"));
+  // A red dot on a step that needs changes: any incomplete step while editing (an earlier change cleared something
+  // there); while creating, only steps already passed, not the ones still ahead.
+  const needsWork = (i: number) => !!options && i < STEPS.length - 1 && (edit ? true : i < draft.reached) && !stepDone(STEPS[i]);
   // While editing, "dirty" means the choices differ from the character as it was loaded.
   let loaded = $state<string | null>(null);
   const snapshot = () => JSON.stringify({ ...draft, step: 0, reached: 0 });
@@ -124,6 +168,8 @@
         catalogRows("skill", OPTION_KEYS.skill),
       ]);
       options = { species, subspecies, classes, backgrounds, skills: skillRows };
+      // What origin choices pick from (feats, spells, tools, languages); slower, so the steps don't wait for it.
+      if (!choiceData) loadChoiceData("", published).then((d) => (choiceData = d)).catch((e) => (loadError = t.loadError(errorMessage(e))));
     } catch (e) {
       loadError = t.loadError(errorMessage(e));
     }
@@ -133,8 +179,12 @@
   async function fillFromCharacter(target: { campaign: string | null; character: Character }) {
     if (!options) await load();
     if (!options) return;
-    loadCharacter(target.character, target.campaign, options);
-    loaded = snapshot();
+    try {
+      loadCharacter(target.character, target.campaign, options);
+      loaded = snapshot();
+    } catch (err) {
+      loadError = t.loadError(errorMessage(err));
+    }
   }
 
   // Each opening starts a fresh character (or the one being edited); the rules data is loaded once.
@@ -203,12 +253,12 @@
     saveError = null;
     try {
       if (edit) {
-        await saveCharacter(edit.campaign, edit.character.id, editedCharacter(edit.character));
+        await saveCharacter(edit.campaign, edit.character.id, editedCharacter(edit.character, originFind ? originRecord(originFind) : undefined));
         open = false;
         onsaved?.();
       } else {
         const made = { ...toCharacter(), ...(await startingInventory(typeName)) };
-        const card = await createCharacter(draft.campaignId, withConfiguredLevels({ id: "", ...made } as Character));
+        const card = await createCharacter(draft.campaignId, withConfiguredLevels({ id: "", ...made, ...(originFind ? { origin: originRecord(originFind) } : {}) } as Character));
         open = false;
         oncreated?.(card);
       }
@@ -263,9 +313,23 @@
   {#if configureError}<p class="error" role="alert">{configureError}</p>{/if}
   {@render gearChooser("class", classGear, draft.classGear)}
 {/snippet}
-{#snippet backgroundLead()}{@render gearChooser("background", backgroundGear, draft.backgroundGear)}{/snippet}
+{#snippet backgroundLead()}
+  {@render gearChooser("background", backgroundGear, draft.backgroundGear)}
+  {#if originCtx && asks(backgroundEntry)}
+    <ChoicePicker id="wizard-background-choice" level={draft.level} entry={backgroundEntry} bind:pick={draft.backgroundChoice} ctx={originCtx} />
+  {/if}
+  {#if originCtx && backgroundFeat && asks(backgroundFeat)}
+    <div class="origin-feat">
+      <p class="label-text">{t.originFeat(backgroundFeat.name)}</p>
+      <ChoicePicker id="wizard-background-feat" level={draft.level} entry={backgroundFeat} bind:pick={draft.backgroundFeatChoice} ctx={originCtx} preset={featRef?.preset ?? null} />
+    </div>
+  {/if}
+{/snippet}
 
 {#snippet speciesLead()}
+  {#if originCtx && asks(speciesEntry)}
+    <ChoicePicker id="wizard-species-choice" level={draft.level} entry={speciesEntry} bind:pick={draft.speciesChoice} ctx={originCtx} preset={draft.lineage ?? draft.subspecies?.name ?? null} />
+  {/if}
   {#if lineages.length}{@render lineageSelect()}{/if}
   {#if subs.length}
     <label class="inline-field">
@@ -312,11 +376,12 @@
               class="step"
               class:done={i < draft.step}
               aria-current={i === draft.step ? "step" : undefined}
-              disabled={i > draft.reached || !options}
+              disabled={!options || (!edit && i > draft.reached)}
               onclick={() => goToStep(i)}
             >
               <span class="number" aria-hidden="true">{plain.format(i + 1)}</span>
               {t.steps[s]}
+              {#if needsWork(i)}<span class="dot" title={t.needsChanges} aria-hidden="true"></span><span class="sr-only">({t.needsChanges})</span>{/if}
             </button>
           </li>
         {/each}
@@ -337,6 +402,10 @@
                 <button class="btn btn-primary" disabled={!complete || saving} onclick={save}>
                   {saving ? (edit ? e.saving : t.saving) : edit ? e.finish : t.finish}
                 </button>
+              {:else if edit}
+                <!-- Editing: move freely, save from any step once nothing needs changes. -->
+                <button class="btn" onclick={() => goToStep(draft.step + 1)}>{t.next}</button>
+                <button class="btn btn-primary" disabled={!allComplete || saving} onclick={save}>{saving ? e.saving : e.finish}</button>
               {:else}
                 <button class="btn btn-primary" disabled={!complete} onclick={() => goToStep(draft.step + 1)}>{t.next}</button>
               {/if}
@@ -405,7 +474,7 @@
                 onselect={chooseSpecies}
                 facts={speciesFacts}
                 art={artPath("races")}
-                choices={hasSpeciesChoices ? speciesLead : undefined}
+                choices={hasSpeciesChoices || asks(speciesEntry) ? speciesLead : undefined}
               />
             {:else if step === "class"}
               <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
@@ -418,12 +487,13 @@
                 onselect={chooseBackground}
                 facts={backgroundFacts}
                 art={artPath("backgrounds")}
-                choices={backgroundGear.length ? backgroundLead : undefined}
+                choices={backgroundGear.length || asks(backgroundEntry) || (backgroundFeat && asks(backgroundFeat)) ? backgroundLead : undefined}
               />
             {:else if step === "abilities"}
               <AbilitiesStep />
             {:else if step === "skills"}
               <SkillsStep {skills} />
+              {#if choiceData}<LanguagesPicker languages={choiceData.languages} {sources} />{:else}<Spinner label={t.loading} />{/if}
             {:else}
               <ReviewStep {skills} campaignName={campaign?.name ?? strings.characters.noCampaign} />
             {/if}
@@ -560,6 +630,14 @@
     font-size: var(--text-xs);
   }
 
+  /* A step that needs changes. */
+  .dot {
+    width: var(--space-2);
+    height: var(--space-2);
+    border-radius: 50%;
+    background: var(--color-danger);
+  }
+
   .done .number {
     border-color: var(--color-link);
     background: var(--color-accent-soft);
@@ -660,6 +738,12 @@
     gap: var(--space-2);
     font-size: var(--text-sm);
     cursor: pointer;
+  }
+
+  .origin-feat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .level-row {

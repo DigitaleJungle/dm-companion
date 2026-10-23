@@ -2,7 +2,28 @@ import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
 import { rebuild } from "$lib/characters/levelup";
-import { chooseBackground, chooseClass, draft, draftCharacter, editedCharacter, loadCharacter, resetDraft, scores, skillGroups, stepComplete, toCharacter, withConfiguredLevels, type Options } from "./draft.svelte";
+import {
+  allLanguages,
+  backgroundFeatRef,
+  chooseBackground,
+  chooseClass,
+  chooseSpecies,
+  draft,
+  draftCharacter,
+  editedCharacter,
+  loadCharacter,
+  openLanguageSlots,
+  originComplete,
+  originRecord,
+  resetDraft,
+  scores,
+  skillGroups,
+  stepComplete,
+  toCharacter,
+  withConfiguredLevels,
+  type Options,
+} from "./draft.svelte";
+import type { Lookup } from "$lib/characters/choices";
 
 let nextId = 1;
 const row = (name: string, data: Record<string, unknown> = {}, source = "XPHB"): CatalogRow => ({ id: nextId++, kind: "", source, name, data });
@@ -143,9 +164,45 @@ describe("configuring levels while creating", () => {
     expect(draftCharacter().classes).toEqual([{ name: "Fighter", source: "XPHB", level: 4 }]);
     const made = withConfiguredLevels({ id: "", ...toCharacter() });
     expect(made.feats?.map((f) => f.name)).toEqual(["Savage Attacker", "Alert"]);
-    expect(made.hp?.max).toBe(12 + 10 + 8 + 8); // level 2 typed, levels 3 and 4 fixed (6 + CON 2)
+    expect(made.hp?.max).toBe(12 + 12 + 8 + 8); // level 2 a manual roll of 10 (+ CON 2), levels 3 and 4 fixed (6 + 2)
 
     chooseClass(wizard);
     expect(draft.levels).toEqual([]);
+  });
+});
+
+describe("origin choices", () => {
+  const magicInitiate = { name: "Magic Initiate", source: "XPHB", data: { additionalSpells: [{ name: "Cleric Spells", known: { _: [{ choose: "level=0|class=Cleric", count: 1 }] } }, { name: "Wizard Spells", known: { _: [{ choose: "level=0|class=Wizard", count: 1 }] } }] } };
+  const alert = { name: "Alert", source: "XPHB", data: {} };
+  const find: Lookup = {
+    feat: (r) => (r.name === "Magic Initiate" ? magicInitiate : r.name === "Alert" ? alert : null),
+    spell: (k) => (k === "light|xphb" ? { name: "Light", source: "XPHB", data: { level: 0 } } : null),
+    optional: () => null,
+    item: () => null,
+  };
+
+  it("a species' feat and lineage spells, a background's feat with its preset spell list, and the languages", () => {
+    resetDraft();
+    chooseSpecies(row("Human", { feats: [{ anyFromCategory: { category: ["O"], count: 1 } }], languageProficiencies: [{ common: true, elvish: true }] }));
+    chooseBackground(row("Acolyte", { feats: [{ "magic initiate; wizard|xphb": true }] }));
+    expect(backgroundFeatRef()).toEqual({ name: "Magic Initiate", source: "XPHB", preset: "wizard" });
+    expect(draft.backgroundFeatChoice.ref).toEqual({ name: "Magic Initiate", source: "XPHB", preset: "wizard" });
+    expect([originComplete("species", find), originComplete("background", find)]).toEqual([false, false]);
+
+    draft.speciesChoice.feats = [{ ...draft.speciesChoice, ref: { name: "Alert", source: "XPHB" }, feats: [] }];
+    draft.backgroundFeatChoice.grant = 1;
+    draft.backgroundFeatChoice.spells = [["light|xphb"]];
+    expect([originComplete("species", find), originComplete("background", find)]).toEqual([true, true]);
+
+    // Elvish comes with the species, so one standard language is left to pick; extras can be added.
+    expect(openLanguageSlots()).toBe(1);
+    draft.languages = ["dwarvish"];
+    draft.extraLanguages = ["draconic"];
+    expect(allLanguages()).toEqual(["common", "elvish", "dwarvish", "draconic"]);
+
+    const origin = originRecord(find);
+    expect(origin.gains?.feats).toEqual([{ name: "Alert", source: "XPHB", origin: "Human" }]);
+    expect(origin.gains?.spells.map((s) => [s.name, s.origin])).toEqual([["Light", "Magic Initiate"]]);
+    expect(origin.gains?.languages).toEqual(["common", "elvish", "dwarvish", "draconic"]);
   });
 });

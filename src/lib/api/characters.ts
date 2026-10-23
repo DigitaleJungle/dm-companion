@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { LevelRecord } from "$lib/characters/levelup";
+import type { Gains, LevelRecord, SavedChoice } from "$lib/characters/levelup";
 import type { Weapon } from "$lib/characters/sheet";
 
 /** Mirrors the types in src-tauri/src/commands/characters.rs. */
@@ -52,17 +52,24 @@ export type Character = {
   /** One record per class level: its hit points and what was picked (see `src/lib/characters/levelup.ts`). */
   levels?: LevelRecord[];
   /** `prepared` for class spells; `always`: always prepared (from a subclass). */
-  spells?: (Ref & { origin: string; level?: number; prepared?: boolean; always?: boolean; gained?: number })[];
+  /** `atLevel`: the character level from which it applies (species spells). */
+  spells?: (Ref & { origin: string; level?: number; atLevel?: number; prepared?: boolean; always?: boolean; gained?: number })[];
   /** Invocations, maneuvers, metamagic…; `type` is the feature type codes ("EI"). */
-  optionalFeatures?: (Ref & { origin: string; type: string[]; gained?: number })[];
+  optionalFeatures?: (Ref & { origin: string; type: string[]; target?: string; gained?: number })[];
   /** A pick in a feature with options, like Divine Order: Protector. */
   featureChoices?: (Ref & { feature: string; gained?: number })[];
   /** Skill keys with expertise. */
   expertise?: string[];
   weaponMasteries?: (Ref & { gained?: number })[];
-  /** What levels added to `skills` and `expertise`, so a rebuild can take them off again. */
+  /** What levels and origin choices added to `skills`, `expertise` and `savingThrows`, so a rebuild can take them off again. */
   levelSkills?: string[];
   levelExpertise?: string[];
+  levelSaves?: string[];
+  /** Tool and language proficiencies picked through choices (rebuilt from `origin` and `levels`). */
+  tools?: string[];
+  languages?: string[];
+  /** The species and background sub-choices and the languages picked in the wizard, with what they resolved to. */
+  origin?: { species?: SavedChoice; background?: SavedChoice; backgroundFeat?: SavedChoice; languages?: string[]; extraLanguages?: string[]; gains?: Gains };
   deathSaves?: { successes: number; failures: number };
   hitDiceSpent?: number;
   /** Expended slots per spell level; index 0 is 1st level. */

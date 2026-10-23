@@ -31,7 +31,7 @@
     const bonus = skillRows.find((s) => s.key === key)?.bonus ?? (scores ? modifier(scores[ability]) : null);
     return bonus === null ? t.unknown : plain.format(10 + bonus);
   };
-  const lists = $derived(proficiencyLists(sheet.cls, sheet.background, sheet.species));
+  const lists = $derived(proficiencyLists(sheet.cls, sheet.background, sheet.species, { tools: sheet.character?.tools, languages: sheet.character?.languages }));
   // From the species (or its chosen lineage): save advantages, then resistances and the like, only the ones it has.
   const defenses = $derived(speciesDefenses(sheet.species, sheet.character?.species?.lineage));
   const defenseRows = $derived(

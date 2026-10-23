@@ -169,16 +169,18 @@ export function weaponAttack(weapon: Weapon, scores: Scores, proficiency: number
 export type ProficiencyLists = { armor: string[]; weapons: string[]; tools: string[]; languages: string[] };
 
 /** Fixed proficiencies from the class, background and species entries, as readable text. */
-export function proficiencyLists(cls: Data | null, background: Data | null, species: Data | null): ProficiencyLists {
+/** Fixed proficiencies from the class, background and species, plus the tools and languages the character picked (`chosen`). */
+export function proficiencyLists(cls: Data | null, background: Data | null, species: Data | null, chosen: { tools?: string[]; languages?: string[] } = {}): ProficiencyLists {
   const text = (v: unknown) => list(v).map((s) => capital(plainText(String(s))));
-  // shortcut: only fixed grants (`{ "common": true }`); "choose" and "any" grants aren't recorded on the character yet, so they're left out until level up records choices.
   const fixed = (...grants: unknown[]) => grants.flatMap((g) => list(g).flatMap((entry) => Object.entries(obj(entry)).filter(([, v]) => v === true).map(([k]) => capital(k.split("|")[0]))));
-  const unique = (xs: string[]) => [...new Set(xs)];
+  const names = (xs: string[] | undefined) => (xs ?? []).map((x) => x.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()));
+  // The same proficiency from two places (or in two capitalizations) is listed once.
+  const unique = (xs: string[]) => [...new Map(xs.map((x) => [x.toLowerCase(), x])).values()];
   return {
     armor: unique(text(cls?.armor)),
     weapons: unique(text(cls?.weapons)),
-    tools: unique([...text(cls?.tools), ...fixed(background?.toolProficiencies)]),
-    languages: unique(fixed(species?.languageProficiencies, background?.languageProficiencies)),
+    tools: unique([...text(cls?.tools), ...fixed(background?.toolProficiencies), ...names(chosen.tools)]),
+    languages: unique([...fixed(species?.languageProficiencies, background?.languageProficiencies), ...names(chosen.languages)]),
   };
 }
 

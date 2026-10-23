@@ -3,7 +3,7 @@
   import { strings } from "$lib/strings";
   import { checkBonus, modifier, proficiencyBonus, speciesLabel, startingHp, type Ability } from "$lib/characters/rules";
   import AbilityCards from "./AbilityCards.svelte";
-  import { allSkills, backgroundFeats, draft, hitDie, savingThrows, scores } from "./draft.svelte";
+  import { allLanguages, allSkills, backgroundFeats, draft, hitDie, savingThrows, scores } from "./draft.svelte";
 
   let { skills, campaignName }: { skills: { key: string; name: string; ability: string }[]; campaignName: string } = $props();
 
@@ -38,6 +38,7 @@
   <div><dt>{t.proficiency}</dt><dd>{signed.format(pb)}</dd></div>
   <div><dt>{t.passivePerception}</dt><dd>{plain.format(10 + perception)}</dd></div>
   <div><dt>{t.feats}</dt><dd>{feats.length ? list.format(feats.map((f) => f.name)) : t.none}</dd></div>
+  <div><dt>{strings.characters.wizard.languages.title}</dt><dd>{list.format(allLanguages().map((l) => l.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase())))}</dd></div>
 </dl>
 
 <section aria-labelledby="review-abilities">
