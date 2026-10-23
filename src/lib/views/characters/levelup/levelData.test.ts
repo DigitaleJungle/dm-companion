@@ -33,6 +33,7 @@ const data = (over: Partial<LevelData>): LevelData => ({
   items: [],
   tools: [],
   languages: [],
+  repeatable: new Set(),
   lists: new Map(),
   ...over,
 });

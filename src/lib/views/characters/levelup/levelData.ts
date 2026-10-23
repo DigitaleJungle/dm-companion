@@ -1,5 +1,5 @@
 import type { Character, ClassLevel } from "$lib/api/characters";
-import type { PrereqContext } from "$lib/characters/choices";
+import { entryChoices, type PrereqContext } from "$lib/characters/choices";
 import { byExtra, catalogRows, classSpells, type CatalogRow } from "$lib/api/rules";
 import {
   complete,
@@ -50,6 +50,8 @@ export type ChoiceData = {
   languages: CatalogRow[];
   /** Lowercase class name → its spells ("fireball|xphb"); null when the rules data predates spell lists. */
   lists: Map<string, Set<string>> | null;
+  /** Feats and optional features that can be taken more than once ("name|source"), worked out once at load. */
+  repeatable: Set<string>;
 };
 
 export type LevelData = ChoiceData & {
@@ -87,6 +89,7 @@ export async function loadChoiceData(classSource: string, published: (source: st
     feats,
     optional,
     spells,
+    repeatable: new Set([...feats, ...optional].filter((r) => entryChoices(r.data, 1).repeatable).map(refKey)),
     tools: items.filter((i) => TOOL_TYPES.includes(itemType(i))),
     languages,
     allItems: items,

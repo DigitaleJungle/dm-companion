@@ -1,5 +1,6 @@
 import type { Character, InventoryItem } from "$lib/api/characters";
 import { findEntity, type CatalogRow } from "$lib/api/rules";
+import { featName, parseFeatKey } from "$lib/rules/catalog";
 import {
   choiceComplete,
   emptyChoice,
@@ -193,9 +194,8 @@ export function backgroundFeatRef(row: CatalogRow | null = draft.background): (R
   const first = Array.isArray(row?.data.feats) ? (row.data.feats[0] as Record<string, unknown>) : null;
   const key = Object.keys(first ?? {}).find((k) => first?.[k] === true);
   if (!key) return null;
-  const [name, source = ""] = key.split("|");
-  const [feat, preset] = name.split("; ");
-  return { name: feat.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()), source: source.toUpperCase(), preset: preset ?? null };
+  const { name, source, variant } = parseFeatKey(key);
+  return { name, source, preset: variant };
 }
 
 // What the species and background ask on top of skills and ability bonuses (those have their own steps).
@@ -253,12 +253,8 @@ export function originRecord(find: Lookup): NonNullable<Character["origin"]> {
 export function backgroundFeats(): { name: string; source: string }[] {
   const feats = draft.background?.data.feats;
   const first = Array.isArray(feats) ? (feats[0] as Record<string, unknown>) : null;
-  return Object.keys(first ?? {}).flatMap((key) => {
-    const [name, source = ""] = key.split("|");
-    // "magic initiate; cleric" is the Cleric version of Magic Initiate.
-    const title = name.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()).replace(/; (.+)$/, " ($1)");
-    return first?.[key] === true ? [{ name: title, source: source.toUpperCase() }] : [];
-  });
+  // "magic initiate; cleric" is the Cleric version of Magic Initiate.
+  return Object.keys(first ?? {}).flatMap((key) => (first?.[key] === true ? [{ name: featName(key), source: parseFeatKey(key).source }] : []));
 }
 
 // --- Starting equipment ---------------------------------------------------------------------
@@ -516,6 +512,7 @@ export function editedCharacter(existing: Character, origin?: Character["origin"
           expertise: [],
           levelSkills: [],
           levelExpertise: [],
+          levelSaves: [],
           slotsUsed: [],
           pactSlotsUsed: 0,
         }),

@@ -1,15 +1,15 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import { errorMessage } from "$lib/api/storage";
   import { emptyLevelPicks, normalizePicks, type LevelPicks, type LevelRecord } from "$lib/characters/levelup";
   import { hitDieFaces } from "$lib/characters/sheet";
   import { enablePreviews } from "$lib/rules/preview.svelte";
   import { notify } from "$lib/stores/notifications.svelte";
-  import { rules } from "$lib/stores/rules.svelte";
+  import { sourcePublished } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import type { Character } from "$lib/api/characters";
+  import LevelDialogFrame from "./LevelDialogFrame.svelte";
   import LevelPanel from "./LevelPanel.svelte";
   import { levelNeedsChoice, loadLevelData, saveLevel, type LevelData } from "./levelData";
 
@@ -40,9 +40,8 @@
   const t = strings.characters.levelsDialog;
   const tl = strings.characters.levelUpDialog;
   const plain = new Intl.NumberFormat();
-  const published = (source: string) => rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published ?? "";
+  const published = sourcePublished;
 
-  let dialog: HTMLDialogElement | undefined = $state();
   let leaveDialog: HTMLDialogElement | undefined = $state();
   let data = $state<LevelData | null>(null);
   let loadError = $state<string | null>(null);
@@ -114,15 +113,10 @@
     }
   }
 
-  $effect(() => {
-    if (open && dialog && !dialog.open) {
-      if (clsData && (!data || loadedFor !== `${main.name}|${main.source}`)) load();
-      else if (data) select(levels.find((l) => levelNeedsChoice(c, data!, l)) ?? 1);
-      dialog.showModal();
-    } else if (!open && dialog?.open) {
-      dialog.close();
-    }
-  });
+  function opened() {
+    if (clsData && (!data || loadedFor !== `${main.name}|${main.source}`)) load();
+    else if (data) select(levels.find((l) => levelNeedsChoice(c, data!, l)) ?? 1);
+  }
 
   function save() {
     if (!data || readOnly) return;
@@ -155,23 +149,7 @@
   }
 </script>
 
-<dialog
-  bind:this={dialog}
-  class="levels"
-  aria-labelledby="levels-title"
-  oncancel={(e) => {
-    e.preventDefault();
-    close();
-  }}
->
-  {#if open}
-    <header class="top">
-      <h1 id="levels-title">{t.title(c.name)}</h1>
-      <button class="icon-btn" aria-label={tl.close} onclick={close}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
-      </button>
-    </header>
-
+<LevelDialogFrame {open} id="levels" title={t.title(c.name)} onopen={opened} onclose={close}>
     {#if loadError}
       <div class="message"><div class="error" role="alert"><p>{loadError}</p><button class="btn small" onclick={load}>{tl.retry}</button></div></div>
     {:else if !clsData}
@@ -211,16 +189,14 @@
       </div>
     {/if}
 
-    <footer class="bottom">
-      <button class="btn" onclick={close}>{t.close}</button>
-      {#if !readOnly}
-        <button class="btn btn-primary" disabled={!data || !dirty} onclick={save}>{t.save(plain.format(selected))}</button>
-      {/if}
-    </footer>
+  {#snippet footer()}
+    <button class="btn" onclick={close}>{t.close}</button>
+    {#if !readOnly}
+      <button class="btn btn-primary" disabled={!data || !dirty} onclick={save}>{t.save(plain.format(selected))}</button>
+    {/if}
+  {/snippet}
 
-    <EntityPopover />
-  {/if}
-
+  {#snippet extra()}
   <dialog bind:this={leaveDialog} class="leave" aria-labelledby="levels-leave-title">
     <h2 id="levels-leave-title">{t.leaveTitle(plain.format(selected))}</h2>
     <p>{t.leaveBody}</p>
@@ -229,60 +205,12 @@
       <button class="btn btn-danger" onclick={discard}>{t.discard}</button>
     </div>
   </dialog>
-</dialog>
+  {/snippet}
+</LevelDialogFrame>
 
 <style>
-  .levels {
-    width: min(100% - 2 * var(--space-4), var(--wizard-content-width));
-    height: min(100% - 2 * var(--space-4), 90vh);
-    max-width: none;
-    max-height: none;
-    padding: 0;
-    border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-bg);
-    color: var(--color-text);
-    overflow: hidden;
-  }
-
-  .levels[open] {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .levels::backdrop,
   .leave::backdrop {
     background: var(--color-backdrop);
-  }
-
-  .top,
-  .bottom {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-5);
-    background: var(--color-surface);
-  }
-
-  .top {
-    justify-content: space-between;
-    border-bottom: var(--border-width) solid var(--color-border);
-  }
-
-  .top h1 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-  }
-
-  .top svg {
-    width: var(--icon-size);
-    height: var(--icon-size);
-  }
-
-  .bottom {
-    justify-content: flex-end;
-    border-top: var(--border-width) solid var(--color-border);
   }
 
   .body {

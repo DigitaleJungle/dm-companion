@@ -275,11 +275,12 @@ pub fn save_avatar(places: &Places, campaign: Option<&str>, id: &str, bytes: &[u
     if bytes.is_empty() || bytes.len() > MAX_AVATAR_FILE {
         return Err(StorageError::Invalid("The picture must be at most 20 MB.".into()));
     }
-    for old in avatar_files(&path) {
-        fs::remove_file(old)?;
-    }
+    // The new picture first, so a failed write keeps the old one; then any other one (another file type) goes.
     let target = path.with_file_name(format!("{id}.avatar.{ext}"));
     write_atomic_bytes(&target, bytes)?;
+    for old in avatar_files(&path).into_iter().filter(|p| p != &target) {
+        fs::remove_file(old)?;
+    }
     Ok(target)
 }
 

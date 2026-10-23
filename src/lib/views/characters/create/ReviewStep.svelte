@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ABILITY_NAMES, SIZES } from "$lib/rules/format";
+  import { ABILITY_NAMES, SIZES, titleCase } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import { checkBonus, modifier, proficiencyBonus, speciesLabel, startingHp, type Ability } from "$lib/characters/rules";
   import AbilityCards from "./AbilityCards.svelte";
@@ -38,7 +38,7 @@
   <div><dt>{t.proficiency}</dt><dd>{signed.format(pb)}</dd></div>
   <div><dt>{t.passivePerception}</dt><dd>{plain.format(10 + perception)}</dd></div>
   <div><dt>{t.feats}</dt><dd>{feats.length ? list.format(feats.map((f) => f.name)) : t.none}</dd></div>
-  <div><dt>{strings.characters.wizard.languages.title}</dt><dd>{list.format(allLanguages().map((l) => l.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase())))}</dd></div>
+  <div><dt>{strings.characters.wizard.languages.title}</dt><dd>{list.format(allLanguages().map(titleCase))}</dd></div>
 </dl>
 
 <section aria-labelledby="review-abilities">

@@ -138,6 +138,12 @@ describe("editing a saved character", () => {
     draft.skillPicks = { "class-0": ["arcana", "history"], "species-0": ["perception"] };
     const changed = editedCharacter(start);
     expect([changed.levels, changed.feats?.map((f) => f.name)]).toEqual([[], ["Savage Attacker"]]);
+
+    // A save a level feat added (Resilient) goes with the levels, without taking the new class's own save along.
+    loadCharacter({ ...start, savingThrows: ["str", "con", "wis"], levelSaves: ["wis"] }, "a", options);
+    draft.cls = wizard;
+    draft.skillPicks = { "class-0": ["arcana", "history"], "species-0": ["perception"] };
+    expect(editedCharacter({ ...start, savingThrows: ["str", "con", "wis"], levelSaves: ["wis"] }).savingThrows).toEqual(["int", "wis"]);
   });
   it("a new level keeps the class and recomputes max HP", () => {
     loadCharacter(thalia(), "a", options);

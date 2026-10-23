@@ -19,7 +19,7 @@
   import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
-  import { refreshRules, rules } from "$lib/stores/rules.svelte";
+  import { refreshRules, rules, sourcePublished } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import AbilitiesStep from "./AbilitiesStep.svelte";
   import { artPath, backgroundFacts, classFacts, speciesFacts, versionGroups } from "./cards";
@@ -96,7 +96,7 @@
   const campaign = $derived(activeCampaigns.find((c) => c.id === draft.campaignId) ?? null);
   const sources = $derived(campaign ? campaign.sources : null);
   // One card per option: reprints in other books are its versions.
-  const published = (source: string) => rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published ?? "";
+  const published = sourcePublished;
   const grouped = (rows: CatalogRow[]) => versionGroups(rows, (source) => inSources(source, sources), published);
   const speciesCards = $derived(grouped(options?.species ?? []));
   const classCards = $derived(grouped((options?.classes ?? []).filter((c) => !c.data.isSidekick)));

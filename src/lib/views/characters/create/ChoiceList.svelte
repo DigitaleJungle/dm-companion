@@ -3,7 +3,7 @@
   import EntityView from "$lib/components/rules/EntityView.svelte";
   import { getEntity, type CatalogRow, type Entity } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { rules, sourceName } from "$lib/stores/rules.svelte";
+  import { sourceName, sourcePublished } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import ChoiceArt from "./ChoiceArt.svelte";
   import type { VersionGroup } from "./cards";
@@ -55,7 +55,7 @@
   /** A version's book with its publication year, unless the name already has one ("Player's Handbook (2024)"). */
   function versionLabel(source: string) {
     const name = sourceName(source);
-    const year = rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published?.slice(0, 4);
+    const year = sourcePublished(source).slice(0, 4);
     return year && !/\b\d{4}\b/.test(name) ? t.withYear(name, year) : name;
   }
   const pickedIn = (g: VersionGroup) => g.versions.find((v) => v.id === selected?.id) ?? null;

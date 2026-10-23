@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CatalogRow } from "$lib/api/rules";
   import { inSources } from "$lib/characters/rules";
+  import { titleCase as title } from "$lib/rules/format";
   import { strings } from "$lib/strings";
   import { draft, grantedLanguages, openLanguageSlots } from "./draft.svelte";
 
@@ -9,7 +10,6 @@
   let { languages, sources }: { languages: CatalogRow[]; sources: string[] | null } = $props();
 
   const t = strings.characters.wizard.languages;
-  const title = (s: string) => s.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase());
 
   // One entry per language name (reprints share it), from the campaign's books.
   const all = $derived(

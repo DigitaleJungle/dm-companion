@@ -4,12 +4,12 @@
   import { rollDice } from "$lib/api/dice";
   import type { CatalogRow } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
-  import { emptyChoice, entryChoices } from "$lib/characters/choices";
+  import { emptyChoice } from "$lib/characters/choices";
   import { decisionComplete, hpGain, levelHp, refKey, scoresWithLevels, type Decision, type Feature, type LevelPicks } from "$lib/characters/levelup";
   import { inSources, modifier } from "$lib/characters/rules";
   import { masteryNames } from "$lib/characters/sheet";
   import { ordinal } from "$lib/rules/catalog";
-  import { rules } from "$lib/stores/rules.svelte";
+  import { sourcePublished } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
   import ChoiceList from "../create/ChoiceList.svelte";
   import { versionGroups } from "../create/cards";
@@ -43,7 +43,7 @@
   const t = strings.characters.levelUpDialog;
   const plain = new Intl.NumberFormat();
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
-  const published = (source: string) => rules.status?.library?.sources.find((s) => s.id.toLowerCase() === source.toLowerCase())?.published ?? "";
+  const published = sourcePublished;
   const allowed = (s: string) => inSources(s, sources);
   const find = $derived(lookup(data));
 
@@ -96,7 +96,7 @@
   /** One invocation-style slot's candidates: not known before (unless repeatable); taken in another slot is greyed out unless repeatable. */
   function optionalCandidates(d: Extract<Decision, { kind: "optional" }>, slot: number): Candidate[] {
     const mine = new Set((before.optionalFeatures ?? []).map(refKey));
-    const repeatable = (r: CatalogRow) => entryChoices(r.data, level).repeatable;
+    const repeatable = (r: CatalogRow) => data.repeatable.has(refKey(r));
     const rows = data.optional.filter((r) => (r.data.featureType as string[] | undefined)?.some((ft) => d.types.includes(ft)) && (!mine.has(refKey(r)) || repeatable(r)));
     const others = new Set((picks.choices[d.id] ?? []).filter((_, i) => i !== slot).flatMap((s) => (s.ref ? [refKey(s.ref)] : [])));
     return candidatesOf(rows, input).map((c) => ({ ...c, disabled: others.has(refKey(c.row)) && !repeatable(c.row) }));

@@ -31,6 +31,11 @@ export async function refreshRules() {
 }
 
 /** A source's full name from the library, or its abbreviation when the library has none. */
+/** A source's publication date ("2024-09-17"), "" when unknown; for sorting reprints newest first. */
+export function sourcePublished(id: string): string {
+  return rules.status?.library?.sources.find((s) => s.id.toLowerCase() === id.toLowerCase())?.published ?? "";
+}
+
 export function sourceName(id: string): string {
   return rules.status?.library?.sources.find((s) => s.id.toLowerCase() === id.toLowerCase())?.name ?? id;
 }

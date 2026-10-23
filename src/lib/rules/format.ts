@@ -22,6 +22,9 @@ export const ITEM_TYPES: Record<string, string> = {
   GS: "Gaming set", TAH: "Tack and harness", SCF: "Spellcasting focus", $: "Treasure", FD: "Food and drink", MNT: "Mount", VEH: "Vehicle",
 };
 export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** "sleight of hand" → "Sleight of Hand", "dungeoneer's pack" → "Dungeoneer's Pack": each word capitalized, "of" kept small. */
+export const titleCase = (s: string) => s.replace(/(^|[\s(/-])(\w+)/g, (_, before: string, word: string) => before + (word === "of" && before ? word : capital(word)));
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
 export const modifier = (score: number) => {

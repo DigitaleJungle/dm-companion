@@ -217,6 +217,15 @@ describe("rebuild from level records", () => {
   });
 });
 
+describe("rebuild keeps what the Spells tab set", () => {
+  it("a level spell unticked on the sheet stays unticked after a rebuild", () => {
+    const level = { class: "Fighter", level: 4, gains: { ...noGains(), spells: [{ name: "Shield", source: "XPHB", origin: "Fighter", level: 1, prepared: true }] } };
+    const once = rebuild(character("Fighter", 4, { levels: [level] }), 10);
+    once.spells![0].prepared = false;
+    expect(rebuild(once, 10).spells?.map((s) => [s.name, s.prepared])).toEqual([["Shield", false]]);
+  });
+});
+
 describe("rebuild from the origin choices", () => {
   it("adds the species and background picks: feat, spells with their level, tools, languages, saving throws", () => {
     const c = rebuild(

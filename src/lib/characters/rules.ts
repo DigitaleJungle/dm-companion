@@ -1,3 +1,4 @@
+import { titleCase } from "$lib/rules/format";
 // Character creation rules, read from 5etools-format data. Nothing here is tied to one edition:
 // skills, ability bonuses and lineages all come from the species, class and background entries.
 
@@ -191,7 +192,7 @@ export const gearOptions = (group: GearGroup) => Object.keys(group).filter((key)
 /** "dungeoneer's pack|xphb" → Dungeoneer's Pack from XPHB. */
 function itemRef(key: string) {
   const [name, source = ""] = key.split("|");
-  return { name: name.replace(/(^|[\s(])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()), source: source.toUpperCase() };
+  return { name: titleCase(name), source: source.toUpperCase() };
 }
 
 /** What a list of entries gives. `typeName` names a "your choice" entry, like any musical instrument. */

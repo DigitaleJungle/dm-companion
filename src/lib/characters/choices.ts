@@ -316,7 +316,13 @@ export function resolveChoice(entry: Entry, saved: SavedChoice, level: number, f
   g.bonus = bonusTotals(c.bonus, saved.bonus) as Record<string, number>;
   const grant = c.spells[saved.grant];
   if (grant) {
-    g.spells.push(...grant.fixed.map((r) => ({ name: r.name, source: r.source, origin, atLevel: r.atLevel })));
+    // The data names granted spells by key ("misty step|xphb"); the spell itself has the real name and level.
+    g.spells.push(
+      ...grant.fixed.map((r) => {
+        const spell = find.spell(refKey(r));
+        return { name: spell?.name ?? r.name, source: spell?.source ?? r.source, origin, atLevel: r.atLevel, ...(spell ? { level: Number(spell.data.level ?? 1) } : {}) };
+      }),
+    );
     g.spells.push(...saved.spells.flat().flatMap((k) => find.spell(k) ?? []).map((s) => ({ name: s.name, source: s.source, origin, level: Number(s.data.level ?? 1) })));
   }
   featSlots(c).forEach((_, i) => {

@@ -118,5 +118,8 @@ describe("picks and what they give", () => {
     expect(tome.spells.map((s) => [s.name, s.level])).toEqual([["fire bolt", 0], ["light", 0], ["mage hand", 0], ["alarm", 1], ["find familiar", 1]]);
     const drow = resolveChoice(elf, emptyChoice(), 1, find, "Elf");
     expect(drow.spells.map((s) => [s.name, s.atLevel])).toEqual([["dancing lights", 1], ["faerie fire", 3], ["darkness", 5]]);
+    // A granted spell found in the library takes its real name and level.
+    const named: Lookup = { ...find, spell: (k) => (k === "faerie fire|xphb" ? entry("Faerie Fire", { level: 1 }) : find.spell(k)) };
+    expect(resolveChoice(elf, emptyChoice(), 1, named, "Elf").spells[1]).toEqual({ name: "Faerie Fire", source: "XPHB", origin: "Elf", atLevel: 3, level: 1 });
   });
 });

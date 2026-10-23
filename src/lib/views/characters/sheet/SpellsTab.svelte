@@ -155,7 +155,8 @@
               <button class="spell-name" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
               <span class="origin">{s.origin}</span>
               {#if s.always}<span class="tag">{t.always}</span>{/if}
-              {#if !s.always}
+              <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
+              {#if !s.always && s.gained === undefined}
                 <button class="remove" aria-label={t.remove(s.name)} title={t.remove(s.name)} disabled={sheet.readOnly} onclick={() => removeSpell(s.name, s.source)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
                 </button>

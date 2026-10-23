@@ -2,7 +2,7 @@
 // Class numbers (hit die, slots) come from the class entry in the rules data, never from tables in code.
 
 import type { InventoryItem } from "$lib/api/characters";
-import { ABILITY_NAMES, capital } from "$lib/rules/format";
+import { ABILITY_NAMES, capital, titleCase } from "$lib/rules/format";
 import { plainText } from "$lib/rules/tags";
 import { modifier, type Ability, type Scores } from "./rules";
 
@@ -173,7 +173,7 @@ export type ProficiencyLists = { armor: string[]; weapons: string[]; tools: stri
 export function proficiencyLists(cls: Data | null, background: Data | null, species: Data | null, chosen: { tools?: string[]; languages?: string[] } = {}): ProficiencyLists {
   const text = (v: unknown) => list(v).map((s) => capital(plainText(String(s))));
   const fixed = (...grants: unknown[]) => grants.flatMap((g) => list(g).flatMap((entry) => Object.entries(obj(entry)).filter(([, v]) => v === true).map(([k]) => capital(k.split("|")[0]))));
-  const names = (xs: string[] | undefined) => (xs ?? []).map((x) => x.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase()));
+  const names = (xs: string[] | undefined) => (xs ?? []).map(titleCase);
   // The same proficiency from two places (or in two capitalizations) is listed once.
   const unique = (xs: string[]) => [...new Map(xs.map((x) => [x.toLowerCase(), x])).values()];
   return {

@@ -3,6 +3,20 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.12] - 2026-10-23
+
+### Changed
+
+- Subclass cards are tall, shaped like the subclass art, with odd-shaped pictures shown whole on a blurred copy
+
+### Fixed
+
+- Prepared ticks on the Spells tab survive a level change; spells from levels are changed under Edit → Levels
+- Spells granted by feats, species and invocations show their real names
+- Changing the class no longer drops the new class's own saving throw
+- A new avatar is saved before the old original is removed
+- Names like Hunter's Mark are capitalized correctly
+
 ## [0.5.11] - 2026-10-23
 
 ### Added

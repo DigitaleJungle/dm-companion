@@ -109,3 +109,17 @@ describe("creature spellcasting", () => {
     });
   });
 });
+
+describe("titleCase", () => {
+  it("capitalizes each word, not after an apostrophe, and keeps 'of' small", async () => {
+    const { titleCase } = await import("./format");
+    expect(["hunter's mark", "sleight of hand", "arrows (20)", "half-elf", "bag of holding", "of mice"].map(titleCase)).toEqual([
+      "Hunter's Mark",
+      "Sleight of Hand",
+      "Arrows (20)",
+      "Half-Elf",
+      "Bag of Holding",
+      "Of Mice",
+    ]);
+  });
+});

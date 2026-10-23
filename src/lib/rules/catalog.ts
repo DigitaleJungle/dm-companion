@@ -2,7 +2,7 @@
 
 import type { CatalogRow } from "$lib/api/rules";
 import { strings } from "$lib/strings";
-import { ABILITY_NAMES, ITEM_TYPES, SCHOOLS, SIZES, capital, castingTime, creatureTypeName, prerequisite, spellRange } from "./format";
+import { ABILITY_NAMES, ITEM_TYPES, SCHOOLS, SIZES, capital, castingTime, creatureTypeName, prerequisite, spellRange, titleCase } from "./format";
 import { plainText } from "./tags";
 
 /** Raw 5etools fields: loosely typed on purpose, shapes vary between books. */
@@ -123,11 +123,17 @@ function backgroundSkills(d: Data): string {
   if (first.choose) fixed.push(`choose ${first.choose.count ?? 1}`);
   return fixed.join(", ") || none;
 }
+/** A feat key from the data: "magic initiate; cleric|xphb" is Magic Initiate from XPHB, its "cleric" variant. */
+export function parseFeatKey(key: string): { name: string; source: string; variant: string | null } {
+  const [ref, source = ""] = key.split("|");
+  const [name, variant] = ref.split(";").map((s) => s.trim());
+  return { name: titleCase(name), source: source.toUpperCase(), variant: variant || null };
+}
+
 /** "magic initiate; cleric|xphb" → "Magic Initiate (Cleric)". */
 export function featName(key: string): string {
-  const [name, variant] = key.split("|")[0].split(";").map((s) => s.trim());
-  const title = (s: string) => s.replace(/\b\w/g, (ch) => ch.toUpperCase());
-  return variant ? `${title(name)} (${title(variant)})` : title(name);
+  const { name, variant } = parseFeatKey(key);
+  return variant ? `${name} (${titleCase(variant)})` : name;
 }
 const speedText = (d: Data) => {
   const s = typeof d.speed === "number" ? d.speed : d.speed?.walk;

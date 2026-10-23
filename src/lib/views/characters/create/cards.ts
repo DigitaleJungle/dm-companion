@@ -1,6 +1,6 @@
 import type { CatalogRow } from "$lib/api/rules";
 import { bonusOptions } from "$lib/characters/rules";
-import { SIZES } from "$lib/rules/format";
+import { SIZES, titleCase as title } from "$lib/rules/format";
 import { strings } from "$lib/strings";
 
 // The short facts and the picture of each species, class and background, so you can compare before opening one.
@@ -10,8 +10,6 @@ const or = new Intl.ListFormat(undefined, { type: "disjunction" });
 const and = new Intl.ListFormat(undefined, { type: "conjunction" });
 const plain = new Intl.NumberFormat();
 const upper = (keys: string[]) => keys.map((k) => k.toUpperCase());
-/** "sleight of hand" → "Sleight of Hand". */
-const title = (s: string) => s.replace(/\b(?!of\b)\w/g, (c) => c.toUpperCase());
 const trueKeys = (value: unknown): string[] =>
   Array.isArray(value) && value[0] && typeof value[0] === "object" ? Object.entries(value[0]).filter(([, v]) => v === true).map(([k]) => k) : [];
 

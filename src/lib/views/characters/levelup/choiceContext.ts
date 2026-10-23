@@ -1,8 +1,9 @@
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
-import { entryChoices, prerequisite, refKey, spellMatches, type PrereqContext, type SpellFilter } from "$lib/characters/choices";
+import { prerequisite, refKey, spellMatches, type PrereqContext, type SpellFilter } from "$lib/characters/choices";
 import { inSources } from "$lib/characters/rules";
 import { ordinal } from "$lib/rules/catalog";
+import { titleCase } from "$lib/rules/format";
 import { strings } from "$lib/strings";
 import { versionGroups } from "../create/cards";
 import type { Candidate, ChoiceContext } from "./ChoicePicker.svelte";
@@ -12,7 +13,6 @@ import { lookup, type ChoiceData } from "./levelData";
 // What pickers offer, from the loaded rules and the character as it is before the choice: spells not known yet,
 // feats not taken (unless repeatable) whose prerequisites are met, skills, tools and languages.
 
-const titleCase = (s: string) => s.replace(/(^|[\s(/-])(\w)/g, (_, a: string, b: string) => a + b.toUpperCase());
 const itemType = (r: CatalogRow) => String(r.data.type ?? "").split("|")[0];
 
 export type ContextInput = {
@@ -44,7 +44,7 @@ export function candidatesOf(rows: CatalogRow[], input: ContextInput, first?: (r
 export function featCandidates(categories: string[], input: ContextInput, first?: (r: CatalogRow) => boolean): Candidate[] {
   const taken = new Set((input.before.feats ?? []).map((f) => f.name.toLowerCase()));
   const rows = input.data.feats.filter(
-    (r) => categories.includes(String(r.data.category ?? "")) && (!taken.has(r.name.toLowerCase()) || entryChoices(r.data, input.prereq.level).repeatable),
+    (r) => categories.includes(String(r.data.category ?? "")) && (!taken.has(r.name.toLowerCase()) || input.data.repeatable.has(refKey(r))),
   );
   return candidatesOf(rows, input, first);
 }

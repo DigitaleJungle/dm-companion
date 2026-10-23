@@ -29,7 +29,7 @@
   import { getEntity } from "$lib/api/rules";
   import { errorMessage } from "$lib/api/storage";
   import { emptyChoice, entryChoices, featSlots, refKey, type Entry, type SavedChoice } from "$lib/characters/choices";
-  import { ABILITY_NAMES } from "$lib/rules/format";
+  import { ABILITY_NAMES, titleCase } from "$lib/rules/format";
   import { emptyPick } from "$lib/characters/rules";
   import { sourceName } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
@@ -208,7 +208,7 @@
     {#if grant}
       {#if grant.fixed.length}
         <p class="muted">
-          {t.alsoLearn(grant.fixed.map((s) => (s.atLevel > 1 ? t.atLevel(s.name.replace(/\b\w/g, (c) => c.toUpperCase()), String(s.atLevel)) : s.name.replace(/\b\w/g, (c) => c.toUpperCase()))).join(", "))}
+          {t.alsoLearn(grant.fixed.map((s) => (s.atLevel > 1 ? t.atLevel(titleCase(s.name), String(s.atLevel)) : titleCase(s.name))).join(", "))}
         </p>
       {/if}
       {#each grant.choose as c, i (`${pick.grant}-${i}`)}

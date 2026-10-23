@@ -352,7 +352,15 @@ export function rebuild(character: Character, faces: number): Character {
   const all = <T>(pick: (g: Gains) => T[] | undefined) => tagged.flatMap((t) => pick(t.gains) ?? []);
 
   c.feats = [...untagged(c.feats), ...tagged.flatMap((t) => t.gains.feats.map((f) => ({ name: f.name, source: f.source, origin: f.origin || t.origin || undefined, gained: t.level })))];
-  c.spells = unique([...untagged(c.spells), ...tagged.flatMap((t) => t.gains.spells.map((s) => ({ ...s, gained: t.level })))], refKey);
+  // A spell's prepared tick is set on the Spells tab; a rebuild keeps it.
+  const prepared = new Map((c.spells ?? []).map((s) => [refKey(s), s.prepared]));
+  c.spells = unique(
+    [
+      ...untagged(c.spells),
+      ...tagged.flatMap((t) => t.gains.spells.map((s) => ({ ...s, gained: t.level, ...(prepared.has(refKey(s)) && !s.always ? { prepared: prepared.get(refKey(s)) } : {}) }))),
+    ],
+    refKey,
+  );
   c.optionalFeatures = [...untagged(c.optionalFeatures), ...tagged.flatMap((t) => t.gains.optional.map((o) => ({ ...o, origin: main.name, gained: t.level })))];
   c.featureChoices = [...untagged(c.featureChoices), ...tagged.flatMap((t) => t.gains.options.map((o) => ({ ...o, gained: t.level })))];
   c.weaponMasteries = unique([...untagged(c.weaponMasteries), ...tagged.flatMap((t) => t.gains.masteries.map((m) => ({ ...m, gained: t.level })))], refKey);
