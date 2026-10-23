@@ -56,7 +56,7 @@ Open the `.html` files in a browser (all sidebar links work), or see `images/` f
 
 - **Left sidebar**
   - App name: clicking it goes back to the Start screen (also in the narrow-window top bar).
-  - Campaign switcher: shows the current campaign; clicking it opens a dropdown of the active campaigns, and picking one opens it. The current campaign has a green check. A cog wheel next to it opens **Campaign settings** for this campaign.
+  - Campaign switcher: shows the current campaign; clicking it opens a dropdown of the active campaigns, and picking one opens it. The current campaign has a green check. Every dropdown in the app (filters, sort, settings, wizard choices) has this switcher's look: a bordered button, the value on the left, an up-down chevron on the right; its open list looks like the switcher's menu too (rounded panel with a shadow, grey hover, a green check on the right of the picked value) wherever the system allows styling it (Windows), and is the system list elsewhere. A cog wheel next to it opens **Campaign settings** for this campaign.
   - Navigation: Home, Campaign library, Run encounter, Encounter builder, Characters, LegendKeeper. Search is not a sidebar item.
   - Player-screen status box at the bottom, with a "Blank screen" button.
   - A gear button in the bottom-left corner opens **Settings** as a modal dialog. Escape, the close button or clicking outside closes it. Settings has a side panel listing its sections:

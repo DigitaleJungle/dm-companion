@@ -242,14 +242,6 @@
 
   select {
     width: min(100%, var(--select-width));
-    min-height: var(--control-height);
-    padding: 0 var(--space-3);
-    border: var(--border-width) solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font-size: var(--text-md);
-    cursor: pointer;
   }
 
   .error {

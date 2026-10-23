@@ -151,3 +151,75 @@ a {
   background: var(--color-surface-sunken);
   color: var(--color-text-muted);
 }
+
+/* Every dropdown looks like the campaign switcher: a button with the name on the left and an up-down chevron on the right. */
+select {
+  appearance: none;
+  /* Where supported (WebView2 on Windows), the open list is ours to style too; elsewhere it stays the system list. */
+  appearance: base-select;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: 0 calc(var(--space-3) + var(--icon-size) + var(--space-2)) 0 var(--space-4);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface) var(--select-chevron) no-repeat right var(--space-3) center / var(--icon-size);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+select:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+}
+
+/* The open list, styled like the Menu component (the campaign switcher's dropdown). */
+::picker(select) {
+  appearance: base-select;
+  margin-block: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-drawer);
+}
+
+/* The chevron is the background image above. */
+select::picker-icon {
+  display: none;
+}
+
+select option {
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+select option:hover,
+select option:focus-visible {
+  background: var(--color-surface-sunken);
+}
+
+select option:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* The picked option gets the green check on the right, like the current campaign. */
+select option::checkmark {
+  order: 1;
+  margin-left: auto;
+  color: var(--color-success);
+}

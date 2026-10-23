@@ -631,7 +631,6 @@
   }
 
   .wizard :global(input.text),
-  .wizard :global(select),
   .wizard :global(input[type="number"]) {
     min-height: var(--control-height);
     padding: 0 var(--space-3);
@@ -640,10 +639,6 @@
     background: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-md);
-  }
-
-  .wizard :global(select) {
-    cursor: pointer;
   }
 
   .note,
