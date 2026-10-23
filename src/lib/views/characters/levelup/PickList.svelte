@@ -177,12 +177,12 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The note of an already-had spell sits right before its (i). */
-  .taken .note {
+  /* A note (where a spell came from, a weapon's mastery) sits right before the (i). */
+  .note {
     margin-left: auto;
   }
 
-  .taken .note + .info {
+  .note + .info {
     margin-left: 0;
   }
 

@@ -146,9 +146,14 @@
             {@render choices()}
           </div>
         {/if}
+        <!-- A tall picture (a subclass) leaves room beside it, so its rules text goes there. -->
+        {#if tall}{@render rules()}{/if}
       </div>
     </div>
 
+    {#if !tall}{@render rules()}{/if}
+  </section>
+  {#snippet rules()}
     <div class="rules">
       {#if entityError}
         <p class="error" role="alert">{entityError}</p>
@@ -158,7 +163,7 @@
         <p class="muted" role="status">{t.loadingEntry}</p>
       {/if}
     </div>
-  </section>
+  {/snippet}
 {/if}
 
 <style>
@@ -382,6 +387,7 @@
   }
 
   .rules {
+    align-self: stretch;
     padding-top: var(--space-4);
     border-top: var(--border-width) solid var(--color-border);
   }

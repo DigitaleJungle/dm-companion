@@ -1,8 +1,11 @@
 <script lang="ts">
+  import InfoTip from "$lib/components/InfoTip.svelte";
   import { modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { findEntity } from "$lib/api/rules";
-  import { progressionAt } from "$lib/characters/levelup";
-  import { pactSlots, spellSlots } from "$lib/characters/sheet";
+  import { catalogRows, type CatalogRow } from "$lib/api/rules";
+  import { errorMessage } from "$lib/api/storage";
+  import { progressionAt, spellSources } from "$lib/characters/levelup";
+  import { pactSlots, spellRow, spellSlots, type SpellRow } from "$lib/characters/sheet";
+  import { capital, castingTime, components, spellRange } from "$lib/rules/format";
   import { openPreview } from "$lib/rules/preview.svelte";
   import { ordinal } from "$lib/rules/catalog";
   import { strings } from "$lib/strings";
@@ -12,6 +15,7 @@
   let { sheet }: { sheet: Sheet } = $props();
 
   const t = strings.characters.sheet.spells;
+  const tl = strings.characters.levelUpDialog;
   const plain = new Intl.NumberFormat();
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
 
@@ -23,18 +27,30 @@
   const pact = $derived(pactSlots(sheet.cls, sheet.level));
   const used = $derived(c.slotsUsed ?? []);
 
-  // Spells saved without their level (fixed spells from a feat) get it from the rules data.
-  let levels = $state<Record<string, number>>({});
+  // The table's details (and the level of spells saved without it, fixed spells from a feat) come from the rules data, loaded once.
+  let details = $state<Map<string, CatalogRow> | null>(null);
+  let detailsError = $state<string | null>(null);
   const spellKey = (s: { name: string; source: string }) => `${s.name}|${s.source}`.toLowerCase();
   $effect(() => {
-    for (const s of c.spells ?? []) {
-      const k = spellKey(s);
-      if (typeof s.level === "number" || k in levels) continue;
-      levels[k] = -1;
-      findEntity("spell", s.name, s.source).then((e) => (levels[k] = Number(e?.data.level ?? -1))).catch(() => {});
-    }
+    if (details || detailsError || !(c.spells ?? []).length) return;
+    catalogRows("spell", ["level", "time", "range", "components", "duration", "meta", "spellAttack", "savingThrow", "damageInflict", "conditionInflict", "miscTags"])
+      .then((rows) => (details = new Map(rows.map((r) => [spellKey(r), r]))))
+      .catch((e) => (detailsError = errorMessage(e)));
   });
-  const levelOf = (s: NonNullable<typeof c.spells>[number]) => (typeof s.level === "number" ? s.level : (levels[spellKey(s)] ?? -1));
+  const rowOf = (s: { name: string; source: string }) => details?.get(spellKey(s)) ?? null;
+  const levelOf = (s: NonNullable<typeof c.spells>[number]) => (typeof s.level === "number" ? s.level : Number(rowOf(s)?.data.level ?? -1));
+  const sources = $derived(spellSources(c, (cls, level) => tl.classLevel(cls, plain.format(level))));
+
+  // Hit/DC with the spell's own ability (Magic Initiate's pick), else the class's.
+  function hitOrDc(s: NonNullable<typeof c.spells>[number], row: SpellRow): string {
+    const own = (s.ability ?? ability) as Ability | null;
+    const m = own && sheet.scores ? modifier(sheet.scores[own]) : null;
+    if (row.attack) return m === null ? strings.characters.sheet.unknown : signed.format(m + pb);
+    if (row.save) return t.dc(m === null ? strings.characters.sheet.unknown : plain.format(8 + m + pb), row.save.toUpperCase());
+    return t.none;
+  }
+  const effectOf = (row: SpellRow) => (row.effects.length ? row.effects.map(capital).join(", ") : row.healing ? t.healing : t.none);
+  const componentsOf = (row: SpellRow) => [row.v && "V", row.s && "S", row.m && "M"].filter(Boolean).join(", ");
   const byLevel = $derived.by(() => {
     const groups = new Map<number, NonNullable<typeof c.spells>>();
     // Species spells that come at a later character level (Drow: Faerie Fire at 3) show from that level on.
@@ -130,26 +146,68 @@
     <p class="muted">{t.noSpells}</p>
   {:else}
     {#if preparedLimit > 0}<p class="muted">{t.preparedCount(plain.format(prepared), plain.format(preparedLimit))}</p>{/if}
-    {#each byLevel as [level, spells] (level)}
-      <section class="spell-group" aria-labelledby="spells-{level}">
-        <h3 id="spells-{level}" class="group-name">{groupName(level)}</h3>
-        <ul class="spell-list">
-          {#each spells as s (spellKey(s))}
-            <li class="spell">
-              <button class="entry-link" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
-              <span class="origin">{s.ability ? t.originAbility(s.origin, s.ability.toUpperCase()) : s.origin}</span>
-              {#if s.always}<span class="tag">{t.always}</span>{/if}
-              <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
-              {#if !s.always && s.gained === undefined}
-                <button class="remove" aria-label={t.remove(s.name)} title={t.remove(s.name)} disabled={sheet.readOnly} onclick={() => removeSpell(s.name, s.source)}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
-                </button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/each}
+    {#if detailsError}<p class="error" role="alert">{t.detailsError(detailsError)}</p>{:else if !details}<p class="muted" role="status">{t.loadingDetails}</p>{/if}
+    {#snippet abbr(short: string, long: string)}<span title={long}><span aria-hidden="true">{short}</span><span class="sr-only">{long}</span></span>{/snippet}
+    <!-- One table, a row group per spell level, so the columns line up across levels. The data columns are a fixed width ("…" beyond), the name takes the rest. -->
+    <table class="spell-table">
+        <thead>
+          <tr>
+            <th scope="col">{t.col.name}</th>
+            <th scope="col">{t.col.time}</th>
+            <th scope="col">{t.col.range}</th>
+            <th scope="col">{t.col.hit}</th>
+            <th scope="col">{t.col.effect}</th>
+            <th scope="col"><span title={t.col.componentsLong}>{t.col.components}</span></th>
+            <th scope="col"><span class="sr-only">{t.col.remove}</span></th>
+          </tr>
+        </thead>
+        {#each byLevel as [level, spells] (level)}
+            <tbody>
+              <tr class="group-row">
+                <th scope="colgroup" colspan="7" class="group-name">{groupName(level)}</th>
+              </tr>
+              {#each spells as s, i (spellKey(s))}
+                {@const data = rowOf(s)?.data ?? null}
+                {@const row = data ? spellRow(data) : null}
+                {@const from = sources.get(spellKey(s)) ?? []}
+                <tr>
+                  <th scope="row">
+                    <span class="name-cell">
+                      <button class="entry-link" onclick={(e) => openPreview({ kind: "spell", name: s.name, source: s.source }, e.currentTarget)}>{s.name}</button>
+                      {#if row?.concentration}<span class="badge">{@render abbr(t.col.concentration.short, t.col.concentration.long)}</span>{/if}
+                      {#if row?.ritual}<span class="badge">{@render abbr(t.col.ritual.short, t.col.ritual.long)}</span>{/if}
+                      {#if from.length > 1}
+                        <InfoTip id="spell-twice-{level}-{i}" label={tl.preparedTwiceOf(s.name)} text={tl.preparedTwice(from.join(", "))} alert />
+                      {/if}
+                    </span>
+                  </th>
+                  {#if data && row}
+                    <td>
+                      {#if tl.cast[row.unit as keyof typeof tl.cast]}
+                        {@const cast = tl.cast[row.unit as keyof typeof tl.cast]}
+                        <span class="cut">{@render abbr(cast.short, cast.long)}</span>
+                      {:else}<span class="cut" title={castingTime(data)}>{castingTime(data)}</span>{/if}
+                    </td>
+                    <td><span class="cut" title={spellRange(data)}>{spellRange(data)}</span></td>
+                    <td><span class="cut" title={hitOrDc(s, row)}>{hitOrDc(s, row)}</span></td>
+                    <td><span class="cut" title={effectOf(row)}>{effectOf(row)}</span></td>
+                    <td><span class="cut" title={components(data)}>{componentsOf(row)}</span></td>
+                  {:else}
+                    <td colspan="5" class="muted">{t.none}</td>
+                  {/if}
+                  <td>
+                    <!-- Spells from levels are changed under Edit → Levels; a removal here would come back with the next level. -->
+                    {#if !s.always && s.gained === undefined}
+                      <button class="remove" aria-label={t.remove(s.name)} title={t.remove(s.name)} disabled={sheet.readOnly} onclick={() => removeSpell(s.name, s.source)}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+                      </button>
+                    {/if}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+        {/each}
+    </table>
   {/if}
 </div>
 
@@ -242,40 +300,87 @@
     color: var(--color-text-muted);
   }
 
-  .group-name {
-    margin-bottom: var(--space-1);
+  .spell-table .group-name {
+    padding-top: var(--space-4);
+    color: var(--color-text-muted);
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
   }
 
-  .spell-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .spell-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--color-text);
   }
 
-  .spell {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) 0;
+  .spell-table th,
+  .spell-table td {
+    padding: var(--space-1) var(--space-2);
     border-bottom: var(--border-width) solid var(--color-border);
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
   }
 
+  /* The name column takes all the room the data columns leave. */
+  .spell-table th:first-child {
+    width: 100%;
+  }
 
-  .origin {
+  /* Only when the block is too narrow does a name wrap; it's never cut off. */
+  .spell-table tbody th:first-child {
+    white-space: normal;
+  }
+
+  /* Every data column is the same fixed width; longer text ends in "…" (the full text is its tooltip). */
+  .cut {
+    display: block;
+    /* The column is the token's width with the cell's padding included. */
+    width: calc(var(--spell-data-width) - 2 * var(--space-2));
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .spell-table thead th {
     color: var(--color-text-muted);
     font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
   }
 
-  .tag {
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-pill);
-    background: var(--color-accent-soft);
-    color: var(--color-link);
+  .spell-table tbody th {
+    font-weight: var(--weight-regular);
+  }
+
+  .spell-table th:first-child,
+  .spell-table td:first-child {
+    padding-left: 0;
+  }
+
+  .name-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* C and R: a solid square after the name. */
+  .badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: var(--space-4);
+    height: var(--space-4);
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    background: var(--color-text);
+    color: var(--color-surface);
     font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+  }
+
+  .error {
+    color: var(--color-danger);
   }
 
   .remove {

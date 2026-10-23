@@ -53,7 +53,24 @@
   const before = $derived(stateBefore(character, level, faces));
   const autoSpells = $derived(alwaysSpellsAt(data, subclass, level));
   const prereq = $derived(prereqContext(before, level, data, picks.keys.cantrips ?? []));
-  const input = $derived({ data, before, prereq, sources, published, skills, alsoKnown: picks.keys.cantrips ?? [], always: autoSpells.map((s) => ({ key: refKey(s), note: t.classLevel(main.name, plain.format(level)) })) });
+  // What later levels picked, when an earlier level is changed under Edit → Levels: shown as a label only.
+  const later = $derived(
+    (character.levels ?? [])
+      .filter((r) => r.level > level)
+      .sort((a, b) => a.level - b.level)
+      .flatMap((r) => (r.gains?.spells ?? []).map((s) => ({ key: refKey(s), note: t.classLevel(r.class, plain.format(r.level)) }))),
+  );
+  const input = $derived({
+    data,
+    before,
+    prereq,
+    sources,
+    published,
+    skills,
+    alsoKnown: picks.keys.cantrips ?? [],
+    always: autoSpells.map((s) => ({ key: refKey(s), note: t.classLevel(main.name, plain.format(level)) })),
+    later,
+  });
   const cctx = $derived(choiceContext(input));
   const con = $derived(scoresWithLevels(character)?.con ?? 10);
 

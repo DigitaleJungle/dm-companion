@@ -30,6 +30,7 @@ describe("spellItems", () => {
     published: () => "",
     skills: [],
     always: [{ key: "divine smite|xphb", note: "Paladin 2" }],
+    later: [{ key: "command|xphb", note: "Paladin 3" }],
   });
   const items = Object.fromEntries(ctx.spellItems({ levels: [0, 1], classes: [], schools: [], ritual: false }).map((i) => [i.name, i]));
 
@@ -45,5 +46,9 @@ describe("spellItems", () => {
 
   it("tags a spell cast as an action, bonus action or reaction", () => {
     expect([items.Command.tag?.short, items["Divine Smite"].tag?.short, items.Shield.tag?.short, items["Find Steed"].tag]).toEqual(["A", "BA", "R", undefined]);
+  });
+
+  it("a spell a later level picked only gets that level as its label: not ticked, still pickable", () => {
+    expect([items.Command.note, items.Command.taken, items.Command.alert]).toEqual(["Paladin 3", undefined, undefined]);
   });
 });

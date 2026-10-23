@@ -367,3 +367,39 @@ export function withdraw(purse: Purse, coin: keyof Purse): Purse | null {
   }
   return left;
 }
+
+/** What the Spells tab's table shows of a spell, read from its rules data. */
+export type SpellRow = {
+  concentration: boolean;
+  ritual: boolean;
+  /** The first casting time's unit: "action", "bonus", "reaction", "minute"… */
+  unit: string;
+  attack: boolean;
+  /** The saving throw it asks for ("dex"), if any. */
+  save: string | null;
+  /** Damage types, else conditions it causes ("fire", "blinded"); `healing` when it heals instead. */
+  effects: string[];
+  healing: boolean;
+  v: boolean;
+  s: boolean;
+  m: boolean;
+};
+
+export function spellRow(spell: Data): SpellRow {
+  const parts = obj(spell.components);
+  const damage = list(spell.damageInflict).map(String);
+  const conditions = list(spell.conditionInflict).map(String);
+  const save = list(spell.savingThrow).map(String)[0];
+  return {
+    concentration: list(spell.duration).some((d) => obj(d).concentration === true),
+    ritual: obj(spell.meta).ritual === true,
+    unit: String(obj(list(spell.time)[0]).unit ?? ""),
+    attack: list(spell.spellAttack).length > 0,
+    save: save ? save.slice(0, 3).toLowerCase() : null,
+    effects: damage.length ? damage : conditions,
+    healing: list(spell.miscTags).includes("HL"),
+    v: !!parts.v,
+    s: !!parts.s,
+    m: !!parts.m,
+  };
+}

@@ -1,6 +1,7 @@
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
 import { prerequisite, refKey, spellMatches, type PrereqContext, type SpellFilter } from "$lib/characters/choices";
+import { spellSources } from "$lib/characters/levelup";
 import { inSources } from "$lib/characters/rules";
 import { ordinal } from "$lib/rules/catalog";
 import { titleCase } from "$lib/rules/format";
@@ -26,6 +27,8 @@ export type ContextInput = {
   alsoKnown?: string[];
   /** Always-prepared spells this step adds (a level's class and subclass spells): shown as had, with `note`. */
   always?: { key: string; note: string }[];
+  /** Spells later levels picked (an earlier level changed under Edit → Levels): only labelled with that level, still pickable. */
+  later?: { key: string; note: string }[];
 };
 
 /** Rows newest-first per reprint group, allowed by the campaign's books. */
@@ -57,17 +60,20 @@ export function choiceContext(input: ContextInput): ChoiceContext {
   const allowed = (r: CatalogRow) => inSources(r.source, input.sources);
   const known = new Set((before.spells ?? []).map(refKey));
   const plain = new Intl.NumberFormat();
-  // Every place a spell came from, oldest first: the origin (a feat, species…), each class level, then this step.
-  // The character keeps a spell once, so the level records are read to see the ones had twice.
-  const sources = new Map<string, string[]>();
-  const from = (key: string, label: string) => sources.set(key, [...(sources.get(key) ?? []), label]);
-  for (const s of before.spells ?? []) if (!s.gained) from(refKey(s), s.origin);
-  for (const r of before.levels ?? []) for (const s of r.gains?.spells ?? []) from(refKey(s), t.classLevel(r.class, plain.format(r.level)));
-  for (const a of input.always ?? []) from(a.key, a.note);
+  // Every place a spell came from: the character's own, then this step's.
+  const sources = spellSources(before, (cls, level) => t.classLevel(cls, plain.format(level)));
+  for (const a of input.always ?? []) sources.set(a.key, [...(sources.get(a.key) ?? []), a.note]);
   // A spell had already can't be picked again and says where it came from; had from two places, it gets a (!).
+  const later = new Map<string, string[]>();
+  for (const a of input.later ?? []) later.set(a.key, [...(later.get(a.key) ?? []), a.note]);
   const marked = (item: PickItem): PickItem => {
     const at = sources.get(item.key) ?? [];
-    return { ...item, ...(at.length ? { taken: true, note: at[0] } : {}), ...(at.length > 1 ? { alert: t.preparedTwice(at.join(", ")) } : {}) };
+    const then = later.get(item.key) ?? [];
+    return {
+      ...item,
+      ...(at.length ? { taken: true, note: at[0] } : then.length ? { note: then.join(", ") } : {}),
+      ...(at.length + then.length > 1 && at.length ? { alert: t.preparedTwice([...at, ...then].join(", ")) } : {}),
+    };
   };
   const lists = data.lists ?? new Map<string, Set<string>>();
   const byName = (rows: CatalogRow[], kind: string): PickItem[] =>

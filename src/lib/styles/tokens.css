@@ -103,7 +103,8 @@
   --sheet-stat-width: 88px;
   --sheet-hp-width: 272px;
   --sheet-hp-amount-width: 108px;
-  --sheet-left-max: 720px;
+  --sheet-left-max: 600px;
+  --spell-data-width: 72px;
   --sheet-bar-height: 10px;
   --sheet-glow-blur: 18px;
   --stat-value-size: 1.875rem;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  spellRow,
   inUse,
   pay,
   withdraw,
@@ -281,5 +282,17 @@ describe("taking out one coin", () => {
     expect(withdraw({ pp: 1 }, "gp")).toEqual({ pp: 0, gp: 9 });
     expect(withdraw({ gp: 1 }, "ep")).toEqual({ gp: 0, sp: 5 });
     expect(withdraw({ cp: 5 }, "gp")).toBeNull();
+  });
+});
+
+describe("spellRow", () => {
+  it("reads concentration, ritual, casting time, attack or save, effects and components", () => {
+    const fireBolt = spellRow({ time: [{ number: 1, unit: "action" }], spellAttack: ["R"], damageInflict: ["fire"], components: { v: true, s: true } });
+    expect(fireBolt).toMatchObject({ unit: "action", attack: true, save: null, effects: ["fire"], v: true, s: true, m: false, concentration: false });
+    const bless = spellRow({ time: [{ number: 1, unit: "action" }], duration: [{ type: "timed", concentration: true }], components: { v: true, s: true, m: "holy water" } });
+    expect([bless.concentration, bless.m]).toEqual([true, true]);
+    const command = spellRow({ savingThrow: ["wisdom"], conditionInflict: ["prone"] });
+    expect([command.save, command.effects]).toEqual(["wis", ["prone"]]);
+    expect(spellRow({ meta: { ritual: true }, miscTags: ["HL"] })).toMatchObject({ ritual: true, healing: true });
   });
 });

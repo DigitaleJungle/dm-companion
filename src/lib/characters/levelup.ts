@@ -416,6 +416,18 @@ export function withLevel(character: Character, record: LevelRecord, faces: numb
   if (record.level > (c.classes[0]?.level ?? 0)) c.classes = [{ ...c.classes[0], level: record.level }, ...c.classes.slice(1)];
   return rebuild(c, faces);
 }
+/**
+ * Every place each spell came from ("name|source" keys), oldest first: the origin or feat ("Magic Initiate"), then each class level.
+ * The character keeps a spell once, so the level records are read to see the ones had twice.
+ */
+export function spellSources(c: Character, levelLabel: (cls: string, level: number) => string): Map<string, string[]> {
+  const sources = new Map<string, string[]>();
+  const from = (key: string, label: string) => sources.set(key, [...(sources.get(key) ?? []), label]);
+  for (const s of c.spells ?? []) if (!s.gained) from(refKey(s), s.origin);
+  for (const r of c.levels ?? []) for (const s of r.gains?.spells ?? []) from(refKey(s), levelLabel(r.class, r.level));
+  return sources;
+}
+
 /** The character one class level lower: the highest level and what it gave are dropped (its subclass too). Level 1 stays. */
 export function removeTopLevel(character: Character, faces: number): Character {
   const main = character.classes[0];
