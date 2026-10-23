@@ -1,6 +1,6 @@
 import type { Character, InventoryItem } from "$lib/api/characters";
 import { findEntity, type CatalogRow } from "$lib/api/rules";
-import { rebuild } from "$lib/characters/levelup";
+import { rebuild, type LevelRecord } from "$lib/characters/levelup";
 import { inventoryItem } from "$lib/characters/sheet";
 import type { Roll } from "$lib/api/dice";
 import {
@@ -64,6 +64,8 @@ function blank() {
     size: null as string | null,
     cls: null as CatalogRow | null,
     level: 1,
+    /** Choices per class level, from Configure (Edit → Levels on the character being made). */
+    levels: [] as LevelRecord[],
     background: null as CatalogRow | null,
     method: "standard" as Method,
     rolls: [] as Roll[],
@@ -123,6 +125,7 @@ export function chooseClass(row: CatalogRow | null) {
   draft.cls = row;
   draft.skillPicks = {};
   draft.classGear = [];
+  draft.levels = [];
 }
 
 export function chooseBackground(row: CatalogRow | null) {
@@ -348,6 +351,7 @@ export function loadCharacter(c: Character, campaignId: string | null, options: 
   draft.size = c.species?.size ?? (sizes.length === 1 ? sizes[0] : null);
   draft.cls = options.classes.find((r) => same(r, c.classes[0])) ?? null;
   draft.level = c.classes[0]?.level ?? 1;
+  draft.levels = structuredClone(c.levels ?? []);
   draft.background = options.backgrounds.find((r) => same(r, c.background)) ?? null;
 
   const saved = c.abilities;
@@ -399,6 +403,7 @@ export function editedCharacter(existing: Character): Character {
     ...(sameClass
       ? {
           feats: [...(sameBackground ? backgroundFeats : next.feats), ...(existing.feats ?? []).filter((f) => f.gained !== undefined || f.origin)],
+          levels: $state.snapshot(draft.levels) as LevelRecord[],
           // The wizard's skills plus what levels added; the rebuild takes the level ones off and adds them back as they are now.
           skills: [...new Set([...next.skills, ...(existing.levelSkills ?? [])])],
         }
@@ -418,3 +423,23 @@ export function editedCharacter(existing: Character): Character {
   };
   return rebuild(merged, hitDie());
 }
+
+/** The character as far as the wizard knows it, for Configure (scores only once they're chosen). */
+export function draftCharacter(): Character {
+  const base = baseScores();
+  const final = scores();
+  return {
+    id: "",
+    name: draft.name.trim(),
+    classes: draft.cls ? [{ name: draft.cls.name, source: draft.cls.source, level: draft.level }] : [],
+    ...(draft.species ? { species: { name: draft.species.name, source: draft.species.source } } : {}),
+    ...(draft.background ? { background: { name: draft.background.name, source: draft.background.source } } : {}),
+    ...(base && final ? { abilities: { base, bonuses: Object.fromEntries(ABILITIES.map((a) => [a, final[a] - base[a]])) } } : {}),
+    skills: allSkills(),
+    feats: backgroundFeats(),
+    levels: $state.snapshot(draft.levels) as LevelRecord[],
+  };
+}
+
+/** A new character with its configured levels applied (feats, spells, hit points… rebuilt from them). */
+export const withConfiguredLevels = (c: Character): Character => rebuild({ ...c, levels: $state.snapshot(draft.levels) as LevelRecord[] }, hitDie());

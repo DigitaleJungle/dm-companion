@@ -398,6 +398,8 @@ export const strings = {
       levelUp: { label: "Level up", multiclass: "Multiclass" },
       editMenu: { label: "Edit", character: "Character", levels: "Levels" },
       switchCharacter: (name: string) => `Character: ${name}. Switch character`,
+      party: (campaign: string) => `${campaign} party`,
+      unassigned: "Unassigned characters",
       edited: (name: string) => `Saved the changes to ${name}.`,
       tabsLabel: "Character sheet sections",
       tabs: { actions: "Actions", spells: "Spells", inventory: "Inventory", features: "Features & traits", notes: "Notes & backstory" },
@@ -678,6 +680,12 @@ export const strings = {
         hitDie: (faces: string) => `d${faces}`,
         saves: (list: string) => `Saves ${list}`,
         feat: (name: string) => `Feat: ${name}`,
+      },
+      level: {
+        label: "Level",
+        configure: "Configure",
+        loading: "Loading…",
+        loadError: (message: string) => `Couldn't load the class for its levels: ${message}`,
       },
       gear: {
         label: "Starting equipment",

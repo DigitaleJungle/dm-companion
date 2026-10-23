@@ -5,9 +5,10 @@
   import EntityPopover from "$lib/components/rules/EntityPopover.svelte";
   import { createCharacter, saveCharacter, type Character, type CharacterCard } from "$lib/api/characters";
   import type { Campaign } from "$lib/api/campaigns";
-  import { catalogRows, type CatalogRow } from "$lib/api/rules";
+  import { catalogRows, getEntity, type CatalogRow } from "$lib/api/rules";
+  import LevelsDialog from "../levelup/LevelsDialog.svelte";
   import { errorMessage } from "$lib/api/storage";
-  import { gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
+  import { MAX_LEVEL, gearOf, gearOptions, inSources, type GearEntry, type GearGroup } from "$lib/characters/rules";
   import { SIZES } from "$lib/rules/format";
   import { campaigns, refreshCampaigns } from "$lib/stores/campaigns.svelte";
   import { refreshRules, rules } from "$lib/stores/rules.svelte";
@@ -32,7 +33,9 @@
     lineagesOf,
     loadCharacter,
     resetDraft,
+    draftCharacter,
     sizesOf,
+    withConfiguredLevels,
     startingInventory,
     stepComplete,
     subspeciesOf,
@@ -172,6 +175,29 @@
     heading?.focus();
   }
 
+  // ---- Configure: the levels panel on the character being made ----
+  let levelsOpen = $state(false);
+  let configuring = $state(false);
+  let configureError = $state<string | null>(null);
+  let levelsClass = $state<Record<string, unknown> | null>(null);
+  let levelsCharacter = $state<Character | null>(null);
+
+  async function configureLevels() {
+    if (!draft.cls) return;
+    configuring = true;
+    configureError = null;
+    try {
+      // The wizard's class rows hold a few fields only; the levels need the whole class entry.
+      levelsClass = (await getEntity(draft.cls.id))?.data ?? null;
+      levelsCharacter = draftCharacter();
+      levelsOpen = true;
+    } catch (err) {
+      configureError = t.level.loadError(errorMessage(err));
+    } finally {
+      configuring = false;
+    }
+  }
+
   async function save() {
     saving = true;
     saveError = null;
@@ -181,7 +207,8 @@
         open = false;
         onsaved?.();
       } else {
-        const card = await createCharacter(draft.campaignId, { ...toCharacter(), ...(await startingInventory(typeName)) });
+        const made = { ...toCharacter(), ...(await startingInventory(typeName)) };
+        const card = await createCharacter(draft.campaignId, withConfiguredLevels({ id: "", ...made } as Character));
         open = false;
         oncreated?.(card);
       }
@@ -223,7 +250,19 @@
   {/each}
 {/snippet}
 
-{#snippet classLead()}{@render gearChooser("class", classGear, draft.classGear)}{/snippet}
+{#snippet classLead()}
+  <div class="level-row">
+    <label class="inline-field">
+      <span class="label-text">{t.level.label} <span class="required" aria-hidden="true">*</span></span>
+      <select bind:value={draft.level}>
+        {#each Array.from({ length: MAX_LEVEL }, (_, i) => i + 1) as n (n)}<option value={n}>{plain.format(n)}</option>{/each}
+      </select>
+    </label>
+    <button class="btn" disabled={configuring} onclick={configureLevels}>{configuring ? t.level.loading : t.level.configure}</button>
+  </div>
+  {#if configureError}<p class="error" role="alert">{configureError}</p>{/if}
+  {@render gearChooser("class", classGear, draft.classGear)}
+{/snippet}
 {#snippet backgroundLead()}{@render gearChooser("background", backgroundGear, draft.backgroundGear)}{/snippet}
 
 {#snippet speciesLead()}
@@ -369,7 +408,7 @@
                 choices={hasSpeciesChoices ? speciesLead : undefined}
               />
             {:else if step === "class"}
-              <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classGear.length ? classLead : undefined} />
+              <ChoiceList id="class" label={t.steps.class} groups={classCards} selected={draft.cls} onselect={chooseClass} facts={classFacts} art={artPath("classes")} choices={classLead} />
             {:else if step === "background"}
               <ChoiceList
                 id="background"
@@ -407,6 +446,19 @@
 </dialog>
 
 {#if open && campaign}<CampaignSettingsDialog campaignId={campaign.id} bind:open={sourcesOpen} />{/if}
+{#if levelsCharacter}
+  <LevelsDialog
+    bind:open={levelsOpen}
+    character={levelsCharacter}
+    clsData={levelsClass}
+    {skills}
+    {sources}
+    onsave={(next) => {
+      draft.levels = next.levels ?? [];
+      levelsCharacter = next;
+    }}
+  />
+{/if}
 
 <style>
   .wizard {
@@ -608,6 +660,13 @@
     gap: var(--space-2);
     font-size: var(--text-sm);
     cursor: pointer;
+  }
+
+  .level-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
   }
 
   .inline-field select {

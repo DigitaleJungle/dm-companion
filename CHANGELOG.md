@@ -3,6 +3,17 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.9] - 2026-10-23
+
+### Added
+
+- Starting class step: a Level picker with Configure, which opens the levels panel to make each level's choices while creating or editing a character
+
+### Changed
+
+- Character sheet: the character dropdown is labelled after the campaign's party, or Unassigned characters
+- Feats with an ability score prerequisite show (check prerequisite) while the scores aren't chosen yet
+
 ## [0.5.8] - 2026-10-23
 
 ### Changed

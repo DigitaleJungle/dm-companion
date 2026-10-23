@@ -79,6 +79,8 @@
     campaign === null ? null : [...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].find((x) => x.id === campaign) ?? null,
   );
   const sources = $derived(campaign === null ? null : (campaignInfo?.sources ?? []));
+  // The switcher is named after the group it switches within: the campaign's party, or the characters without one.
+  const partyName = $derived(campaign === null ? t.unassigned : t.party(campaignInfo?.name ?? t.unknown));
 
   // ---- Rests ----
   const faces = $derived(hitDieFaces(sheet.cls));
@@ -184,7 +186,7 @@
       <div class="switcher">
         <Menu id="character-switcher" label={t.switchCharacter(c.name)} align="start" triggerClass="btn switcher-btn" items={switchItems}>
           {#snippet trigger()}
-            <span class="switcher-name">{c.name}</span>
+            <span class="switcher-name">{partyName}</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
           {/snippet}
         </Menu>
@@ -306,7 +308,15 @@
 <CreateCharacterDialog bind:open={editing} edit={editTarget} onsaved={onEdited} />
 {#if sheet.character}
   <LevelUpDialog bind:open={levelingUp} {sheet} {sources} />
-  <LevelsDialog bind:open={editingLevels} {sheet} {sources} />
+  <LevelsDialog
+    bind:open={editingLevels}
+    character={sheet.character}
+    clsData={sheet.cls}
+    skills={sheet.skills}
+    {sources}
+    readOnly={sheet.readOnly}
+    onsave={(next) => sheet.change((x) => Object.assign(x, next))}
+  />
 {/if}
 <EntityPopover />
 

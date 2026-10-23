@@ -9,12 +9,31 @@
   import { notify } from "$lib/stores/notifications.svelte";
   import { rules } from "$lib/stores/rules.svelte";
   import { strings } from "$lib/strings";
-  import type { Sheet } from "../sheet/sheet.svelte";
+  import type { Character } from "$lib/api/characters";
   import LevelPanel from "./LevelPanel.svelte";
   import { levelNeedsChoice, loadLevelData, saveLevel, type LevelData } from "./levelData";
 
   // Edit → Levels: every class level in a sidebar; the picked one opens on the right with all its choices to change.
-  let { open = $bindable(false), sheet, sources }: { open?: boolean; sheet: Sheet; sources: string[] | null } = $props();
+  // Works on a saved character (the sheet) and on one being created (the wizard's Configure), through `onsave`.
+  let {
+    open = $bindable(false),
+    character,
+    clsData,
+    skills,
+    sources,
+    readOnly = false,
+    onsave,
+  }: {
+    open?: boolean;
+    character: Character;
+    /** The class's full rules entry; null when the rules data doesn't have it. */
+    clsData: Record<string, unknown> | null;
+    skills: { key: string; name: string }[];
+    sources: string[] | null;
+    readOnly?: boolean;
+    /** Gets the character with the saved level (and the later levels it changed). */
+    onsave: (character: Character) => void;
+  } = $props();
 
   enablePreviews();
 
@@ -33,10 +52,12 @@
   /** What to do once unsaved changes are discarded: open another level, or close. */
   let afterDiscard: (() => void) | null = null;
   let list: HTMLUListElement | undefined = $state();
+  /** Which class `data` was loaded for; another class (the wizard's pick changed) loads again. */
+  let loadedFor = "";
 
-  const c = $derived(sheet.character!);
+  const c = $derived(character);
   const main = $derived(c.classes[0]);
-  const faces = $derived(hitDieFaces(sheet.cls));
+  const faces = $derived(hitDieFaces(clsData));
   const levels = $derived(Array.from({ length: main.level }, (_, i) => i + 1));
   const recordOf = (level: number): LevelRecord | undefined => (c.levels ?? []).find((r) => r.level === level);
   // Compared without the empty feat slots and lists the panel adds while showing a level.
@@ -75,7 +96,7 @@
 
   /** Runs an action that leaves this level, asking first when it has unsaved changes. */
   function guarded(action: () => void) {
-    if (dirty && !sheet.readOnly) {
+    if (dirty && !readOnly) {
       afterDiscard = action;
       leaveDialog?.showModal();
     } else action();
@@ -84,7 +105,8 @@
   async function load() {
     loadError = null;
     try {
-      data = await loadLevelData(main, sheet.cls ?? {}, published);
+      loadedFor = `${main.name}|${main.source}`;
+      data = await loadLevelData(main, clsData ?? {}, published);
       const first = levels.find((l) => levelNeedsChoice(c, data!, l)) ?? 1;
       select(first);
     } catch (e) {
@@ -94,7 +116,7 @@
 
   $effect(() => {
     if (open && dialog && !dialog.open) {
-      if (!data && sheet.cls) load();
+      if (clsData && (!data || loadedFor !== `${main.name}|${main.source}`)) load();
       else if (data) select(levels.find((l) => levelNeedsChoice(c, data!, l)) ?? 1);
       dialog.showModal();
     } else if (!open && dialog?.open) {
@@ -103,9 +125,10 @@
   });
 
   function save() {
-    if (!data || sheet.readOnly) return;
-    const { character, reopened } = saveLevel($state.snapshot(c) as typeof c, data, selected, $state.snapshot(picks) as LevelPicks, faces);
-    sheet.change((x) => Object.assign(x, character));
+    if (!data || readOnly) return;
+    const saved = saveLevel($state.snapshot(c) as Character, data, selected, $state.snapshot(picks) as LevelPicks, faces);
+    onsave(saved.character);
+    const reopened = saved.reopened;
     notify(reopened.length ? t.savedReopened(plain.format(selected), reopened.map((l) => plain.format(l)).join(", ")) : t.saved(plain.format(selected)));
     original = normalized(picks);
   }
@@ -151,7 +174,7 @@
 
     {#if loadError}
       <div class="message"><div class="error" role="alert"><p>{loadError}</p><button class="btn small" onclick={load}>{tl.retry}</button></div></div>
-    {:else if !sheet.cls}
+    {:else if !clsData}
       <div class="message"><p class="note">{tl.noRules}</p></div>
     {:else if !data}
       <div class="message"><Spinner label={tl.loading} /></div>
@@ -176,10 +199,10 @@
 
         <div class="scroll">
           <div class="content">
-            {#if sheet.readOnly}<p class="note">{t.readOnly}</p>{/if}
+            {#if readOnly}<p class="note">{t.readOnly}</p>{/if}
             {#key selected}
               <svelte:boundary>
-                <LevelPanel {data} character={c} level={selected} bind:picks {faces} skills={sheet.skills} {sources} readOnly={sheet.readOnly} />
+                <LevelPanel {data} character={c} level={selected} bind:picks {faces} {skills} {sources} {readOnly} />
                 {#snippet failed(error)}<p class="error" role="alert">{tl.panelError(errorMessage(error))}</p>{/snippet}
               </svelte:boundary>
             {/key}
@@ -190,7 +213,7 @@
 
     <footer class="bottom">
       <button class="btn" onclick={close}>{t.close}</button>
-      {#if !sheet.readOnly}
+      {#if !readOnly}
         <button class="btn btn-primary" disabled={!data || !dirty} onclick={save}>{t.save(plain.format(selected))}</button>
       {/if}
     </footer>

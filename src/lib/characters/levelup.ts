@@ -183,7 +183,8 @@ export function prerequisite(raw: unknown, ctx: { level: number; scores: Scores 
     for (const [key, value] of Object.entries(obj(alt))) {
       let ok: boolean | null = null;
       if (key === "level") ok = ctx.level >= Number(typeof value === "number" ? value : obj(value).level);
-      else if (key === "ability") ok = !!ctx.scores && list(value).some((a) => Object.entries(obj(a)).every(([ab, min]) => (ctx.scores![ab as Ability] ?? 0) >= Number(min)));
+      // Without scores yet (a character still being created), ability prerequisites are for the DM to check.
+      else if (key === "ability") ok = ctx.scores ? list(value).some((a) => Object.entries(obj(a)).every(([ab, min]) => (ctx.scores![ab as Ability] ?? 0) >= Number(min))) : null;
       else if (key === "feat") ok = list(value).every((f) => ctx.feats.some((x) => sameRef(x, parseRef(String(f)))));
       else if (key === "optionalfeature") ok = list(value).every((f) => (ctx.optional ?? []).some((x) => sameRef(x, parseRef(String(f)))));
       else if (key === "pact") ok = (ctx.optional ?? []).some((x) => lower(x.name) === `pact of the ${lower(String(value))}`);

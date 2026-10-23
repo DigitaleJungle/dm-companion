@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Character } from "$lib/api/characters";
 import type { CatalogRow } from "$lib/api/rules";
 import { rebuild } from "$lib/characters/levelup";
-import { chooseBackground, draft, editedCharacter, loadCharacter, scores, skillGroups, stepComplete, type Options } from "./draft.svelte";
+import { chooseBackground, chooseClass, draft, draftCharacter, editedCharacter, loadCharacter, resetDraft, scores, skillGroups, stepComplete, toCharacter, withConfiguredLevels, type Options } from "./draft.svelte";
 
 let nextId = 1;
 const row = (name: string, data: Record<string, unknown> = {}, source = "XPHB"): CatalogRow => ({ id: nextId++, kind: "", source, name, data });
@@ -125,5 +125,27 @@ describe("editing a saved character", () => {
     const saved = editedCharacter(thalia());
     expect(saved.classes).toEqual([{ name: "Fighter", source: "XPHB", level: 3 }]);
     expect(saved.hp).toEqual({ max: 28, current: 23, temp: 3 }); // 12 + 2 × (6 + 2); 5 damage carried over
+  });
+});
+
+describe("configuring levels while creating", () => {
+  it("applies the configured level records to the new character, and a new class clears them", () => {
+    loadCharacter(thalia(), null, options);
+    resetDraft();
+    Object.assign(draft, { name: "Kira", species: elf, size: "M", cls: fighter, background: soldier, level: 4 });
+    draft.assignment = { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 };
+    draft.backgroundPick = { option: 0, picks: [["str", "con"]] };
+    draft.skillPicks = { "class-0": ["history", "insight"], "species-0": ["perception"] };
+    draft.levels = [
+      { class: "Fighter", level: 2, hp: { how: "manual", value: 10 } },
+      { class: "Fighter", level: 4, gains: { feats: [{ name: "Alert", source: "XPHB" }], spells: [], optional: [], options: [], masteries: [], expertise: [] } },
+    ];
+    expect(draftCharacter().classes).toEqual([{ name: "Fighter", source: "XPHB", level: 4 }]);
+    const made = withConfiguredLevels({ id: "", ...toCharacter() });
+    expect(made.feats?.map((f) => f.name)).toEqual(["Savage Attacker", "Alert"]);
+    expect(made.hp?.max).toBe(12 + 10 + 8 + 8); // level 2 typed, levels 3 and 4 fixed (6 + CON 2)
+
+    chooseClass(wizard);
+    expect(draft.levels).toEqual([]);
   });
 });
