@@ -16,6 +16,10 @@ export const DAMAGE_TYPES: Record<string, string> = {
 };
 const ALIGNMENTS: Record<string, string> = { L: "Lawful", N: "Neutral", C: "Chaotic", G: "Good", E: "Evil", U: "Unaligned", A: "Any alignment" };
 export const ABILITY_NAMES: Record<string, string> = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
+export const ITEM_PROPERTIES: Record<string, string> = {
+  A: "Ammunition", F: "Finesse", H: "Heavy", L: "Light", LD: "Loading", R: "Reach", S: "Special", T: "Thrown", "2H": "Two-handed", V: "Versatile",
+  RLD: "Reload", BF: "Burst fire",
+};
 export const ITEM_TYPES: Record<string, string> = {
   M: "Melee weapon", R: "Ranged weapon", A: "Ammunition", LA: "Light armor", MA: "Medium armor", HA: "Heavy armor", S: "Shield",
   RD: "Rod", RG: "Ring", WD: "Wand", P: "Potion", SC: "Scroll", G: "Adventuring gear", INS: "Instrument", T: "Tool", AT: "Artisan's tools",
@@ -175,12 +179,49 @@ export function abilityScores(m: Data): { ability: string; score: number; modifi
 
 // ---- Items, feats, classes ----------------------------------------------------------------------
 
+/** "T|XPHB" → "T": the code of a reference to another entry. */
+const refCode = (ref: unknown) => String(ref ?? "").split("|")[0];
+
+/** A price in copper pieces, in the largest coin it divides into: 50 → "5 sp", 1500 → "15 gp". */
+function price(cp: number): string {
+  const n = new Intl.NumberFormat();
+  return cp % 100 === 0 ? `${n.format(cp / 100)} gp` : cp % 10 === 0 ? `${n.format(cp / 10)} sp` : `${n.format(cp)} cp`;
+}
+
+/** Type and rarity, attunement, then what a weapon or armor does and what the item weighs and costs; only the ones it has. */
 export function itemFacts(i: Data): Fact[] {
-  const code = typeof i.type === "string" ? i.type.split("|")[0] : "";
-  const type = i.wondrous ? "Wondrous item" : (ITEM_TYPES[code] ?? code);
+  const code = refCode(i.type);
+  const category = typeof i.weaponCategory === "string" ? `${capital(i.weaponCategory)} ` : "";
+  const kind = i.wondrous ? "Wondrous item" : (ITEM_TYPES[code] ?? code);
+  const type = category ? `${category}${kind.toLowerCase()}` : kind;
   const rarity = i.rarity && i.rarity !== "none" ? capital(i.rarity) : "";
   const attune = i.reqAttune === true ? "Requires attunement" : typeof i.reqAttune === "string" ? `Requires attunement ${plainText(i.reqAttune)}` : "";
-  return [{ label: "Type", value: [type, rarity].filter(Boolean).join(", ") }, { label: "Attunement", value: attune }].filter((f) => f.value);
+  const props: string[] = (i.property ?? []).map(refCode);
+  const melee = code === "M";
+  const range = typeof i.range === "string" ? i.range.split("/").map((d: string) => `${d} ft.`).join("/") : "";
+  const versatile = props.includes("V") && i.dmg2 ? ` (${i.dmg2} two-handed)` : "";
+  const armorClass = (): string => {
+    if (typeof i.ac !== "number") return "";
+    if (code === "S") return `+${i.ac}`;
+    if (code === "LA") return `${i.ac} + Dex modifier`;
+    if (code === "MA") return `${i.ac} + Dex modifier (max 2)`;
+    return String(i.ac);
+  };
+  return [
+    { label: "Type", value: [type, rarity].filter(Boolean).join(", ") },
+    { label: "Attunement", value: attune },
+    { label: "Reach", value: melee ? (props.includes("R") ? "10 ft." : "5 ft.") : "" },
+    { label: "Range", value: range },
+    { label: "Damage", value: i.dmg1 ? `${i.dmg1}${versatile}` : "" },
+    { label: "Damage type", value: DAMAGE_TYPES[i.dmgType] ? capital(DAMAGE_TYPES[i.dmgType]) : "" },
+    { label: "Armor class", value: armorClass() },
+    { label: "Strength", value: i.strength ? `${i.strength} needed` : "" },
+    { label: "Stealth", value: i.stealth ? "Disadvantage" : "" },
+    { label: "Properties", value: props.map((p) => ITEM_PROPERTIES[p] ?? p).join(", ") },
+    { label: "Mastery", value: (i.mastery ?? []).map(refCode).join(", ") },
+    { label: "Weight", value: typeof i.weight === "number" && i.weight > 0 ? `${new Intl.NumberFormat().format(i.weight)} lb.` : "" },
+    { label: "Cost", value: typeof i.value === "number" && i.value > 0 ? price(i.value) : "" },
+  ].filter((f) => f.value);
 }
 
 export function prerequisite(e: Data): string {

@@ -136,8 +136,9 @@ export function weaponOf(item: Data): Weapon | undefined {
  */
 export function weaponProficient(cls: Data | null, name: string, weapon: Weapon): boolean {
   const category = weapon.category ?? "";
-  if (list(cls?.weapons).some((w) => String(w).toLowerCase() === category)) return true;
-  return list(cls?.weaponProficiencies).some((entry) => {
+  const start = obj(cls?.startingProficiencies);
+  if (list(start.weapons).some((w) => String(w).toLowerCase() === category)) return true;
+  return list(start.weaponProficiencies).some((entry) => {
     const e = obj(entry);
     if (category && e[category] === true) return true;
     if (Object.keys(e).some((k) => e[k] === true && k.split("|")[0] === name.toLowerCase())) return true;
@@ -176,10 +177,12 @@ export function proficiencyLists(cls: Data | null, background: Data | null, spec
   const names = (xs: string[] | undefined) => (xs ?? []).map(titleCase);
   // The same proficiency from two places (or in two capitalizations) is listed once.
   const unique = (xs: string[]) => [...new Map(xs.map((x) => [x.toLowerCase(), x])).values()];
+  // A class keeps its proficiencies under startingProficiencies.
+  const start = obj(cls?.startingProficiencies);
   return {
-    armor: unique(text(cls?.armor)),
-    weapons: unique(text(cls?.weapons)),
-    tools: unique([...text(cls?.tools), ...fixed(background?.toolProficiencies), ...names(chosen.tools)]),
+    armor: unique(text(start.armor)),
+    weapons: unique(text(start.weapons)),
+    tools: unique([...text(start.tools), ...fixed(background?.toolProficiencies), ...names(chosen.tools)]),
     languages: unique([...fixed(species?.languageProficiencies, background?.languageProficiencies), ...names(chosen.languages)]),
   };
 }

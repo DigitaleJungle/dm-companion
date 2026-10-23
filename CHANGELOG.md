@@ -3,6 +3,23 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.14] - 2026-10-23
+
+### Added
+
+- Actions tab: a gold star after a weapon you have mastery in; hovering it shows what the mastery does, with its name in bold
+- Actions tab: a round P after a weapon the character is proficient with
+- Item preview: reach, range, damage (with the versatile die), damage type, armor class, Strength needed, Stealth, properties, mastery, weight and cost
+- Character switcher: + New character, in the same campaign
+
+### Changed
+
+- Actions tab: Hit/DC and Damage columns 72 px with same-size centered boxes, Notes 150 px, notes separated by commas
+
+### Fixed
+
+- Weapon and armor proficiencies from the class were never found, so every weapon showed as not proficient and attack bonuses left out proficiency
+
 ## [0.5.13] - 2026-10-23
 
 ### Added

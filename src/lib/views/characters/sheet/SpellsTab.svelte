@@ -163,7 +163,7 @@
                       {#if row?.concentration}<span class="badge">{@render abbr(t.col.concentration.short, t.col.concentration.long)}</span>{/if}
                       {#if row?.ritual}<span class="badge">{@render abbr(t.col.ritual.short, t.col.ritual.long)}</span>{/if}
                       {#if from.length > 1}
-                        <InfoTip id="spell-twice-{level}-{i}" label={tl.preparedTwiceOf(s.name)} text={tl.preparedTwice(from.join(", "))} alert />
+                        <InfoTip id="spell-twice-{level}-{i}" label={tl.preparedTwiceOf(s.name)} text={tl.preparedTwice(from.join(", "))} icon="alert" />
                       {/if}
                     </span>
                   </th>

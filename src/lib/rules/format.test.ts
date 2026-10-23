@@ -79,6 +79,25 @@ describe("items, feats and classes", () => {
     expect(itemFacts({ type: "G|XPHB", rarity: "none" })).toEqual([{ label: "Type", value: "Adventuring gear" }]);
   });
 
+  it("formats what a weapon and armor do, and weight and cost", () => {
+    const javelin = { type: "M|XPHB", weaponCategory: "simple", dmg1: "1d6", dmgType: "P", property: ["T|XPHB"], range: "30/120", mastery: ["Slow|XPHB"], weight: 2, value: 50 };
+    expect(Object.fromEntries(itemFacts(javelin).map((f) => [f.label, f.value]))).toEqual({
+      Type: "Simple melee weapon",
+      Reach: "5 ft.",
+      Range: "30 ft./120 ft.",
+      Damage: "1d6",
+      "Damage type": "Piercing",
+      Properties: "Thrown",
+      Mastery: "Slow",
+      Weight: "2 lb.",
+      Cost: "5 sp",
+    });
+    expect(itemFacts({ type: "M|XPHB", dmg1: "1d8", dmg2: "1d10", property: ["V|XPHB"] }).find((f) => f.label === "Damage")?.value).toBe("1d8 (1d10 two-handed)");
+    const chain = Object.fromEntries(itemFacts({ type: "HA|XPHB", ac: 16, strength: "13", stealth: true, weight: 55, value: 7500 }).map((f) => [f.label, f.value]));
+    expect(chain).toMatchObject({ "Armor class": "16", Strength: "13 needed", Stealth: "Disadvantage", Cost: "75 gp" });
+    expect(itemFacts({ type: "S|XPHB", ac: 2 }).find((f) => f.label === "Armor class")?.value).toBe("+2");
+  });
+
   it("formats prerequisites and class basics", () => {
     expect(prerequisite({ prerequisite: [{ level: 4 }] })).toBe("Level 4+");
     expect(prerequisite({ prerequisite: [{ ability: [{ str: 13 }] }, { other: "Proficiency with a {@item Lance|XPHB}" }] })).toBe("Strength 13+; or Proficiency with a Lance");

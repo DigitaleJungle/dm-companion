@@ -137,21 +137,27 @@ describe("weapons", () => {
   });
 
   it("reads weapon proficiency from the class", () => {
-    const fighter = { weapons: ["simple", "martial"] };
-    const wizard = { weapons: ["simple"] };
-    const rogue = { weapons: ["simple", "Martial weapons that have the …"], weaponProficiencies: [{ simple: true, all: { fromFilter: "type=martial weapon|property=light;finesse" } }] };
+    // As in the rules data: under startingProficiencies.
+    const fighter = { startingProficiencies: { weapons: ["simple", "martial"] } };
+    const wizard = { startingProficiencies: { weapons: ["simple"] } };
+    const rogue = {
+      startingProficiencies: {
+        weapons: ["simple", "Martial weapons that have the …"],
+        weaponProficiencies: [{ simple: true, all: { fromFilter: "type=martial weapon|property=light;finesse" } }],
+      },
+    };
     expect(weaponProficient(fighter, "Rapier", rapier)).toBe(true);
     expect(weaponProficient(wizard, "Rapier", rapier)).toBe(false);
     expect(weaponProficient(rogue, "Rapier", rapier)).toBe(true);
     expect(weaponProficient(rogue, "Longbow", longbow)).toBe(false);
-    expect(weaponProficient({ weaponProficiencies: [{ "longbow|xphb": true }] }, "Longbow", longbow)).toBe(true);
+    expect(weaponProficient({ startingProficiencies: { weaponProficiencies: [{ "longbow|xphb": true }] } }, "Longbow", longbow)).toBe(true);
     expect(weaponProficient(null, "Rapier", rapier)).toBe(false);
   });
 });
 
 describe("proficiencies and carrying", () => {
   it("lists fixed proficiencies from class, background and species", () => {
-    const rogue = { armor: ["light"], weapons: ["simple", "{@filter Martial weapons|items}"], tools: ["{@item Thieves' Tools|XPHB}"] };
+    const rogue = { startingProficiencies: { armor: ["light"], weapons: ["simple", "{@filter Martial weapons|items}"], tools: ["{@item Thieves' Tools|XPHB}"] } };
     const sage = { toolProficiencies: [{ "calligrapher's supplies": true }], languageProficiencies: [{ elvish: true, anyStandard: 1 }] };
     const elf = { languageProficiencies: [{ common: true, elvish: true }] };
     expect(proficiencyLists(rogue, sage, elf)).toEqual({

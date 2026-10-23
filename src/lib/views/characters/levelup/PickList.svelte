@@ -63,7 +63,7 @@
           />
           <label for="{id}-{i}" class="name">{item.name}</label>
           {#if item.tag}<span class="tag" title={item.tag.long}><span aria-hidden="true">{item.tag.short}</span><span class="sr-only">{item.tag.long}</span></span>{/if}
-          {#if on && item.alert}<InfoTip id="{id}-{i}-alert" label={t.preparedTwiceOf(item.name)} text={item.alert} alert />{/if}
+          {#if on && item.alert}<InfoTip id="{id}-{i}-alert" label={t.preparedTwiceOf(item.name)} text={item.alert} icon="alert" />{/if}
           {#if item.note}<span class="note">{item.note}</span>{/if}
           {#if item.preview}
             {@const ref = item.preview}

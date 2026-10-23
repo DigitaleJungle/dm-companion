@@ -1,6 +1,15 @@
 <script lang="ts">
-  // `alert`: a red (!) instead of the (i), for something to check.
-  let { id, label, text, alert = false }: { id: string; label: string; text: string; alert?: boolean } = $props();
+  import type { Snippet } from "svelte";
+
+  // `icon`: the (i), a red (!) for something to check, or a gold star (a weapon's mastery).
+  // `children`, when given, is shown instead of `text` (for formatting, like a bold name); `text` stays for screen readers.
+  let {
+    id,
+    label,
+    text,
+    icon = "info",
+    children,
+  }: { id: string; label: string; text: string; icon?: "info" | "alert" | "star"; children?: Snippet } = $props();
 
   let trigger: HTMLButtonElement | undefined = $state();
   let tip: HTMLSpanElement | undefined = $state();
@@ -29,7 +38,8 @@
     bind:this={trigger}
     type="button"
     class="trigger"
-    class:alert
+    class:alert={icon === "alert"}
+    class:star={icon === "star"}
     aria-label={label}
     aria-describedby={id}
     onmouseenter={show}
@@ -39,11 +49,15 @@
     onclick={show}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
-      <path d={alert ? "M12 7v6M12 16h.01" : "M12 11v5M12 8h.01"} stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      {#if icon === "star"}
+        <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor" />
+      {:else}
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d={icon === "alert" ? "M12 7v6M12 16h.01" : "M12 11v5M12 8h.01"} stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      {/if}
     </svg>
   </button>
-  <span bind:this={tip} {id} role="tooltip" class="tip" popover="manual">{text}</span>
+  <span bind:this={tip} {id} role="tooltip" class="tip" popover="manual" aria-label={children ? text : undefined}>{#if children}{@render children()}{:else}{text}{/if}</span>
 </span>
 
 <style>
@@ -73,6 +87,11 @@
   .trigger.alert,
   .trigger.alert:hover {
     color: var(--color-danger);
+  }
+
+  .trigger.star,
+  .trigger.star:hover {
+    color: var(--color-inspiration-strong);
   }
 
   svg {

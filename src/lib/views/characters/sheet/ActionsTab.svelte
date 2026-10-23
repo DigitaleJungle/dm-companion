@@ -1,8 +1,11 @@
 <script lang="ts">
+  import InfoTip from "$lib/components/InfoTip.svelte";
+  import { catalogRows } from "$lib/api/rules";
   import { proficiencyBonus } from "$lib/characters/rules";
   import { inUse, spellDice, spellRow, weaponAttack, weaponProficient } from "$lib/characters/sheet";
   import { capital, castingTime, components, DAMAGE_TYPES, spellRange } from "$lib/rules/format";
   import { openPreview } from "$lib/rules/preview.svelte";
+  import { plainText } from "$lib/rules/tags";
   import { strings } from "$lib/strings";
   import type { Sheet } from "./sheet.svelte";
 
@@ -12,10 +15,19 @@
   const t = strings.characters.sheet.actions;
   const tl = strings.characters.levelUpDialog;
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
-  const list = new Intl.ListFormat(undefined, { type: "unit", style: "narrow" });
+  const list = new Intl.ListFormat(undefined, { type: "unit", style: "short" });
 
   const pb = $derived(proficiencyBonus(sheet.level));
   const masteries = $derived(new Set((sheet.character?.weaponMasteries ?? []).map((m) => m.name.toLowerCase())));
+  // What each mastery does (Sap, Vex…), for the star's tooltip; loaded once. Without it the star shows just the name.
+  let masteryText = $state<Record<string, string>>({});
+  $effect(() => {
+    if (!masteries.size || Object.keys(masteryText).length) return;
+    catalogRows("itemMastery", ["entries"])
+      .then((rows) => (masteryText = Object.fromEntries(rows.map((r) => [r.name.toLowerCase(), list.format(((r.data.entries as unknown[]) ?? []).filter((e): e is string => typeof e === "string").map(plainText))]))))
+      .catch(() => {});
+  });
+  const masteryTip = (names: string[]) => names.map((n) => t.masteryEffect(n, masteryText[n.toLowerCase()] ?? "")).join(" ");
   const rows = $derived(
     (sheet.character?.inventory ?? []).flatMap((item) => {
       const weapon = item.weapon;
@@ -27,6 +39,8 @@
         {
           name: item.name,
           source: item.source,
+          proficient,
+          mastery: masteries.has(item.name.toLowerCase()) ? (weapon.mastery ?? []) : null,
           time: tl.cast.action,
           range: weapon.range ? t.feet(weapon.range) : t.reach,
           hit: signed.format(attack.toHit),
@@ -34,7 +48,6 @@
           notes: list.format([
             ...props,
             ...(masteries.has(item.name.toLowerCase()) ? [t.mastery(weapon.mastery?.join(", ") ?? "")] : []),
-            ...(proficient ? [] : [t.notProficient]),
           ]),
         },
       ];
@@ -107,10 +120,24 @@
         {#each rows as row, i (i)}
           <tr>
             <th scope="row">
-              {#if row.source}
-                {@const ref = { kind: "item", name: row.name, source: row.source }}
-                <button class="entry-link" onclick={(e) => openPreview(ref, e.currentTarget)}>{row.name}</button>
-              {:else}{row.name}{/if}
+              <span class="name-cell">
+                {#if row.source}
+                  {@const ref = { kind: "item", name: row.name, source: row.source }}
+                  <button class="entry-link" onclick={(e) => openPreview(ref, e.currentTarget)}>{row.name}</button>
+                {:else}{row.name}{/if}
+                <!-- Proficient: a round P (like the spells' C); nothing when not proficient. -->
+                {#if row.proficient}
+                  <span class="badge round" title={t.proficient.long}><span aria-hidden="true">{t.proficient.short}</span><span class="sr-only">{t.proficient.long}</span></span>
+                {/if}
+                <!-- A weapon the character has mastered: a star; hovering it tells what the mastery does. -->
+                {#if row.mastery}
+                  <InfoTip id="mastery-{i}" label={t.masteryOf(row.name, row.mastery.join(", "))} text={masteryTip(row.mastery)} icon="star">
+                    {#each row.mastery as name, m (m)}
+                      <span class="mastery-line"><b>{name}</b>{#if masteryText[name.toLowerCase()]}: {masteryText[name.toLowerCase()]}{/if}</span>
+                    {/each}
+                  </InfoTip>
+                {/if}
+              </span>
             </th>
             <td class="muted">{@render time(row.time)}</td>
             <td class="muted">{row.range}</td>
@@ -183,21 +210,30 @@
     width: 100%;
   }
 
+  /* Damage: always room for two lines ("1d8+2" / "slashing"). */
   .pill.wrap {
-    max-width: calc(5 * var(--space-6));
+    min-height: calc(2lh + 2 * var(--space-1));
     padding-block: var(--space-1);
-    white-space: normal;
   }
 
+  /* The column is --action-notes-width, padding included; longer notes continue on the next line. */
   .notes {
     display: block;
-    max-width: calc(10 * var(--space-6));
+    width: calc(var(--action-notes-width) - 2 * var(--space-2));
+  }
+
+  .mastery-line {
+    display: block;
   }
 
   .name-cell {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+  }
+
+  .badge.round {
+    border-radius: 50%;
   }
 
   /* Concentration: the same solid square as on the Spells tab. */
@@ -224,15 +260,19 @@
     text-transform: uppercase;
   }
 
+  /* Hit/DC and Damage: every box the same size (its column, padding included, is --action-data-width), its value centered. */
   .pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    width: calc(var(--action-data-width) - 2 * var(--space-2));
     min-height: var(--control-height);
-    padding: 0 var(--space-3);
+    text-align: center;
+    overflow-wrap: anywhere;
+    padding: 0 var(--space-1);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-md);
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
   }
 
   .pill.strong {

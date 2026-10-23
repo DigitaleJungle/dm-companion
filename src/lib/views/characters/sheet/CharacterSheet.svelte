@@ -67,14 +67,17 @@
   });
 
   const c = $derived(sheet.character);
-  // Until the party loads, the switcher offers just this character.
-  const switchItems = $derived(
-    (party.length ? party : c ? [{ campaignId: campaign, id, name: c.name }] : []).map((x) => ({
+  // Until the party loads, the switcher offers just this character. Last, a new character in the same campaign.
+  let creating = $state(false);
+  const switchItems = $derived<MenuItem[]>([
+    ...(party.length ? party : c ? [{ campaignId: campaign, id, name: c.name }] : []).map((x) => ({
       label: x.name,
       current: x.id === id,
       onselect: () => x.id !== id && goto(sheetHref(x)),
     })),
-  );
+    // An archived campaign takes no new characters.
+    { label: t.newCharacter, disabled: sheet.archived, onselect: () => (creating = true) },
+  ]);
   const campaignInfo = $derived(
     campaign === null ? null : [...(campaigns.list?.campaigns ?? []), ...(campaigns.list?.archived ?? [])].find((x) => x.id === campaign) ?? null,
   );
@@ -306,6 +309,7 @@
 </div>
 
 <CreateCharacterDialog bind:open={editing} edit={editTarget} onsaved={onEdited} />
+<CreateCharacterDialog bind:open={creating} oncreated={(card) => goto(sheetHref(card))} startCampaign={campaignInfo} />
 {#if sheet.character}
   <LevelUpDialog bind:open={levelingUp} {sheet} {sources} />
   <LevelsDialog
