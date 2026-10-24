@@ -1,7 +1,7 @@
 <script lang="ts">
   import { byExtra, findEntity } from "$lib/api/rules";
   import { ABILITIES, checkBonus, modifier, proficiencyBonus, type Ability } from "$lib/characters/rules";
-  import { defensesFrom, inUse, proficiencyLists, skillEdges, speciesDefenses, type DefenseKind, type EdgeSource } from "$lib/characters/sheet";
+  import { defensesFrom, inUse, lineageFields, proficiencyLists, sensesFrom, skillEdges, speciesDefenses, type DefenseKind, type EdgeSource } from "$lib/characters/sheet";
   import { baseFeatName } from "$lib/characters/features";
   import { ABILITY_NAMES } from "$lib/rules/format";
   import { strings } from "$lib/strings";
@@ -94,6 +94,13 @@
   // The species' traits count by their wording too ("magic can't put you to sleep"); their fields come from above.
   const others = $derived(defensesFrom([...loaded, { name: sheet.character?.species?.name ?? "", entries: sheet.species?.entries }]));
   const speciesName = $derived(sheet.character?.species?.name ?? "");
+  // Senses: the species with its lineage's fields (the Drow's 120-foot darkvision), feats, items in use and features.
+  const senses = $derived(
+    sensesFrom([
+      { name: speciesName, data: sheet.species ? { ...sheet.species, ...lineageFields(sheet.species._versions, sheet.character?.species?.lineage) } : null },
+      ...loaded,
+    ]),
+  );
   const withSources = (kind: DefenseKind, fromSpecies: string[]) => {
     const all = new Map(others[kind]);
     for (const name of fromSpecies) all.set(name, [speciesName, ...(all.get(name) ?? []).filter((s) => s !== speciesName)]);
@@ -170,6 +177,10 @@
         <p class="between"><span>{t.senses.perception}</span><b>{passive("perception", "wis")}</b></p>
         <p class="between"><span>{t.senses.insight}</span><b>{passive("insight", "wis")}</b></p>
         <p class="between"><span>{t.senses.investigation}</span><b>{passive("investigation", "int")}</b></p>
+        <!-- Darkvision and the like, the largest range from any source; the tooltip says which. -->
+        {#each [...senses] as [sense, { range, from }] (sense)}
+          <p class="between"><span>{t.senses.kinds[sense]}</span><b class="defense" title={t.defenses.from(from.filter(Boolean).join(", "))}>{t.senses.range(plain.format(range))}</b></p>
+        {/each}
         {#each profRows as [label, items], i (label)}
           <p class="prof" class:first={i === 0}><b class="prof-label">{t.senses.label(label)}</b> {list.format(items)}</p>
         {/each}

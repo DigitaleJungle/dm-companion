@@ -286,3 +286,16 @@ describe("removeTopLevel", () => {
     expect(removeTopLevel(four, 10).classes[0].subclass?.name).toBe("Champion");
   });
 });
+
+describe("a Hit Point bonus from features", () => {
+  it("adds per level and flat to the maximum, keeping the damage taken", () => {
+    const two = withLevel(character("Fighter", 1), { class: "Fighter", level: 2, hp: { how: "average", value: 6 }, gains: noGains() }, 10);
+    const plain = two.hp!.max;
+    const dwarf = rebuild({ ...two, hpBonus: { perLevel: 1, flat: 0 }, hp: { max: plain, current: plain - 3 } }, 10);
+    expect([dwarf.hp?.max, dwarf.hp?.current]).toEqual([plain + 2, plain + 2 - 3]);
+    // A level up adds the level's own hit points and one more for the bonus.
+    const level3 = { class: "Fighter", level: 3, hp: { how: "average" as const, value: 6 }, gains: noGains() };
+    const without = withLevel(two, level3, 10).hp!.max - two.hp!.max;
+    expect(withLevel(dwarf, level3, 10).hp!.max - dwarf.hp!.max).toBe(without + 1);
+  });
+});

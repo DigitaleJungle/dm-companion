@@ -43,6 +43,13 @@ export class SheetFeatures {
   extras = $state<Record<string, Data | null>>({});
   error = $state<string | null>(null);
   #loadedFor = "";
+  /** Lookups still running; the texts are complete when none are (and a class was loaded). */
+  #pending = $state(0);
+
+  /** Whether every text is in: what's read from them (a Hit Point bonus) can be trusted, not half known. */
+  get ready(): boolean {
+    return this.#loadedFor !== "" && this.#pending === 0 && !this.error;
+  }
 
   constructor(private readonly sheet: Sheet) {}
 
@@ -56,6 +63,7 @@ export class SheetFeatures {
     if (key !== this.#loadedFor) {
       this.#loadedFor = key;
       this.error = null;
+      this.#pending++;
       (async () => {
         this.classFeatures = await byExtra("classFeature", `${m.name}|${m.source}|`);
         if (sub) {
@@ -67,7 +75,9 @@ export class SheetFeatures {
           this.subclassData = null;
           this.subclassFeatures = [];
         }
-      })().catch((e) => (this.error = errorMessage(e)));
+      })()
+        .catch((e) => (this.error = errorMessage(e)))
+        .finally(() => this.#pending--);
     }
     // Feats and optional features: their text, looked up one by one (a character has only a few).
     const wanted = [...(c.feats ?? []).map((f) => ["feat", f] as const), ...(c.optionalFeatures ?? []).map((o) => ["optionalfeature", o] as const)];
@@ -75,9 +85,11 @@ export class SheetFeatures {
       const k = `${kind}:${ref.name}|${ref.source}`;
       if (k in this.extras) continue;
       this.extras[k] = null;
+      this.#pending++;
       findEntity(kind, kind === "feat" ? baseFeatName(ref.name) : ref.name, ref.source)
         .then((e) => (this.extras[k] = e?.data ?? null))
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => this.#pending--);
     }
   }
 

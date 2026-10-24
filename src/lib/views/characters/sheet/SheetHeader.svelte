@@ -72,13 +72,31 @@
     });
   }
 
-  function apply(kind: "damage" | "heal" | "temp") {
+  function apply(kind: "damage" | "heal") {
     const n = typed();
     if (n === null) return;
     if (kind === "damage") setVitals(takeDamage(vitals, n));
-    else if (kind === "heal") setVitals(takeHealing(vitals, n));
-    else setVitals({ ...vitals, hp: setTemp(vitals.hp, n) });
+    else setVitals(takeHealing(vitals, n));
     amount = "";
+  }
+
+  // Temporary hit points, typed in place of their label.
+  let editingTemp = $state(false);
+  let cancelTemp = false;
+  let tempInput: HTMLInputElement | undefined = $state();
+
+  async function startTemp() {
+    editingTemp = true;
+    cancelTemp = false;
+    await tick();
+    tempInput?.focus();
+    tempInput?.select();
+  }
+
+  function finishTemp(value: string) {
+    const n = Number(value);
+    if (!cancelTemp && value.trim() !== "" && Number.isInteger(n) && n >= 0) setVitals({ ...vitals, hp: setTemp(vitals.hp, n) });
+    editingTemp = false;
   }
 
   // Ticking circle n means n are marked; unticking it leaves the ones before it.
@@ -213,15 +231,27 @@
           <div class="hp-numbers">
             <div class="hp-head">
               <span class="stat-label">{t.hp.title}</span>
-              <button
-                class="temp"
-                aria-label="{t.hp.temp(plain.format(vitals.hp.temp))}. {t.hp.setTemp}"
-                title={t.hp.setTemp}
-                disabled={sheet.readOnly || typed() === null}
-                onclick={() => apply("temp")}
-              >
-                {t.hp.temp(plain.format(vitals.hp.temp))}
-              </button>
+              <!-- Temporary hit points: click to type a new amount (it replaces the old; 0 clears). Highlighted while there are any. -->
+              {#if editingTemp}
+                <input
+                  bind:this={tempInput}
+                  class="temp-input"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  aria-label={t.hp.setTemp}
+                  value={vitals.hp.temp}
+                  onkeydown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    else if (e.key === "Escape") ((cancelTemp = true), e.currentTarget.blur());
+                  }}
+                  onblur={(e) => finishTemp(e.currentTarget.value)}
+                />
+              {:else}
+                <button type="button" class="temp" class:on={vitals.hp.temp > 0} title={t.hp.setTemp} disabled={sheet.readOnly} onclick={startTemp}>
+                  {t.hp.temp(plain.format(vitals.hp.temp))}
+                </button>
+              {/if}
             </div>
             <p class="stat-value" aria-label={t.hp.hpLabel(plain.format(vitals.hp.current), plain.format(vitals.hp.max))}>
               {plain.format(vitals.hp.current)}<span class="hp-max"> / {plain.format(vitals.hp.max)}</span>
@@ -550,6 +580,29 @@
 
   .temp:disabled {
     cursor: default;
+  }
+
+  .temp:focus-visible,
+  .temp-input:focus-visible {
+    outline: var(--focus-ring) solid var(--color-focus);
+    outline-offset: var(--border-width);
+  }
+
+  .temp-input {
+    width: calc(3 * var(--space-6));
+    min-height: var(--control-height-sm);
+    padding: 0 var(--space-2);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+  }
+
+  .temp.on {
+    background: var(--color-accent-soft);
+    color: var(--color-link);
+    font-weight: var(--weight-semibold);
   }
 
   .hp-max {

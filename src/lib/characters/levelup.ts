@@ -389,6 +389,8 @@ export function rebuild(character: Character, faces: number): Character {
     const byLevel = new Map(records.map((r) => [r.level, r]));
     let max = level1Hp(faces, con);
     for (let l = 2; l <= main.level; l++) max += levelHp(byLevel.get(l)?.hp, faces, con);
+    // What features add (Dwarven Toughness, Tough), as the sheet last worked it out.
+    max += (c.hpBonus?.perLevel ?? 0) * main.level + (c.hpBonus?.flat ?? 0);
     const old = c.hp?.max ?? max;
     const damage = Math.max(0, old - (c.hp?.current ?? old));
     c.hp = { ...c.hp, max, current: Math.max(0, max - damage) };

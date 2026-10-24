@@ -1,7 +1,7 @@
 import { getCharacter, saveCharacter, type Character } from "$lib/api/characters";
 import { catalogRows, findEntity, type CatalogRow } from "$lib/api/rules";
 import { errorMessage, type StorageError } from "$lib/api/storage";
-import { restUses } from "$lib/characters/features";
+import { hpBonusIn, restUses } from "$lib/characters/features";
 import { SheetFeatures } from "./features.svelte";
 import { scoresWithLevels } from "$lib/characters/levelup";
 import { modifier, proficiencyBonus, type Ability, type Scores } from "$lib/characters/rules";
@@ -252,6 +252,28 @@ export class Sheet {
     if (row.attack) return mod === null ? t.unknown : signed.format(mod + pb);
     if (row.save) return t.spells.dc(mod === null ? t.unknown : plain.format(8 + mod + pb), row.save.toUpperCase());
     return t.spells.none;
+  }
+
+  /**
+   * Keeps the Hit Point bonus from features (Dwarven Toughness, Tough…) up to date: once every text is loaded, what they
+   * add is compared with what's saved, and the maximum (and current hit points, so damage taken stays) moves by the
+   * difference. Run from an effect; does nothing until the texts are in, or when nothing changed.
+   */
+  syncHpBonus() {
+    const c = this.character;
+    if (!c || this.readOnly || !this.features.ready || (c.species && !this.species)) return;
+    const found = this.features.cards.map((card) => hpBonusIn(card.text));
+    const next = { perLevel: found.reduce((n, b) => n + b.perLevel, 0), flat: found.reduce((n, b) => n + b.flat, 0) };
+    const old = c.hpBonus ?? { perLevel: 0, flat: 0 };
+    if (next.perLevel === old.perLevel && next.flat === old.flat) return;
+    const diff = (next.perLevel - old.perLevel) * this.level + (next.flat - old.flat);
+    this.change((x) => {
+      const hp = hpOf(x.hp);
+      const max = Math.max(1, hp.max + diff);
+      x.hp = { ...x.hp, max, current: Math.min(max, Math.max(0, hp.current + diff)) };
+      if (next.perLevel || next.flat) x.hpBonus = next;
+      else delete x.hpBonus;
+    });
   }
 
   /** Applies a change to the character and saves it shortly after. Does nothing for read-only characters. */

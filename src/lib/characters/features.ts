@@ -222,3 +222,33 @@ export function inspirationOnLongRest(entries: unknown): boolean {
 export function actionsIn(entries: unknown): string[] {
   return [...new Set(texts(entries).flatMap((s) => [...s.matchAll(/\{@action ([^|}]+)/g)].map((m) => m[1])))];
 }
+
+/** What a feature adds to the Hit Point maximum: so much per character level, and a flat amount. */
+export type HpBonus = { perLevel: number; flat: number };
+
+/**
+ * Reads "Your Hit Point maximum increases by …": by 1 now and 1 again with every level (Dwarven Toughness, the Hill
+ * Dwarf), by twice the level (Tough), by 3 and then 1 per class level (Draconic Resilience, taken at 3: one per level),
+ * or a flat amount (Boon of Fortitude's 40).
+ * shortcut: found by wording, like the rest; a structured field in the data would replace this.
+ */
+export function hpBonusIn(entries: unknown): HpBonus {
+  const sentences = texts(entries).map(plainText).join(" ").split(/(?<=\.)\s+/);
+  let perLevel = 0;
+  let flat = 0;
+  sentences.forEach((s, i) => {
+    if (!/\bHit Point maximum increases\b/i.test(s)) return;
+    const next = sentences[i + 1] ?? "";
+    if (/\btwice your (character )?level\b/i.test(s)) perLevel += 2;
+    else {
+      const again = /\bincreases by (\d+)\b[^.]*\bincreases by (\d+)\b[^.]*\b(again|whenever|every time)\b/i.exec(s);
+      if (again) perLevel += Number(again[2]);
+      else {
+        const by = /\bincreases by (\d+)\b/i.exec(s);
+        // A one-off amount, unless the next sentence makes it grow with levels (Tough's is counted above).
+        if (by && !/\bwhenever you gain\b/i.test(next)) flat += Number(by[1]);
+      }
+    }
+  });
+  return { perLevel, flat };
+}

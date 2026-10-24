@@ -3,6 +3,21 @@
 All notable changes to DM Companion. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions: **patch** = a fix or a change to existing functionality, **minor** = new functionality, **major** = an entire set of features.
 
+## [0.5.18] - 2026-10-24
+
+### Added
+
+- Senses panel: darkvision, blindsight, tremorsense and truesight with their range, from the species and lineage, feats, features and items, the source on hover
+- Hit Point maximum includes what features add: Dwarven Toughness, Tough, Draconic Resilience, Boon of Fortitude
+
+### Changed
+
+- Temporary hit points are set by clicking them next to the hit points and typing the amount
+
+### Fixed
+
+- Edit character: the ability totals include what levels add (Fey Touched's +1), as on the sheet
+
 ## [0.5.17] - 2026-10-24
 
 ### Added

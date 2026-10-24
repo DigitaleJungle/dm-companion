@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionsIn, featureUse, inspirationOnLongRest, nestedFeatures, resolveUse, restUses, structuredUse, tableCount, usesMax } from "./features";
+import { actionsIn, featureUse, hpBonusIn, inspirationOnLongRest, nestedFeatures, resolveUse, restUses, structuredUse, tableCount, usesMax } from "./features";
 
 describe("featureUse", () => {
   it("reads the action type and how a rest gives uses back", () => {
@@ -115,5 +115,16 @@ describe("actionsIn", () => {
     const cunning = ["On your turn, you can take one of the following actions as a {@variantrule Bonus Action|XPHB}: {@action Dash|XPHB}, {@action Disengage|XPHB}, or {@action Hide|XPHB}. {@action Dash|XPHB} again."];
     expect(actionsIn(cunning)).toEqual(["Dash", "Disengage", "Hide"]);
     expect(actionsIn(["No actions here."])).toEqual([]);
+  });
+});
+
+describe("hpBonusIn", () => {
+  it("reads per-level and flat increases to the Hit Point maximum", () => {
+    const hp = "{@variantrule Hit Points|XPHB|Hit Point}";
+    expect(hpBonusIn([`Your ${hp} maximum increases by 1, and it increases by 1 again whenever you gain a level.`])).toEqual({ perLevel: 1, flat: 0 });
+    expect(hpBonusIn([`Your ${hp} maximum increases by an amount equal to twice your character level when you gain this feat. Whenever you gain a character level thereafter, your ${hp} maximum increases by an additional 2 Hit Points.`])).toEqual({ perLevel: 2, flat: 0 });
+    expect(hpBonusIn([`Your ${hp} maximum increases by 3, and it increases by 1 whenever you gain another Sorcerer level.`])).toEqual({ perLevel: 1, flat: 0 });
+    expect(hpBonusIn([`Your ${hp} maximum increases by 40. In addition, whenever you regain Hit Points, you regain more.`])).toEqual({ perLevel: 0, flat: 40 });
+    expect(hpBonusIn(["You regain Hit Points."])).toEqual({ perLevel: 0, flat: 0 });
   });
 });

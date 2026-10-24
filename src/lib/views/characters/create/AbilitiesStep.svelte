@@ -18,7 +18,7 @@
     type BonusPick,
   } from "$lib/characters/rules";
   import AbilityCards from "./AbilityCards.svelte";
-  import { abilityTotal, backgroundBonuses, chooseMethod, draft, rolledValues, savingThrows, speciesBonuses, type Method } from "./draft.svelte";
+  import { abilityTotal, backgroundBonuses, chooseMethod, draft, levelIncreases, rolledValues, savingThrows, speciesBonuses, type Method } from "./draft.svelte";
 
   const t = strings.characters.wizard.abilities;
   const signed = new Intl.NumberFormat(undefined, { signDisplay: "always" });
@@ -122,6 +122,11 @@
   {/if}
 {/if}
 
+<!-- What levels add is in the totals below too, as on the sheet. -->
+{#if ABILITIES.some((a) => levelIncreases()[a])}
+  {@const fromLevels = ABILITIES.filter((a) => levelIncreases()[a]).map((a) => `${ABILITY_NAMES[a]} ${signed.format(levelIncreases()[a]!)}`)}
+  <p class="kept">{strings.characters.wizard.edit.levelBonuses(list.format(fromLevels))}</p>
+{/if}
 {#if draft.keptBonuses}
   {@const kept = ABILITIES.filter((a) => draft.keptBonuses?.[a]).map((a) => `${ABILITY_NAMES[a]} ${signed.format(draft.keptBonuses![a]!)}`)}
   <div class="kept">

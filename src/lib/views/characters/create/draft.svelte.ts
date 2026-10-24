@@ -12,7 +12,7 @@ import {
   type Lookup,
   type SavedChoice,
 } from "$lib/characters/choices";
-import { rebuild, type LevelRecord } from "$lib/characters/levelup";
+import { rebuild, scoresWithLevels, type LevelRecord } from "$lib/characters/levelup";
 import { inventoryItem } from "$lib/characters/sheet";
 import type { Roll } from "$lib/api/dice";
 import {
@@ -324,13 +324,30 @@ export function baseScores(): Scores | null {
   return assignedScores(draft.method === "standard" ? STANDARD_ARRAY : rolledValues(), draft.assignment);
 }
 
-/** One ability's score with its bonuses so far, as soon as it has a base value; null before. */
+/**
+ * One ability's score with its bonuses so far, as soon as it has a base value; null before. With levels configured
+ * (Edit → Character, or Configure), what they add is in it too (an Ability Score Improvement, Fey Touched's +1), as on
+ * the sheet, so the two show the same number.
+ */
 export function abilityTotal(ability: Ability): number | null {
   const values = draft.method === "standard" ? STANDARD_ARRAY : rolledValues();
   const index = draft.assignment[ability];
   const base = draft.method === "manual" ? draft.manual[ability] : index === null ? null : (values[index] ?? null);
   if (base === null) return null;
-  return Math.min(SCORE_CAP, base + bonusesNow().reduce((sum, b) => sum + (b[ability] ?? 0), 0));
+  const origin = Math.min(SCORE_CAP, base + bonusesNow().reduce((sum, b) => sum + (b[ability] ?? 0), 0));
+  return withLevels()?.[ability] ?? origin;
+}
+
+/** The scores with the configured levels' increases, as the sheet works them out; null without levels or a full set of scores. */
+function withLevels(): Scores | null {
+  if (!draft.levels.length || !scores()) return null;
+  return scoresWithLevels(withConfiguredLevels(draftCharacter()));
+}
+
+/** What the configured levels add to the scores ({ wis: 1 }), for the Abilities step's note. */
+export function levelIncreases(): Partial<Scores> {
+  if (!draft.levels.length || !scores()) return {};
+  return (withConfiguredLevels(draftCharacter()).abilities?.levelBonuses ?? {}) as Partial<Scores>;
 }
 
 /** The ability bonuses in force: the saved totals while editing kept them, otherwise the picks. */

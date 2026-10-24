@@ -64,6 +64,8 @@
     return () => void sheet.flush();
   });
   beforeNavigate(() => void sheet.flush());
+  // Features that raise the Hit Point maximum (Dwarven Toughness, Tough) keep it right as the character changes.
+  $effect(() => sheet.syncHpBonus());
   afterNavigate(({ from }) => {
     const path = from?.url.pathname;
     if (path && /^(\/campaign\/[^/]+)?\/characters$/.test(path)) backTo = path;

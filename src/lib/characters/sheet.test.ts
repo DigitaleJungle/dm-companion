@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  sensesFrom,
   defensesFrom,
   passesTime,
   castSlots,
@@ -419,5 +420,20 @@ describe("magical sleep", () => {
     expect(Object.fromEntries(d.conditionImmune)).toEqual({ "Magical sleep": ["Elf"] });
     const kalashtar = defensesFrom([{ name: "Kalashtar", entries: ["You are immune to magic that requires you to dream, but not to spells that put you to sleep."] }]);
     expect(kalashtar.conditionImmune.size).toBe(0);
+  });
+});
+
+describe("sensesFrom", () => {
+  it("reads species, lineage and feat fields and a feature's or item's wording, keeping the largest range", () => {
+    const s = sensesFrom([
+      { name: "Elf", data: { darkvision: 120 } },
+      { name: "Blind Fighting", data: { senses: [{ blindsight: 10 }] } },
+      { name: "Umbral Sight", entries: ["You have {@sense Darkvision|XPHB} with a range of 60 feet."] },
+      { name: "Goggles of Night", entries: ["While wearing these dark lenses, you have darkvision out to a range of 60 feet."] },
+      { name: "Bat", entries: ["The bat has Blindsight with a range of 60 feet."] },
+    ]);
+    expect(s.get("darkvision")).toEqual({ range: 120, from: ["Elf", "Umbral Sight", "Goggles of Night"] });
+    expect(s.get("blindsight")).toEqual({ range: 10, from: ["Blind Fighting"] });
+    expect(s.has("truesight")).toBe(false);
   });
 });

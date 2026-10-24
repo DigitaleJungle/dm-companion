@@ -519,3 +519,38 @@ export function defensesFrom(sources: { name: string; data?: Data | null; entrie
   }
   return out;
 }
+
+/** Special senses: darkvision, blindsight, tremorsense, truesight. */
+export const SENSES = ["darkvision", "blindsight", "tremorsense", "truesight"] as const;
+export type Sense = (typeof SENSES)[number];
+/** Each sense the character has: its range in feet (the largest) and what gives it. */
+export type SenseMap = Map<Sense, { range: number; from: string[] }>;
+
+/**
+ * The character's senses, from each source's rules data (a species' or lineage's `darkvision: 120`, a feat's
+ * `senses: [{ blindsight: 10 }]`) or, for a feature or item without those fields, its wording about the character:
+ * "You have Darkvision with a range of 60 feet", "darkvision out to a range of 60 feet".
+ * shortcut: features and items are read by wording, like resistances; a structured field in the data would replace this.
+ */
+export function sensesFrom(sources: { name: string; data?: Data | null; entries?: unknown }[]): SenseMap {
+  const out: SenseMap = new Map();
+  const add = (sense: Sense, range: number, from: string) => {
+    if (!(range > 0)) return;
+    const had = out.get(sense);
+    out.set(sense, { range: Math.max(had?.range ?? 0, range), from: [...new Set([...(had?.from ?? []), from])] });
+  };
+  for (const source of sources) {
+    const data = source.data ?? {};
+    for (const sense of SENSES) if (typeof data[sense] === "number") add(sense, data[sense] as number, source.name);
+    for (const entry of list(data.senses)) for (const sense of SENSES) if (typeof obj(entry)[sense] === "number") add(sense, obj(entry)[sense] as number, source.name);
+    const sentences = texts(source.entries)
+      .flatMap((text) => plainText(text).split(/(?<=\.)\s+/))
+      .filter((s) => /\byou (have|gain)\b/i.test(s));
+    for (const s of sentences) {
+      for (const m of s.matchAll(/\b(Darkvision|Blindsight|Tremorsense|Truesight)\b[^.]*?\b(?:range of|out to)\s+(\d+)\s*(?:feet|ft)/gi)) {
+        add(m[1].toLowerCase() as Sense, Number(m[2]), source.name);
+      }
+    }
+  }
+  return out;
+}

@@ -99,6 +99,8 @@ export type Character = {
   featureUses?: Record<string, { used: number; short?: "all" | "one" }>;
   /** A feature's number of uses set by hand, when its text doesn't give one. */
   featureUsesMax?: Record<string, number>;
+  /** What features add to the Hit Point maximum (Dwarven Toughness: 1 per level; Tough: 2), kept in sync by the sheet. */
+  hpBonus?: { perLevel: number; flat: number };
   /** Features ticked on the Features & traits tab to show on the Actions tab (their row keys, e.g. "c:Channel Divinity:3"). */
   actionFeatures?: string[];
   personality?: string;
